@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>| IMS Veri Analiz | HD </title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root { 
+            --primary: #0f172a; --bg: #f8fafc; --border: #e2e8f0; 
+            --accent: #4f46e5; --accent-light: #eef2ff; --header-bg: #4f46e5;
+            --excel: #10b981; --danger: #ef4444; --danger-light: #fef2f2;
+            --warning: #f59e0b; --warning-light: #fffbeb;
+            
+            /* Sütunlar İçin Kurumsal Soft Pastel Renk Matrisi */
+            --color-sales: #f0fdf4 !important;   /* Yumuşak Pastel Yeşil */
+            --color-growth: #eff6ff !important;  /* Yumuşak Pastel Mavi */
+            --color-share: #fcf7e6 !important;   /* Yumuşak Pastel Sarı/Krem */
+        }
+        
+        body.theme-national { --accent: #4f46e5; --accent-light: #eef2ff; --header-bg: #4f46e5; }
+        body.theme-territory { --accent: #0891b2; --accent-light: #ecfeff; --header-bg: #0891b2; }
+        body.theme-ozet { --accent: #d97706; --accent-light: #fff7ed; --header-bg: #d97706; }
+        body.theme-details { --accent: #7c3aed; --accent-light: #f5f3ff; --header-bg: #7c3aed; }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: var(--bg); color: var(--primary); display: flex; height: 100vh; overflow: hidden; }
+
+        .sidebar { width: 260px; background: var(--primary); color: white; padding: 20px; display: flex; flex-direction: column; flex-shrink: 0; }
+        .logo { font-size: 20px; font-weight: 800; color: var(--accent); margin-bottom: 30px; text-align: center; border-bottom: 1px solid #334155; padding-bottom: 15px; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 12px; cursor: pointer; color: #94a3b8; font-size: 13px; font-weight: 600; margin-bottom: 8px; transition: 0.3s; }
+        .nav-item.active { background: var(--accent); color: white; }
+
+        .main-content { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .top-bar { height: 70px; background: white; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; }
+        
+        .filter-panel { background: white; padding: 15px 30px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: center; }
+        .search-container { position: relative; flex-grow: 1; display: flex; align-items: center; }
+        .search-container i.fa-search { position: absolute; left: 15px; color: #94a3b8; }
+        .search-input { width: 100%; padding: 10px 45px 10px 40px; border: 1px solid var(--border); border-radius: 10px; outline: none; font-size: 13px; transition: 0.3s; }
+        .clear-search-btn { position: absolute; right: 15px; cursor: pointer; color: #cbd5e1; display: none; }
+
+        .cart-wrapper { position: relative; }
+        .btn-cart { background: var(--accent-light); color: var(--accent); width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid var(--accent); transition: 0.3s; }
+        .btn-cart:hover { background: var(--accent); color: white; }
+        .cart-badge { position: absolute; top: -5px; right: -5px; background: #94a3b8; color: white; font-size: 10px; padding: 2px 6px; border-radius: 20px; font-weight: 800; border: 2px solid white; transition: 0.3s; }
+
+        .table-container { background: white; border-radius: 15px; border: 1px solid var(--border); flex-grow: 1; overflow: auto; position: relative; margin: 15px; }
+        table { border-collapse: separate; border-spacing: 0; table-layout: fixed; width: max-content; }
+        .col-check { width: 50px; text-align: center; } .col-info { width: 180px; } .col-prod { width: 280px; } .col-data { width: 120px; }
+        th, td { padding: 12px; font-size: 12px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); white-space: nowrap; }
+
+        .interactive-cell { transition: all 0.2s ease; cursor: pointer; }
+        .interactive-cell:hover { 
+            background: white !important; transform: scale(1.05); z-index: 101;
+            box-shadow: 0 0 0 2px var(--accent) !important; font-weight: 800; color: var(--accent);
+        }
+
+        th { position: sticky; top: 0; z-index: 100; background: #fff; }
+        .sticky-col-1 { position: sticky; left: 0; z-index: 155 !important; background: #f8fafc !important; }
+        .sticky-col-2 { position: sticky; left: 50px; z-index: 150 !important; background: #ffffff !important; }
+        .sticky-col-3 { position: sticky; left: 230px; z-index: 150 !important; background: #ffffff !important; }
+        .sticky-col-4 { position: sticky; left: 410px; z-index: 150 !important; background: #ffffff !important; }
+        thead th[class*="sticky-col"] { z-index: 200 !important; background: #f1f5f9 !important; }
+        
+        /* ÇAKIŞMAYI ÖNLEYEN KRİTİK DEĞİŞİKLİK: 
+           Eğer td elemanının kendi inline style background'u varsa sticky rengi onu ezmesin dedik, !important'ı kaldırdık! */
+        tbody td[class*="sticky-col"] { background-color: inherit; background: #ffffff; }
+
+        .sub-header { font-weight: 700; color: #334155; }
+
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .modal-content { background: white; width: 520px; padding: 30px; border-radius: 24px; position: relative; }
+
+        .detail-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+        .detail-label { color: #64748b; font-weight: 600; font-size: 12px; }
+        .detail-value { color: var(--primary); font-weight: 700; font-size: 14px; }
+        .detail-highlight { background: var(--bg); padding: 15px; border-radius: 12px; margin-top: 15px; text-align: center; border: 1px solid var(--accent); }
+
+        .btn { padding: 10px 18px; border-radius: 10px; cursor: pointer; border: none; font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; transition: 0.3s; }
+        .btn-accent { background: var(--accent); color: white; }
+        .btn-warning { background: var(--warning-light); color: var(--warning); border: 1px solid #fef3c7; }
+        .btn-danger { background: var(--danger-light); color: var(--danger); border: 1px solid #fee2e2; }
+
+        .page { display: none; flex-direction: column; height: 100%; overflow: hidden; }
+        .page.active { display: flex; }
+    </style>
+</head>
+<body class="theme-national">
+
+<div class="sidebar">
+    <div class="logo">IMS COMMANDER ⚡</div>
+    <div class="nav-item active" onclick="nav('upload', this, 'national')"><i class="fas fa-database"></i> VERİ YÜKLE</div>
+    <div class="nav-item" onclick="nav('national', this, 'national')"><i class="fas fa-chart-line"></i> NATIONAL</div>
+    <div class="nav-item" onclick="nav('territory', this, 'territory')"><i class="fas fa-map-location-dot"></i> AREAS</div>
+    <div class="nav-item" onclick="nav('ozet', this, 'ozet')"><i class="fas fa-layer-group"></i> TST ÖZET</div>
+    <div class="nav-item" onclick="nav('details', this, 'details')"><i class="fas fa-microscope"></i> TST DETAY</div>
+</div>
+
+<div class="main-content">
+    <div class="top-bar">
+        <h3 id="pageTitle">Giriş Paneli</h3>
+        <div id="infoBox" style="display:none; color:var(--accent); font-weight:800; background: var(--accent-light); padding: 5px 15px; border-radius: 20px;">VERİ SETİ HAZIR ✨</div>
+    </div>
+
+    <div class="filter-panel" id="filterSection" style="display:none;">
+        <div class="search-container">
+            <i class="fas fa-search"></i>
+            <input type="text" id="globalSearch" class="search-input" placeholder="Kişi, Bölge, Ürün ara... (Örn: Giray Ankara)" oninput="filterData()">
+            <i class="fas fa-times-circle clear-search-btn" id="clearSearchIcon" onclick="clearSearchInput()"></i>
+        </div>
+        <select id="dateStart" class="search-input" style="width:130px;" onchange="filterData()"></select>
+        <select id="dateEnd" class="search-input" style="width:130px;" onchange="filterData()"></select>
+        <button class="btn btn-warning" onclick="resetAllFilters()"><i class="fas fa-sync-alt"></i> TEMİZLE</button>
+        
+        <div class="cart-wrapper" onclick="openCart()">
+            <div class="btn-cart"><i class="fas fa-shopping-basket fa-lg"></i></div>
+            <span class="cart-badge" id="cartBadge">0</span>
+        </div>
+    </div>
+
+    <div id="upload" class="page active">
+        <div style="text-align: center; margin: auto; padding: 60px; background:white; border-radius:30px; border: 2px dashed var(--border); max-width: 650px;">
+            <i class="fas fa-cloud-upload-alt fa-4x" style="color:var(--accent); margin-bottom:20px;"></i>
+            <h2 style="font-weight:800;">IMS Veri Merkezi</h2><br>
+            <div style="display:flex; gap:15px; justify-content:center;">
+                <input type="file" id="imsInput" hidden accept=".xlsx, .xls">
+                <button class="btn btn-accent" style="padding:15px 30px;" onclick="document.getElementById('imsInput').click()"><i class="fas fa-file-upload"></i> DOSYA YÜKLE</button>
+                <button id="mainClearBtn" class="btn btn-danger" style="display:none; padding:15px 30px;" onclick="location.reload()"><i class="fas fa-trash-alt"></i> SIFIRLA</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="national" class="page"><div class="table-container"><table id="nationalTable"><thead></thead><tbody></tbody></table></div></div>
+    <div id="territory" class="page"><div class="table-container"><table id="territoryTable"><thead></thead><tbody></tbody></table></div></div>
+    <div id="ozet" class="page"><div class="table-container"><table id="ozetTable"><thead></thead><tbody></tbody></table></div></div>
+    <div id="details" class="page"><div class="table-container"><table id="detailsTable"><thead></thead><tbody></tbody></table></div></div>
+</div>
+
+<div id="detailModal" class="modal" onclick="this.style.display='none'">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div style="text-align:center; margin-bottom:20px;">
+            <div style="background:var(--accent-light); width:50px; height:50px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 10px;">
+                <i class="fas fa-chart-bar" style="color:var(--accent)"></i>
+            </div>
+            <h2 id="detTitle" style="font-weight:800;">Ürün Analizi</h2>
+            <p id="detSubtitle" style="color:#64748b; font-size:13px;"></p>
+        </div>
+        <div id="detBody"></div>
+        <button class="btn btn-accent" style="width:100%; margin-top:20px; justify-content:center;" onclick="document.getElementById('detailModal').style.display='none'">ANLAŞILDI</button>
+    </div>
+</div>
+
+<div id="cartModal" class="modal" onclick="this.style.display='none'">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h2 style="color:var(--accent); font-weight:800; margin-bottom:20px; display:flex; align-items:center; gap:10px;">
+            <i class="fas fa-shopping-basket"></i> Seçili Ürünler Paneli
+        </h2>
+        <div id="cartList" style="max-height:350px; overflow-y:auto; margin-bottom:20px; padding-right:5px;"></div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <button class="btn btn-accent" style="justify-content:center;" onclick="exportSelected()"><i class="fas fa-file-excel"></i> EXCEL AKTAR</button>
+            <button class="btn btn-danger" style="justify-content:center;" onclick="clearSelection()"><i class="fas fa-trash-alt"></i> SEPETİ BOŞALT</button>
+        </div>
+        <button class="btn btn-warning" style="width:100%; margin-top:12px; justify-content:center; background:#fffcf0;" onclick="document.getElementById('cartModal').style.display='none'">KAPAT</button>
+    </div>
+</div>
+
+<script>
+    let db = {}; let currentSheet = "";
+
+    function nav(id, el, theme) {
+        document.querySelectorAll('.page, .nav-item').forEach(x => x.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        el.classList.add('active');
+        document.body.className = 'theme-' + theme;
+        const sheetMap = {'national': 'National', 'territory': 'Areas', 'ozet': 'TST-Özet', 'details': 'TST-Detay'};
+        currentSheet = sheetMap[id] || 'National';
+        document.getElementById('pageTitle').innerText = el.innerText;
+        document.getElementById('filterSection').style.display = (id === 'upload') ? 'none' : 'flex';
+        if(id !== 'upload') render(currentSheet, id + 'Table');
+    }
+
+    document.getElementById('imsInput').addEventListener('change', function(e) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const wb = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
+            wb.SheetNames.forEach(n => db[n] = XLSX.utils.sheet_to_json(wb.Sheets[n], {header: 1}));
+            document.getElementById('infoBox').style.display = 'inline-block';
+            document.getElementById('mainClearBtn').style.display = 'inline-flex';
+            updateDates(wb.SheetNames[0]);
+            alert("Veriler başarıyla işlendi! ⚡");
+        };
+        reader.readAsArrayBuffer(e.target.files[0]);
+    });
+
+    // SÜREKLİ VE KESİN EŞLEŞME SAĞLAYAN METOT
+    function getColumnColor(headerName) {
+        if (!headerName) return '';
+        let name = headerName.toString().toUpperCase().trim();
+        
+        if (name.includes("SALES")) return 'var(--color-sales)';
+        if (name.includes("GROWTH")) return 'var(--color-growth)';
+        if (name.includes("SHARE")) return 'var(--color-share)';
+        return '';
+    }
+
+    function render(sName, tId, q = "") {
+        const data = db[sName]; if(!data) return;
+        const s = parseInt(document.getElementById('dateStart').value) || 3, e = parseInt(document.getElementById('dateEnd').value) || 999;
+        const table = document.getElementById(tId), thead = table.querySelector('thead'), tbody = table.querySelector('tbody');
+        const ay = data[2], bas = data[3];
+
+        let isTstDetay = (sName === 'TST-Detay');
+        let col1Title = sName.includes('TST') ? "BÖLGE SORUMLUSU" : (sName === 'Areas' ? "BÖLGE / BRICK" : (bas[0] || "KAPSAM"));
+        let detailLabel = sName.includes('TST') ? "Bölge Sorumlusu:" : "Bölge:";
+
+        let h1 = `<tr><th class="sticky-col-1 col-check" rowspan="2"><input type="checkbox" onclick="toggleAll(this)"></th>
+                  <th class="sticky-col-2 col-info" rowspan="2">${col1Title}</th><th class="sticky-col-3 col-info" rowspan="2">${bas[1]}</th><th class="sticky-col-4 col-prod" rowspan="2">${bas[2]}</th>`;
+        let h2 = `<tr>`;
+        
+        for(let i=3; i<bas.length; i++) {
+            if(bas[i]!=="Grand Total" && (i < s || i > (e+2))) continue;
+            if((i-3)%3===0 || bas[i]==="Grand Total") {
+                h1 += `<th colspan="3" class="col-data" style="background:${bas[i]==="Grand Total"?'#1e293b':'var(--header-bg)'}; color:white">${bas[i]==="Grand Total"?'TOPLAM':ay[i].toString().toUpperCase()}</th>`;
+            }
+            let subBgColor = getColumnColor(bas[i]);
+            h2 += `<th class="sub-header col-data" style="background:${subBgColor};">${bas[i].toString().toUpperCase()}</th>`;
+        }
+        thead.innerHTML = h1 + "</tr>" + h2 + "</tr>";
+
+        let bHtml = "";
+        let lastTerritory = ""; 
+        let currentSorumlu = ""; 
+        const searchTerms = q.trim().toLowerCase().split(/\s+/).filter(t => t.length > 0);
+
+        data.slice(4).forEach(row => {
+            let cell0 = (row[0] || "").toString().trim();
+            let cell1 = (row[1] || "").toString().trim();
+            let cell2 = (row[2] || "").toString().trim();
+
+            if(cell0.toLowerCase().includes("grand total") || cell0.toLowerCase().includes("subtotal")) return;
+
+            let finalTerritory = (isTstDetay) ? (cell0 !== "" && cell1 === "" ? (currentSorumlu = cell0, "") : currentSorumlu) : (cell0 === "" ? lastTerritory : (lastTerritory = cell0));
+            if(!finalTerritory) return;
+
+            let isMatch = searchTerms.every(term => [finalTerritory, cell1, cell2].join(" ").toLowerCase().includes(term));
+            if(searchTerms.length > 0 && !isMatch) return;
+
+            let rHtml = `<tr><td class="sticky-col-1 col-check"><input type="checkbox" class="row-cb" onchange="updateCartBadge()"></td>
+                         <td class="sticky-col-2 col-info row-territory">${finalTerritory}</td>
+                         <td class="sticky-col-3 col-info row-market">${cell1}</td>
+                         <td class="sticky-col-4 col-prod row-product">${cell2}</td>`;
+            
+            row.forEach((cell, i) => {
+                if(i<3 || (bas[i]!=="Grand Total" && (i < s || i > (e+2)))) return;
+                
+                let pIdx = i; while (pIdx >= 3 && (!ay[pIdx] || ay[pIdx].toString().trim() === "")) pIdx--;
+                let currentPeriod = (bas[i] === "Grand Total") ? "TOPLAM" : (ay[pIdx] || 'DÖNEM');
+                let isSh = bas[i].toString().toUpperCase().includes("SHARE");
+                let valStr = (cell && !isNaN(cell)) ? parseFloat(cell).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) : (cell||'-');
+                let valFinal = isSh && valStr !== '-' ? "%" + valStr : valStr;
+
+                // TREND HESAPLAMA (Ekran için)
+                let trendHtml = "";
+                if (i >= 6 && isSh) {
+                    let prevVal = parseFloat(row[i - 3]) || 0;
+                    let currVal = parseFloat(cell) || 0;
+                    if (currVal > prevVal) trendHtml = ' <span style="color:#16a34a; font-weight:bold;">▲</span>';
+                    else if (currVal < prevVal) trendHtml = ' <span style="color:#dc2626; font-weight:bold;">▼</span>';
+                }
+
+                rHtml += `<td class="col-data interactive-cell" style="text-align:right; background-color:${getColumnColor(bas[i])};" onclick="showDetail('${cell2.replace(/'/g, "\\'")}', '${cell1.replace(/'/g, "\\'")}', '${currentPeriod}', '${bas[i]}', '${valFinal}', '${finalTerritory.replace(/'/g, "\\'")}', '${detailLabel}')">${valFinal}${trendHtml}</td>`;
+            });
+            bHtml += rHtml + "</tr>";
+        });
+        tbody.innerHTML = bHtml;
+    }
+
+    function showDetail(prod, mkt, period, type, val, region, label) {
+        document.getElementById('detTitle').innerText = prod;
+        document.getElementById('detSubtitle').innerText = mkt;
+        document.getElementById('detBody').innerHTML = `
+            <div class="detail-row"><span class="detail-label">${label}</span><span class="detail-value">${region}</span></div>
+            <div class="detail-row"><span class="detail-label">Dönem:</span><span class="detail-value">${period}</span></div>
+            <div class="detail-row"><span class="detail-label">Veri Türü:</span><span class="detail-value">${type}</span></div>
+            <div class="detail-highlight"><div style="font-size:24px; font-weight:900; color:var(--primary);">${val}</div></div>`;
+        document.getElementById('detailModal').style.display = 'flex';
+    }
+
+    function updateCartBadge() {
+        const count = document.querySelectorAll('.page.active .row-cb:checked').length;
+        const badge = document.getElementById('cartBadge');
+        badge.innerText = count;
+        badge.style.background = count > 0 ? 'var(--danger)' : '#94a3b8';
+    }
+
+    function toggleAll(master) {
+        document.querySelectorAll('.page.active .row-cb').forEach(cb => cb.checked = master.checked);
+        updateCartBadge();
+    }
+
+    function openCart() {
+        const selected = document.querySelectorAll('.page.active .row-cb:checked');
+        const list = document.getElementById('cartList');
+        if(!selected.length) {
+            list.innerHTML = "<div style='text-align:center; padding:40px;'><i class='fas fa-shopping-basket fa-3x' style='color:#cbd5e1; margin-bottom:15px;'></i><p style='color:#64748b;'>Henüz seçim yapılmadı.</p></div>";
+        } else {
+            let html = "";
+            selected.forEach(cb => {
+                const tr = cb.closest('tr');
+                html += `<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px; margin-bottom:10px; border-left:4px solid var(--accent);">
+                    <div style="font-size:13px; font-weight:800;">${tr.querySelector('.row-product').innerText}</div>
+                    <div style="font-size:11px; color:#64748b;">${tr.querySelector('.row-market').innerText} / ${tr.querySelector('.row-territory').innerText}</div>
+                </div>`;
+            });
+            list.innerHTML = html;
+        }
+        document.getElementById('cartModal').style.display = 'flex';
+    }
+
+    function clearSelection() {
+        document.querySelectorAll('.row-cb').forEach(cb => cb.checked = false);
+        const master = document.querySelector('.page.active th input[type="checkbox"]'); if(master) master.checked = false;
+        updateCartBadge();
+        document.getElementById('cartModal').style.display = 'none';
+    }
+
+    function exportSelected() {
+    const checked = document.querySelectorAll('.page.active .row-cb:checked');
+    if (!checked.length) return alert("Seçim yapmalısınız hocam.");
+
+    const table = document.querySelector('.page.active table');
+    // Veriye erişmek için global 'db' ve 'currentSheet'i kullanıyoruz
+    const data = db[currentSheet];
+    const bas = data ? data[3] : []; 
+
+    let excelHtml = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head><meta charset="UTF-8">
+    <style>
+        table { border-collapse: collapse; }
+        th { padding: 10px; border: 0.5pt solid #e2e8f0; font-weight: bold; text-align: center; }
+        .header-fixed { background-color: #475569; color: white; text-align: center; }
+        .month-1 { background-color: #d97706; color: white; text-align: center; }
+        .month-2 { background-color: #0891b2; color: white; text-align: center; }
+        .month-3 { background-color: #7c3aed; color: white; text-align: center; }
+        td { border: 0.5pt solid #e2e8f0; padding: 8px; text-align: right; }
+        .trend-up { color: #16a34a; font-weight: bold; }
+        .trend-down { color: #dc2626; font-weight: bold; }
+    </style></head>
+    <body><table>`;
+
+    // --- BAŞLIK KISMI ---
+    excelHtml += "<thead>";
+    table.querySelectorAll('thead tr').forEach((tr, trIdx) => {
+        excelHtml += "<tr>";
+        let monthCount = 0;
+        tr.querySelectorAll('th').forEach(th => {
+            if(th.classList.contains('col-check')) return;
+            const cs = th.getAttribute('colspan') ? ` colspan="${th.getAttribute('colspan')}"` : "";
+            const rs = th.getAttribute('rowspan') ? ` rowspan="${th.getAttribute('rowspan')}"` : "";
+            let className = (trIdx === 0 && th.getAttribute('colspan') > 1) ? ` class="month-${(++monthCount % 3) + 1}"` : ` class="header-fixed"`;
+            
+            // Başlıkları büyük harf yaptık ve tarih algısını kırmak için boşluk ekledik
+            let headerText = (th.textContent || "").trim().toUpperCase();
+            excelHtml += `<th${className}${cs}${rs}>&nbsp;${headerText}</th>`;
+        });
+        excelHtml += "</tr>";
+    });
+    excelHtml += "</thead><tbody>";
+
+    // --- VERİ KISMI ---
+    checked.forEach((cb) => {
+        const tr = cb.closest('tr');
+        excelHtml += "<tr>";
+        const tds = Array.from(tr.querySelectorAll('td:not(.col-check)'));
+        
+        tds.forEach((td, idx) => {
+            let cleanVal = td.innerText.replace(/▲|▼/g, '').trim(); 
+            let trendHtml = "";
+
+            // Sütun başlığında "SHARE" kelimesini arıyoruz
+            let headerName = bas[idx + 3] ? bas[idx + 3].toString().toUpperCase() : "";
+            
+            if (headerName.includes("SHARE")) {
+                // HATA BURADAYDI: idx-1 yerine idx-3 kullanarak bir önceki AYIN aynı sütununa bakıyoruz
+                let prevCell = tds[idx - 3]; 
+                
+                if (prevCell) {
+                    // Yüzde işaretlerini temizleyip sayıya çeviriyoruz
+                    let prevVal = parseFloat(prevCell.innerText.replace(/[^0-9,-]/g, '').replace(',', '.')) || 0;
+                    let currVal = parseFloat(cleanVal.replace(/[^0-9,-]/g, '').replace(',', '.')) || 0;
+                    
+                    // Artık doğru karşılaştırma yapılıyor
+                    if (currVal > prevVal) {
+                        trendHtml = ' <span class="trend-up">▲</span>';
+                    } else if (currVal < prevVal) {
+                        trendHtml = ' <span class="trend-down">▼</span>';
+                    }
+                }
+            }
+
+            const bgColor = td.style.backgroundColor || "";
+            excelHtml += `<td style="background-color: ${bgColor}; text-align: right;">${cleanVal}${trendHtml}</td>`;
+        });
+        excelHtml += "</tr>";
+    });
+
+    excelHtml += "</tbody></table></body></html>";
+    const blob = new Blob([excelHtml], { type: 'application/vnd.ms-excel' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `IMS_Rapor_${new Date().toLocaleDateString()}.xls`;
+    link.click();
+}
+
+    function updateDates(s) {
+        const data = db[s]; if(!data) return;
+        const start = document.getElementById('dateStart'), end = document.getElementById('dateEnd');
+        let opt = ""; for(let i=3; i<data[2].length; i+=3) if(data[2][i] && data[2][i]!=="Grand Total") opt += `<option value="${i}">${data[2][i]}</option>`;
+        start.innerHTML = opt; end.innerHTML = opt; end.selectedIndex = start.options.length - 1;
+    }
+
+    function filterData() {
+        const q = document.getElementById('globalSearch').value;
+        document.getElementById('clearSearchIcon').style.display = q ? 'block' : 'none';
+        render(currentSheet, document.querySelector('.page.active table').id, q);
+    }
+    
+    function clearSearchInput() { document.getElementById('globalSearch').value = ""; filterData(); }
+    function resetAllFilters() { document.getElementById('globalSearch').value = ""; if(Object.keys(db).length > 0) updateDates(currentSheet); filterData(); }
+</script>
+</body>
+</html>

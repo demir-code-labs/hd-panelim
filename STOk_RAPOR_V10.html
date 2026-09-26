@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Türkiye Satış & Stok Analitik Kokpiti</title>
+    <!-- Tailwind CSS & FontAwesome & SheetJS & Chart.js -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* --- 3D ANİMASYON & DERİNLİK EFEKTLERİ --- */
+        .card-3d {
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transform-style: preserve-3d;
+        }
+        .card-3d:hover {
+            transform: translateY(-6px) scale(1.01);
+            box-shadow: 0 20px 40px -15px rgba(6, 182, 212, 0.25);
+        }
+
+        .btn-3d {
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+        }
+        .btn-3d:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px -3px rgba(6, 182, 212, 0.3), 0 4px 6px -2px rgba(6, 182, 212, 0.1);
+        }
+        .btn-3d:active {
+            transform: translateY(1px);
+        }
+
+        /* Sekme Geçiş Animasyonları */
+        .tab-content {
+            animation: fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: translateY(10px) scale(0.99);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* --- DİNAMİK TEMA & KONTRAST OVERRIDE CSS KURALLARI --- */
+        body.theme-slate {
+            background: linear-gradient(to bottom right, #020617, #0f172a, #020617) !important;
+            color: #f1f5f9;
+        }
+
+        body.theme-midnight {
+            background: linear-gradient(to bottom right, #0f172a, #1e1b4b, #090d16) !important;
+            color: #e0e7ff;
+        }
+        body.theme-midnight header,
+        body.theme-midnight nav,
+        body.theme-midnight [class*="bg-slate-900"] {
+            background-color: rgba(15, 23, 42, 0.9) !important;
+            border-color: rgba(99, 102, 241, 0.25) !important;
+        }
+        body.theme-midnight [class*="bg-slate-950"] {
+            background-color: rgba(9, 13, 26, 0.95) !important;
+        }
+
+        body.theme-emerald {
+            background: linear-gradient(to bottom right, #022c22, #020617, #064e3b) !important;
+            color: #ecfdf5;
+        }
+        body.theme-emerald header,
+        body.theme-emerald nav,
+        body.theme-emerald [class*="bg-slate-900"] {
+            background-color: rgba(2, 44, 34, 0.9) !important;
+            border-color: rgba(16, 185, 129, 0.25) !important;
+        }
+        body.theme-emerald [class*="bg-slate-950"] {
+            background-color: rgba(2, 20, 16, 0.95) !important;
+        }
+
+        /* --- SAF SİYAH (OLED) MODU --- */
+        body.theme-darkmode {
+            background-color: #000000 !important;
+            color: #f4f4f5 !important;
+        }
+        body.theme-darkmode header,
+        body.theme-darkmode nav,
+        body.theme-darkmode [class*="bg-slate-900"],
+        body.theme-darkmode [class*="bg-slate-950"] {
+            background-color: #09090b !important;
+            border-color: #27272a !important;
+            color: #f4f4f5 !important;
+        }
+        body.theme-darkmode input,
+        body.theme-darkmode thead,
+        body.theme-darkmode .bg-slate-950\/80,
+        body.theme-darkmode .bg-slate-950\/60 {
+            background-color: #000000 !important;
+            border-color: #27272a !important;
+            color: #f4f4f5 !important;
+        }
+
+        /* --- SAF BEYAZ MODU --- */
+        body.theme-purewhite {
+            background: #ffffff !important;
+            color: #0f172a !important;
+        }
+        body.theme-purewhite header,
+        body.theme-purewhite nav,
+        body.theme-purewhite [class*="bg-slate-900"],
+        body.theme-purewhite [class*="bg-slate-950"] {
+            background-color: #f8fafc !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+        }
+        body.theme-purewhite input,
+        body.theme-purewhite thead,
+        body.theme-purewhite .bg-slate-950\/80,
+        body.theme-purewhite .bg-slate-950\/60,
+        body.theme-purewhite [class*="bg-slate-950"] {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+        }
+        body.theme-purewhite .text-slate-400,
+        body.theme-purewhite .text-slate-300 {
+            color: #334155 !important;
+        }
+        body.theme-purewhite .text-slate-200 {
+            color: #0f172a !important;
+        }
+        body.theme-purewhite [class*="bg-gradient-to-br"] {
+            background: #ffffff !important;
+            border-color: #cbd5e1 !important;
+        }
+        body.theme-purewhite [class*="bg-gradient-to-br"] h3,
+        body.theme-purewhite [class*="bg-gradient-to-br"] h4,
+        body.theme-purewhite [class*="bg-gradient-to-br"] p,
+        body.theme-purewhite [class*="bg-gradient-to-br"] li,
+        body.theme-purewhite [class*="bg-gradient-to-br"] td,
+        body.theme-purewhite [class*="bg-gradient-to-br"] th {
+            color: #0f172a !important;
+        }
+
+        /* --- KIRIK BEYAZ (IVORY) MODU --- */
+        body.theme-ivory {
+            background: #fbfbfa !important;
+            color: #1c1917 !important;
+        }
+        body.theme-ivory header,
+        body.theme-ivory nav,
+        body.theme-ivory [class*="bg-slate-900"],
+        body.theme-ivory [class*="bg-slate-950"] {
+            background-color: #f3f3f0 !important;
+            border-color: #e7e5e4 !important;
+            color: #1c1917 !important;
+        }
+        body.theme-ivory input,
+        body.theme-ivory thead,
+        body.theme-ivory .bg-slate-950\/80,
+        body.theme-ivory .bg-slate-950\/60 {
+            background-color: #ffffff !important;
+            border-color: #d6d3d1 !important;
+            color: #1c1917 !important;
+        }
+        body.theme-ivory .text-slate-400,
+        body.theme-ivory .text-slate-300 {
+            color: #44403c !important;
+        }
+        body.theme-ivory .text-slate-200 {
+            color: #1c1917 !important;
+        }
+        body.theme-ivory [class*="bg-gradient-to-br"] {
+            background: #ffffff !important;
+            border-color: #d6d3d1 !important;
+        }
+        body.theme-ivory [class*="bg-gradient-to-br"] h3,
+        body.theme-ivory [class*="bg-gradient-to-br"] h4,
+        body.theme-ivory [class*="bg-gradient-to-br"] p,
+        body.theme-ivory [class*="bg-gradient-to-br"] li,
+        body.theme-ivory [class*="bg-gradient-to-br"] td,
+        body.theme-ivory [class*="bg-gradient-to-br"] th {
+            color: #1c1917 !important;
+        }
+
+        .bg-slate-950\/60 {
+            background-color: rgba(15, 23, 42, 0.75) !important;
+            border-color: rgba(51, 65, 85, 0.8) !important;
+        }
+        body.theme-purewhite .bg-slate-950\/60,
+        body.theme-ivory .bg-slate-950\/60 {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+        }
+        .text-slate-300 {
+            color: #cbd5e1 !important;
+        }
+        .text-slate-400 {
+            color: #94a3b8 !important;
+        }
+    </style>
+</head>
+<body id="mainBody" class="theme-slate font-sans min-h-screen flex flex-col transition-colors duration-300" onload="initApp()">
+
+    <!-- Header -->
+    <header class="bg-slate-900/80 border-b border-slate-800/80 shadow-2xl p-6 backdrop-blur-md relative z-40 card-3d">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400">
+                    <i class="fa-solid fa-chart-line mr-2"></i> Türkiye Satış & Stok Analitik Kokpiti 🧿
+                </h1>
+                <p class="text-sm text-slate-400 mt-1">İleri Düzey Dağıtım, Stok Hızı, SWOT Analizi ve Dönemsel Kıyaslama Paneli</p>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-4">
+                <!-- Canlı Tarih & Saat -->
+                <div id="liveClock" class="bg-slate-900/90 border border-slate-800 px-4 py-2 rounded-xl text-cyan-300 font-mono text-xs shadow-inner flex items-center gap-2 card-3d">
+                    <i class="fa-regular fa-clock text-cyan-400"></i> <span id="clockText">Yükleniyor...</span>
+                </div>
+
+                <!-- Renk Paleti Açılır Menü Butonu -->
+                <div class="relative theme-dropdown-container">
+                    <button onclick="toggleThemeDropdown()" class="bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-cyan-500/30 px-4 py-2 rounded-xl shadow-lg transition flex items-center gap-2 text-sm font-semibold btn-3d">
+                        <i class="fa-solid fa-palette"></i> Tema Seç
+                    </button>
+                    <!-- Açılır Renk Paleti Kutusu -->
+                    <div id="themeDropdown" class="hidden absolute right-0 mt-2 w-52 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-3 z-50 space-y-2 backdrop-blur-md">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Arka Plan Temaları</p>
+                        <button onclick="setTheme('slate')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-slate-800 text-slate-200 flex items-center gap-2 transition">
+                            <span class="w-3 h-3 rounded-full bg-slate-950 border border-slate-600"></span> Klasik Koyu (Slate)
+                        </button>
+                        <button onclick="setTheme('midnight')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-slate-800 text-indigo-300 flex items-center gap-2 transition">
+                            <span class="w-3 h-3 rounded-full bg-indigo-950 border border-indigo-500"></span> Gece Mavisi (Midnight)
+                        </button>
+                        <button onclick="setTheme('emerald')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-slate-800 text-emerald-300 flex items-center gap-2 transition">
+                            <span class="w-3 h-3 rounded-full bg-emerald-950 border border-emerald-500"></span> Orman Yeşili (Emerald)
+                        </button>
+                        <button onclick="setTheme('darkmode')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-slate-800 text-zinc-100 flex items-center gap-2 transition">
+                            <span class="w-3 h-3 rounded-full bg-black border border-zinc-700"></span> Saf Siyah (OLED)
+                        </button>
+                        <button onclick="setTheme('purewhite')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-slate-200 text-slate-900 flex items-center gap-2 transition">
+                            <span class="w-3 h-3 rounded-full bg-white border border-slate-400"></span> Saf Beyaz
+                        </button>
+                        <button onclick="setTheme('ivory')" class="w-full text-left px-3 py-2 rounded-xl text-xs hover:bg-stone-200 text-stone-900 flex items-center gap-2 transition">
+                            <span class="w-3 h-3 rounded-full bg-stone-100 border border-stone-400"></span> Kırık Beyaz (Ivory)
+                        </button>
+                    </div>
+                </div>
+
+                <label class="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded-xl cursor-pointer shadow-lg transition flex items-center gap-2 text-sm font-semibold btn-3d">
+                    <i class="fa-solid fa-file-excel"></i> Güncel Excel Yükle
+                    <input type="file" id="excelFile" class="hidden" accept=".xlsx, .xls">
+                </label>
+                <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl shadow-lg transition flex items-center gap-2 text-sm font-semibold btn-3d">
+                    <i class="fa-solid fa-download"></i> Raporu İndir
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-slate-950/60 border-b border-slate-800/80 shadow-md backdrop-blur-sm relative z-10">
+        <div class="max-w-7xl mx-auto px-6 flex gap-3 overflow-x-auto py-3">
+            <button onclick="switchTab('tab1')" id="btnTab1" class="py-2.5 px-5 rounded-xl font-bold text-sm transition flex items-center gap-2 whitespace-nowrap shadow-md bg-cyan-600 text-white ring-2 ring-cyan-400/50 btn-3d">
+                <i class="fa-solid fa-table-cells"></i> 1. Ana Kokpit & Çift Ekran
+            </button>
+            <button onclick="switchTab('tab2')" id="btnTab2" class="py-2.5 px-5 rounded-xl font-medium text-sm transition flex items-center gap-2 whitespace-nowrap shadow-sm bg-slate-900/80 text-emerald-400 hover:bg-emerald-950/40 hover:text-emerald-300 border border-emerald-500/20 btn-3d">
+                <i class="fa-solid fa-chart-pie"></i> 2. Akıllı İstatistik & Rapor
+            </button>
+            <button onclick="switchTab('tab3')" id="btnTab3" class="py-2.5 px-5 rounded-xl font-medium text-sm transition flex items-center gap-2 whitespace-nowrap shadow-sm bg-slate-900/80 text-amber-400 hover:bg-amber-950/40 hover:text-amber-300 border border-amber-500/20 btn-3d">
+                <i class="fa-solid fa-scale-balanced"></i> 3. Dönemsel Kıyaslama
+            </button>
+            <button onclick="switchTab('tab4')" id="btnTab4" class="py-2.5 px-5 rounded-xl font-medium text-sm transition flex items-center gap-2 whitespace-nowrap shadow-sm bg-slate-900/80 text-indigo-400 hover:bg-indigo-950/40 hover:text-indigo-300 border border-indigo-500/20 btn-3d">
+                <i class="fa-solid fa-chess-board"></i> 4. SWOT & Stratejik Öneriler
+            </button>
+            <button onclick="switchTab('tab5')" id="btnTab5" class="py-2.5 px-5 rounded-xl font-medium text-sm transition flex items-center gap-2 whitespace-nowrap shadow-sm bg-slate-900/80 text-teal-400 hover:bg-teal-950/40 hover:text-teal-300 border border-teal-500/20 btn-3d">
+                <i class="fa-solid fa-database"></i> 5. Tüm Ham Stok Verisi (A-Z)
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto p-6 space-y-6 flex-grow w-full">
+
+        <!-- TAB 1: Ana Kokpit & Çift Ekran -->
+        <div id="contentTab1" class="tab-content space-y-6">
+            <!-- KPI Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-slate-900/90 border border-cyan-500/30 p-5 rounded-2xl shadow-xl backdrop-blur-sm bg-gradient-to-br from-slate-900 to-cyan-950/20 card-3d">
+                    <p class="text-xs uppercase font-bold text-slate-400">Toplam Ürün Çeşitliliği</p>
+                    <h3 id="kpiTotalItems" class="text-3xl font-black text-cyan-400 mt-2">0</h3>
+                </div>
+                <div class="bg-slate-900/90 border border-emerald-500/30 p-5 rounded-2xl shadow-xl backdrop-blur-sm bg-gradient-to-br from-slate-900 to-emerald-950/20 card-3d">
+                    <p class="text-xs uppercase font-bold text-slate-400">Toplam Satışa Hazır Stok</p>
+                    <h3 id="kpiTotalStock" class="text-3xl font-black text-emerald-400 mt-2">0</h3>
+                </div>
+                <div class="bg-slate-900/90 border border-amber-500/30 p-5 rounded-2xl shadow-xl backdrop-blur-sm bg-gradient-to-br from-slate-900 to-amber-950/20 card-3d">
+                    <p class="text-xs uppercase font-bold text-slate-400">Toplam Günlük Satış</p>
+                    <h3 id="kpiDailySales" class="text-3xl font-black text-amber-400 mt-2">0</h3>
+                </div>
+                <div class="bg-slate-900/90 border border-indigo-500/30 p-5 rounded-2xl shadow-xl backdrop-blur-sm bg-gradient-to-br from-slate-900 to-indigo-950/20 card-3d">
+                    <p class="text-xs uppercase font-bold text-slate-400">Yıllık Toplam Satış</p>
+                    <h3 id="kpiYearlySales" class="text-3xl font-black text-indigo-400 mt-2">0</h3>
+                </div>
+            </div>
+
+            <!-- Çift Ekran Yapısı -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Sol Kolon: Tablo ve Arama -->
+                <div class="lg:col-span-2 space-y-4">
+                    <div class="bg-slate-900/90 border border-cyan-500/30 p-4 rounded-2xl shadow-xl flex items-center justify-between backdrop-blur-sm card-3d">
+                        <div class="relative w-full">
+                            <i class="fa-solid fa-search absolute left-4 top-3.5 text-slate-400"></i>
+                            <input type="text" id="searchInput" placeholder="Malzeme kodu, ismi, marka veya lisansör ara..." 
+                                class="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-11 pr-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-500 transition shadow-inner">
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/90 border border-cyan-500/30 rounded-2xl shadow-xl overflow-hidden backdrop-blur-sm card-3d">
+                        <div class="overflow-x-auto max-h-[500px]">
+                            <table id="dataTable" class="w-full text-left border-collapse">
+                                <thead class="bg-slate-950/90 sticky top-0 text-xs uppercase text-cyan-300 font-bold border-b border-slate-800">
+                                    <tr>
+                                        <th class="p-3">Kod</th>
+                                        <th class="p-3">Malzeme İsmi (A-Z)</th>
+                                        <th class="p-3">Marka</th>
+                                        <th class="p-3 text-right">Stok</th>
+                                        <th class="p-3 text-right">Günlük</th>
+                                        <th class="p-3 text-center">Ömür (Gün)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tableBody" class="divide-y divide-slate-800/80 text-sm">
+                                    <tr><td colspan="6" class="p-6 text-center text-slate-400">Lütfen üst menüden Excel raporu yükleyin. (A-Z otomatik sıralanır)</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sağ Kolon -->
+                <div class="space-y-6">
+                    <!-- Top 10 & In 10 Hızlı Özet Kartı -->
+                    <div class="bg-slate-900/90 border border-cyan-500/30 p-5 rounded-2xl shadow-xl space-y-4 backdrop-blur-sm card-3d">
+                        <div class="flex border-b border-slate-800 pb-2 gap-4">
+                            <button onclick="switchTopList('top')" id="btnTop10Tab" class="text-xs font-bold text-emerald-400 border-b-2 border-emerald-400 pb-1 transition">🔥 Top 10 Çok Satanlar</button>
+                            <button onclick="switchTopList('in')" id="btnIn10Tab" class="text-xs font-medium text-slate-400 hover:text-slate-200 pb-1 transition">🧊 In 10 Yavaş / Hareketsiz</button>
+                        </div>
+                        
+                        <div id="tabListTop" class="space-y-2 max-h-[220px] overflow-y-auto pr-1 text-xs">
+                            <p class="text-slate-500 text-center py-4">Veri bekleniyor...</p>
+                        </div>
+
+                        <div id="tabListIn" class="space-y-2 max-h-[220px] overflow-y-auto pr-1 text-xs hidden">
+                            <p class="text-slate-500 text-center py-4">Veri bekleniyor...</p>
+                        </div>
+                    </div>
+
+                    <!-- Grafik Kartı -->
+                    <div class="bg-slate-900/90 border border-cyan-500/30 p-5 rounded-2xl shadow-xl flex flex-col justify-between backdrop-blur-sm card-3d">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-200 mb-1"><i class="fa-solid fa-chart-pie mr-2 text-cyan-400"></i>En Çok Satan İlk 5 Ürün</h3>
+                            <p class="text-xs text-slate-400 mb-4">Günlük satış hacmi dağılımı</p>
+                        </div>
+                        <div class="relative h-56 flex items-center justify-center">
+                            <canvas id="salesChart"></canvas>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-800 text-xs text-slate-400 text-center">
+                            <span id="recordCount">0 kayıt listeleniyor</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: Akıllı İstatistik & Rapor Sekmesi -->
+        <div id="contentTab2" class="tab-content space-y-6 hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Hızlı Satanlar -->
+                <div class="bg-slate-900/90 border border-emerald-500/40 p-5 rounded-2xl shadow-xl space-y-3 backdrop-blur-sm bg-gradient-to-br from-slate-900 to-emerald-950/20 card-3d">
+                    <div class="flex items-center justify-between border-b border-emerald-500/20 pb-3">
+                        <h4 class="font-bold text-emerald-400 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-fire"></i> Hızlı Satanlar (A-Z)
+                        </h4>
+                        <span id="badgeTopSales" class="bg-emerald-500/10 text-emerald-400 text-xs px-2 py-1 rounded-lg font-bold">0</span>
+                    </div>
+                    <div id="listTopSales" class="space-y-2 max-h-[400px] overflow-y-auto pr-1 text-xs text-slate-300">
+                        <p class="text-slate-500 text-center py-4">Veri bekleniyor...</p>
+                    </div>
+                </div>
+
+                <!-- Kritik Stok -->
+                <div class="bg-slate-900/90 border border-amber-500/40 p-5 rounded-2xl shadow-xl space-y-3 backdrop-blur-sm bg-gradient-to-br from-slate-900 to-amber-950/20 card-3d">
+                    <div class="flex items-center justify-between border-b border-amber-500/20 pb-3">
+                        <h4 class="font-bold text-amber-400 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Kritik Stok (A-Z)
+                        </h4>
+                        <span id="badgeCriticalStock" class="bg-amber-500/10 text-amber-400 text-xs px-2 py-1 rounded-lg font-bold">0</span>
+                    </div>
+                    <div id="listCriticalStock" class="space-y-2 max-h-[400px] overflow-y-auto pr-1 text-xs text-slate-300">
+                        <p class="text-slate-500 text-center py-4">Veri bekleniyor...</p>
+                    </div>
+                </div>
+
+                <!-- Stok Out (Tükenenler) -->
+                <div class="bg-slate-900/90 border border-rose-500/40 p-5 rounded-2xl shadow-xl space-y-3 backdrop-blur-sm bg-gradient-to-br from-slate-900 to-rose-950/20 card-3d">
+                    <div class="flex items-center justify-between border-b border-rose-500/20 pb-3">
+                        <h4 class="font-bold text-rose-400 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-ban"></i> Stok Out (A-Z)
+                        </h4>
+                        <span id="badgeStockOut" class="bg-rose-500/10 text-rose-400 text-xs px-2 py-1 rounded-lg font-bold">0</span>
+                    </div>
+                    <div id="listStockOut" class="space-y-2 max-h-[400px] overflow-y-auto pr-1 text-xs text-slate-300">
+                        <p class="text-slate-500 text-center py-4">Veri bekleniyor...</p>
+                    </div>
+                </div>
+
+                <!-- Hareketsiz Ürünler -->
+                <div class="bg-slate-900/90 border border-indigo-500/40 p-5 rounded-2xl shadow-xl space-y-3 backdrop-blur-sm bg-gradient-to-br from-slate-900 to-indigo-950/20 card-3d">
+                    <div class="flex items-center justify-between border-b border-indigo-500/20 pb-3">
+                        <h4 class="font-bold text-indigo-400 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-box-archive"></i> Hareketsiz / Fazla (A-Z)
+                        </h4>
+                        <span id="badgeIdleStock" class="bg-indigo-500/10 text-indigo-400 text-xs px-2 py-1 rounded-lg font-bold">0</span>
+                    </div>
+                    <div id="listIdleStock" class="space-y-2 max-h-[400px] overflow-y-auto pr-1 text-xs text-slate-300">
+                        <p class="text-slate-500 text-center py-4">Veri bekleniyor...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: Dönemsel Kıyaslama Sekmesi -->
+        <div id="contentTab3" class="tab-content space-y-6 hidden">
+            <div class="bg-slate-900/90 border border-amber-500/40 p-6 rounded-2xl shadow-xl space-y-4 backdrop-blur-sm bg-gradient-to-br from-slate-900 to-amber-950/20 card-3d">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-amber-500/20 pb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-amber-400"><i class="fa-solid fa-scale-balanced mr-2"></i>Geçmiş Dönem & Güncel Büyüme/Küçülme Kıyaslama Raporu (A-Z)</h3>
+                        <p class="text-xs text-slate-400 mt-1">Geçmiş tarihli Excel dosyanızı yükleyerek stok ve satış hacimlerindeki yüzdesel değişimleri inceleyin.</p>
+                    </div>
+                    <label class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-xl cursor-pointer shadow-lg transition flex items-center gap-2 text-sm font-semibold btn-3d">
+                        <i class="fa-solid fa-file-excel"></i> Geçmiş Dönem Excel Yükle
+                        <input type="file" id="excelFilePast" class="hidden" accept=".xlsx, .xls">
+                    </label>
+                </div>
+
+                <div class="overflow-x-auto max-h-[500px]">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead class="bg-slate-950/90 sticky top-0 uppercase text-amber-300 font-bold border-b border-slate-800">
+                            <tr>
+                                <th class="p-3">Kod</th>
+                                <th class="p-3">Malzeme İsmi (A-Z)</th>
+                                <th id="thPastStock" class="p-3 text-right">Geçmiş Stok</th>
+                                <th id="thCurrentStock" class="p-3 text-right">Güncel Stok</th>
+                                <th class="p-3 text-right">Stok Farkı</th>
+                                <th class="p-3 text-right text-cyan-300">Stok Değişim (%)</th>
+                                <th id="thPastDaily" class="p-3 text-right">Geçmiş Günlük</th>
+                                <th id="thCurrentDaily" class="p-3 text-right">Güncel Günlük</th>
+                                <th class="p-3 text-center">Satış Büyüme/Küçülme Trendi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="comparisonTableBody" class="divide-y divide-slate-800">
+                            <tr><td colspan="9" class="p-8 text-center text-slate-400">Kıyaslama için lütfen üstten "Geçmiş Dönem Excel Yükle" butonunu kullanın.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: SWOT & Stratejik Öneriler Sekmesi -->
+        <div id="contentTab4" class="tab-content space-y-6 hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Güçlü Yönler (Strengths) -->
+                <div class="bg-slate-900/90 border border-emerald-500/40 p-6 rounded-2xl shadow-xl space-y-3 backdrop-blur-sm bg-gradient-to-br from-slate-900 to-emerald-950/20 card-3d">
+                    <h4 class="font-bold text-emerald-400 text-base flex items-center gap-2 border-b border-emerald-500/20 pb-3">
+                        <i class="fa-solid fa-shield-halved"></i> Güçlü Yönler (Strengths)
+                    </h4>
+                    <ul id="swotStrengths" class="space-y-2 text-sm text-slate-300">
+                        <li class="text-slate-500">Veri analizi bekleniyor...</li>
+                    </ul>
+                </div>
+
+                <!-- Zayıf Yönler / Riskler (Weaknesses) -->
+                <div class="bg-slate-900/90 border border-rose-500/40 p-6 rounded-2xl shadow-xl space-y-3 backdrop-blur-sm bg-gradient-to-br from-slate-900 to-rose-950/20 card-3d">
+                    <h4 class="font-bold text-rose-400 text-base flex items-center gap-2 border-b border-rose-500/20 pb-3">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Zayıf Yönler & Riskler (Weaknesses)
+                    </h4>
+                    <ul id="swotWeaknesses" class="space-y-2 text-sm text-slate-300">
+                        <li class="text-slate-500">Veri analizi bekleniyor...</li>
+                    </ul>
+                </div>
+
+                <!-- Fırsatlar (Opportunities) -->
+                <div class="bg-slate-900/90 border border-cyan-500/40 p-6 rounded-2xl shadow-xl space-y-3 backdrop-blur-sm bg-gradient-to-br from-slate-900 to-cyan-950/20 card-3d">
+                    <h4 class="font-bold text-cyan-400 text-base flex items-center gap-2 border-b border-cyan-500/20 pb-3">
+                        <i class="fa-solid fa-lightbulb"></i> Fırsatlar (Opportunities)
+                    </h4>
+                    <ul id="swotOpportunities" class="space-y-2 text-sm text-slate-300">
+                        <li class="text-slate-500">Veri analizi bekleniyor...</li>
+                    </ul>
+                </div>
+
+                <!-- Tehditler ve Aksiyon Planı (Threats & Actions) -->
+                <div class="bg-slate-900/90 border border-amber-500/40 p-6 rounded-2xl shadow-xl space-y-3 backdrop-blur-sm bg-gradient-to-br from-slate-900 to-amber-950/20 card-3d">
+                    <h4 class="font-bold text-amber-400 text-base flex items-center gap-2 border-b border-amber-500/20 pb-3">
+                        <i class="fa-solid fa-bolt"></i> Tehditler & Stratejik Aksiyonlar (Threats)
+                    </h4>
+                    <ul id="swotThreats" class="space-y-2 text-sm text-slate-300">
+                        <li class="text-slate-500">Veri analizi bekleniyor...</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 5: Tüm Ham Stok Verisi Sekmesi -->
+        <div id="contentTab5" class="tab-content space-y-6 hidden">
+            <div class="bg-slate-900/90 border border-teal-500/40 p-6 rounded-2xl shadow-xl space-y-4 backdrop-blur-sm bg-gradient-to-br from-slate-900 to-teal-950/20 card-3d">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-teal-500/20 pb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-teal-400"><i class="fa-solid fa-database mr-2"></i>Güncel Stok Raporu - Tüm Ham Sütunlar Arşivi (A-Z)</h3>
+                        <p class="text-xs text-slate-400 mt-1">Bu sekme, yüklediğiniz güncel stok raporundaki tüm orijinal sütun ve detayları "Malzeme İsmi"ne göre A-Z sıralı olarak eksiksiz listeler.</p>
+                    </div>
+                    <span id="rawRecordCountBadge" class="bg-teal-500/10 text-teal-400 text-xs px-3 py-1.5 rounded-xl font-bold border border-teal-500/30">0 Satır / 0 Sütun</span>
+                </div>
+
+                <div class="overflow-x-auto max-h-[550px] border border-slate-800 rounded-xl">
+                    <table id="rawDataTable" class="w-full text-left border-collapse text-xs">
+                        <thead id="rawTableHead" class="bg-slate-950/90 sticky top-0 uppercase text-teal-300 font-bold border-b border-slate-800">
+                            <tr><th class="p-4 text-center text-slate-400">Veri bekleniyor...</th></tr>
+                        </thead>
+                        <tbody id="rawTableBody" class="divide-y divide-slate-800/80 text-slate-200">
+                            <tr><td class="p-8 text-center text-slate-400">Lütfen üst menüden Excel raporu yükleyin.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        let globalData = [];
+        let pastData = [];
+        let rawFullData = [];
+        let rawColumns = [];
+        let myChart = null;
+        let pastDateLabel = "Geçmiş";
+        let currentDateLabel = "Güncel";
+
+        function initApp() {
+            initClock();
+            loadSavedTheme();
+        }
+
+        function extractDateLabelFromFilename(filename, defaultLabel) {
+            if (!filename) return defaultLabel;
+            const base = filename.split('.')[0];
+            if (base.length === 8 && !isNaN(base)) {
+                return `${base.substring(0, 2)}.${base.substring(2, 4)}.${base.substring(4, 8)}`;
+            }
+            return defaultLabel;
+        }
+
+        // Renk Paleti & Tema Yönetimi
+        function toggleThemeDropdown() {
+            const dropdown = document.getElementById('themeDropdown');
+            dropdown.classList.toggle('hidden');
+        }
+
+        function setTheme(themeName) {
+            const body = document.getElementById('mainBody');
+            
+            body.classList.remove('theme-slate', 'theme-midnight', 'theme-emerald', 'theme-darkmode', 'theme-purewhite', 'theme-ivory');
+            body.classList.add('theme-' + (themeName || 'slate'));
+            localStorage.setItem('kokpit_theme', themeName);
+            
+            const dropdown = document.getElementById('themeDropdown');
+            if (dropdown) dropdown.classList.add('hidden');
+        }
+
+        function loadSavedTheme() {
+            const savedTheme = localStorage.getItem('kokpit_theme') || 'slate';
+            setTheme(savedTheme);
+        }
+
+        window.addEventListener('click', function(e) {
+            if (!e.target.closest('.theme-dropdown-container')) {
+                const dropdown = document.getElementById('themeDropdown');
+                if (dropdown && !dropdown.classList.contains('hidden')) {
+                    dropdown.classList.add('hidden');
+                }
+            }
+        });
+
+        function initClock() {
+            updateClock();
+            setInterval(updateClock, 1000);
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const options = { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' };
+            const dateStr = now.toLocaleDateString('tr-TR', options);
+            const timeStr = now.toLocaleTimeString('tr-TR');
+            document.getElementById('clockText').innerText = `${dateStr} - ${timeStr}`;
+        }
+
+        function switchTab(tabId) {
+            ['tab1', 'tab2', 'tab3', 'tab4', 'tab5'].forEach(id => {
+                const isSelected = id === tabId;
+                document.getElementById('content' + id.charAt(0).toUpperCase() + id.slice(1)).classList.toggle('hidden', !isSelected);
+                
+                const btn = document.getElementById('btn' + id.charAt(0).toUpperCase() + id.slice(1));
+                
+                const themes = {
+                    tab1: {
+                        active: "py-2.5 px-5 rounded-xl font-bold text-sm transition flex items-center gap-2 whitespace-nowrap shadow-md bg-cyan-600 text-white ring-2 ring-cyan-400/50 btn-3d",
+                        passive: "py-2.5 px-5 rounded-xl font-medium text-sm transition flex items-center gap-2 whitespace-nowrap shadow-sm bg-slate-900/80 text-cyan-400 hover:bg-cyan-950/40 hover:text-cyan-300 border border-cyan-500/20 btn-3d"
+                    },
+                    tab2: {
+                        active: "py-2.5 px-5 rounded-xl font-bold text-sm transition flex items-center gap-2 whitespace-nowrap shadow-md bg-emerald-600 text-white ring-2 ring-emerald-400/50 btn-3d",
+                        passive: "py-2.5 px-5 rounded-xl font-medium text-sm transition flex items-center gap-2 whitespace-nowrap shadow-sm bg-slate-900/80 text-emerald-400 hover:bg-emerald-950/40 hover:text-emerald-300 border border-emerald-500/20 btn-3d"
+                    },
+                    tab3: {
+                        active: "py-2.5 px-5 rounded-xl font-bold text-sm transition flex items-center gap-2 whitespace-nowrap shadow-md bg-amber-600 text-white ring-2 ring-amber-400/50 btn-3d",
+                        passive: "py-2.5 px-5 rounded-xl font-medium text-sm transition flex items-center gap-2 whitespace-nowrap shadow-sm bg-slate-900/80 text-amber-400 hover:bg-amber-950/40 hover:text-amber-300 border border-amber-500/20 btn-3d"
+                    },
+                    tab4: {
+                        active: "py-2.5 px-5 rounded-xl font-bold text-sm transition flex items-center gap-2 whitespace-nowrap shadow-md bg-indigo-600 text-white ring-2 ring-indigo-400/50 btn-3d",
+                        passive: "py-2.5 px-5 rounded-xl font-medium text-sm transition flex items-center gap-2 whitespace-nowrap shadow-sm bg-slate-900/80 text-indigo-400 hover:bg-indigo-950/40 hover:text-indigo-300 border border-indigo-500/20 btn-3d"
+                    },
+                    tab5: {
+                        active: "py-2.5 px-5 rounded-xl font-bold text-sm transition flex items-center gap-2 whitespace-nowrap shadow-md bg-teal-600 text-white ring-2 ring-teal-400/50 btn-3d",
+                        passive: "py-2.5 px-5 rounded-xl font-medium text-sm transition flex items-center gap-2 whitespace-nowrap shadow-sm bg-slate-900/80 text-teal-400 hover:bg-teal-950/40 hover:text-teal-300 border border-teal-500/20 btn-3d"
+                    }
+                };
+
+                btn.className = isSelected ? themes[id].active : themes[id].passive;
+            });
+        }
+
+        function switchTopList(type) {
+            const isTop = type === 'top';
+            document.getElementById('tabListTop').classList.toggle('hidden', !isTop);
+            document.getElementById('tabListIn').classList.toggle('hidden', isTop);
+            
+            document.getElementById('btnTop10Tab').className = isTop 
+                ? "text-xs font-bold text-emerald-400 border-b-2 border-emerald-400 pb-1 transition" 
+                : "text-xs font-medium text-slate-400 hover:text-slate-200 pb-1 transition";
+            document.getElementById('btnIn10Tab').className = !isTop 
+                ? "text-xs font-bold text-indigo-400 border-b-2 border-indigo-400 pb-1 transition" 
+                : "text-xs font-medium text-slate-400 hover:text-slate-200 pb-1 transition";
+        }
+
+        document.getElementById('excelFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            currentDateLabel = extractDateLabelFromFilename(file.name, "Güncel");
+            
+            handleExcelUploadRaw(file, (json, headers) => {
+                rawColumns = headers;
+                rawFullData = json.sort((a, b) => {
+                    const nameA = String(a['Malzeme İsmi'] || '');
+                    const nameB = String(b['Malzeme İsmi'] || '');
+                    return nameA.localeCompare(nameB, 'tr');
+                });
+                updateRawDataTable(rawFullData, rawColumns);
+
+                globalData = processRows(json).sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
+                updateDashboard(globalData);
+                updateAnalyticsTab(globalData);
+                updateSwotReport(globalData);
+                updateTopAndIn10Lists(globalData);
+                if(pastData.length > 0) updateComparisonTable();
+            });
+        });
+
+        document.getElementById('excelFilePast').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            pastDateLabel = extractDateLabelFromFilename(file.name, "Geçmiş");
+
+            handleExcelUpload(file, (json) => {
+                pastData = processRows(json).sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
+                updateComparisonTable();
+                alert(`Geçmiş dönem verileri (${pastDateLabel}) başarıyla yüklendi, kıyaslama raporu hazırlandı!`);
+                switchTab('tab3');
+            });
+        });
+
+        function handleExcelUpload(file, callback) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {range: 1});
+                callback(json);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function handleExcelUploadRaw(file, callback) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(worksheet, {range: 1});
+                const headers = XLSX.utils.sheet_to_json(worksheet, {header: 1})[1] || [];
+                callback(json, headers);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function updateRawDataTable(data, headers) {
+            document.getElementById('rawRecordCountBadge').innerText = `${data.length} Satır / ${headers.length} Sütun`;
+            const thead = document.getElementById('rawTableHead');
+            const tbody = document.getElementById('rawTableBody');
+
+            if(headers.length === 0 || data.length === 0) {
+                thead.innerHTML = `<tr><th class="p-4 text-center text-slate-400">Veri bulunamadı.</th></tr>`;
+                tbody.innerHTML = `<tr><td class="p-8 text-center text-slate-400">Ham veri yüklenemedi.</td></tr>`;
+                return;
+            }
+
+            thead.innerHTML = `<tr>${headers.map(h => `<th class="p-3 whitespace-nowrap">${h}</th>`).join('')}</tr>`;
+            tbody.innerHTML = data.map(row => `
+                <tr class="hover:bg-slate-800/50 transition">
+                    ${headers.map(h => `<td class="p-3 whitespace-nowrap">${row[h] !== undefined ? row[h] : ''}</td>`).join('')}
+                </tr>
+            `).join('');
+        }
+
+        function processRows(data) {
+            return data.map(row => ({
+                kod: String(row['Malzeme Kodu'] || '').trim(),
+                isim: row['Malzeme İsmi'] || '',
+                marka: row['Marka'] || '',
+                lisansor: row['Lisansör'] || '',
+                stok: Number(row['Satışa Hazır Stok (Kutu)'] || 0),
+                gunluk: Number(row['Günlük Satış (Kutu)'] || 0),
+                aylik: Number(row['Aylık Satış (Kutu)'] || 0),
+                yillik: Number(row['Yıllık Satış (Kutu)'] || 0)
+            }));
+        }
+
+        function updateDashboard(data) {
+            document.getElementById('kpiTotalItems').innerText = data.length.toLocaleString('tr-TR');
+            document.getElementById('kpiTotalStock').innerText = data.reduce((a, c) => a + c.stok, 0).toLocaleString('tr-TR');
+            document.getElementById('kpiDailySales').innerText = data.reduce((a, c) => a + c.gunluk, 0).toLocaleString('tr-TR');
+            document.getElementById('kpiYearlySales').innerText = data.reduce((a, c) => a + c.yillik, 0).toLocaleString('tr-TR');
+            document.getElementById('recordCount').innerText = `${data.length} kayıt listeleniyor`;
+
+            renderTable(data);
+            renderChart(data);
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400">Veri bulunamadı.</td></tr>`;
+                return;
+            }
+
+            data.forEach(item => {
+                let stockDays = item.gunluk > 0 ? Math.round(item.stok / item.gunluk) : 'Sınırsız';
+                let badgeColor = 'text-slate-300';
+                if (typeof stockDays === 'number') {
+                    if (stockDays < 10) badgeColor = 'text-rose-400 font-bold bg-rose-500/10 px-2 py-0.5 rounded-md';
+                    else if (stockDays < 30) badgeColor = 'text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded-md';
+                    else badgeColor = 'text-emerald-400';
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/50 transition text-xs";
+                tr.innerHTML = `
+                    <td class="p-3 font-mono text-cyan-400">${item.kod}</td>
+                    <td class="p-3 font-medium text-slate-200 truncate max-w-[200px]" title="${item.isim}">${item.isim}</td>
+                    <td class="p-3 text-slate-300">${item.marka}</td>
+                    <td class="p-3 text-right font-bold text-emerald-400">${item.stok.toLocaleString('tr-TR')}</td>
+                    <td class="p-3 text-right text-amber-400">${item.gunluk.toLocaleString('tr-TR')}</td>
+                    <td class="p-3 text-center"><span class="${badgeColor}">${stockDays}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderChart(data) {
+            const sorted = [...data].sort((a, b) => b.gunluk - a.gunluk).slice(0, 5);
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            if (myChart) myChart.destroy();
+
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: sorted.map(i => i.marka),
+                    datasets: [{
+                        data: sorted.map(i => i.gunluk),
+                        backgroundColor: ['#06b6d4', '#10b981', '#f59e0b', '#6366f1', '#ec4899'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 10, font: { size: 9 } } } }
+                }
+            });
+        }
+
+        function updateTopAndIn10Lists(data) {
+            const top10 = [...data].sort((a, b) => b.gunluk - a.gunluk).slice(0, 10);
+            document.getElementById('tabListTop').innerHTML = top10.map((i, idx) => `
+                <div class="bg-slate-950/60 p-2 rounded-xl border border-slate-800 flex justify-between items-center">
+                    <div class="truncate max-w-[170px]" title="${i.isim}"><span class="text-emerald-400 font-bold mr-1">#${idx+1}</span> ${i.isim}</div>
+                    <span class="text-emerald-400 font-bold whitespace-nowrap">${i.gunluk} kutu/g</span>
+                </div>
+            `).join('') || '<p class="text-center text-slate-500 py-2">Kayıt yok</p>';
+
+            const in10 = [...data].filter(i => i.gunluk === 0 && i.stok > 0).sort((a, b) => b.stok - a.stok).slice(0, 10);
+            document.getElementById('tabListIn').innerHTML = in10.map((i, idx) => `
+                <div class="bg-slate-950/60 p-2 rounded-xl border border-slate-800 flex justify-between items-center">
+                    <div class="truncate max-w-[170px]" title="${i.isim}"><span class="text-indigo-400 font-bold mr-1">#${idx+1}</span> ${i.isim}</div>
+                    <span class="text-indigo-400 font-bold whitespace-nowrap">${i.stok} st.</span>
+                </div>
+            `).join('') || '<p class="text-center text-slate-500 py-2">Hareketsiz ürün bulunamadı</p>';
+        }
+
+        function updateAnalyticsTab(data) {
+            const topSales = [...data].filter(i => i.gunluk > 0).sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
+            document.getElementById('badgeTopSales').innerText = topSales.length;
+            document.getElementById('listTopSales').innerHTML = topSales.map(i => `
+                <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                    <div><p class="font-bold text-slate-200">${i.isim}</p><span class="text-[10px] text-slate-400">${i.marka}</span></div>
+                    <span class="text-emerald-400 font-bold">${i.gunluk} kutu/gün</span>
+                </div>
+            `).join('') || '<p class="text-center text-slate-500 py-2">Kayıt yok</p>';
+
+            const critical = [...data].filter(i => i.gunluk > 0 && (i.stok / i.gunluk) < 15).sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
+            document.getElementById('badgeCriticalStock').innerText = critical.length;
+            document.getElementById('listCriticalStock').innerHTML = critical.map(i => `
+                <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                    <div><p class="font-bold text-slate-200">${i.isim}</p><span class="text-[10px] text-rose-400 font-bold">Stok: ${i.stok}</span></div>
+                    <span class="text-amber-400 font-bold">${Math.round(i.stok/i.gunluk)} gün kaldı</span>
+                </div>
+            `).join('') || '<p class="text-center text-slate-500 py-2">Kritik stokta ürün yok</p>';
+
+            const stockOut = [...data].filter(i => i.stok === 0).sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
+            document.getElementById('badgeStockOut').innerText = stockOut.length;
+            document.getElementById('listStockOut').innerHTML = stockOut.map(i => `
+                <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                    <div><p class="font-bold text-slate-200">${i.isim}</p><span class="text-[10px] text-slate-400">${i.marka}</span></div>
+                    <span class="text-rose-400 font-bold whitespace-nowrap">Stok Tükendi</span>
+                </div>
+            `).join('') || '<p class="text-center text-slate-500 py-2">Stok out ürün yok</p>';
+
+            const idle = [...data].filter(i => i.gunluk === 0 && i.stok > 0).sort((a, b) => a.isim.localeCompare(b.isim, 'tr'));
+            document.getElementById('badgeIdleStock').innerText = idle.length;
+            document.getElementById('listIdleStock').innerHTML = idle.map(i => `
+                <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                    <div><p class="font-bold text-slate-200">${i.isim}</p><span class="text-[10px] text-slate-400">${i.marka}</span></div>
+                    <span class="text-indigo-400 font-bold">${i.stok} kutu stok</span>
+                </div>
+            `).join('') || '<p class="text-center text-slate-500 py-2">Hareketsiz ürün yok</p>';
+        }
+
+        function updateSwotReport(data) {
+            const totalItems = data.length;
+            const criticalCount = data.filter(i => i.gunluk > 0 && (i.stok / i.gunluk) < 15).length;
+            const stockOutCount = data.filter(i => i.stok === 0).length;
+            const idleCount = data.filter(i => i.gunluk === 0 && i.stok > 0).length;
+            const activeSalesCount = data.filter(i => i.gunluk > 0).length;
+
+            document.getElementById('swotStrengths').innerHTML = `
+                <li><i class="fa-solid fa-check text-emerald-400 mr-2"></i><b>Geniş Ürün Çeşitliliği:</b> Portföyde yer alan toplam ${totalItems} ürün ile güçlü bir dağıtım ağı tabanı mevcuttur.</li>
+                <li><i class="fa-solid fa-check text-emerald-400 mr-2"></i><b>Aktif Satış Hacmi:</b> Ürünlerin ${activeSalesCount} tanesi düzenli günlük satış hareketi üretmektedir.</li>
+                <li><i class="fa-solid fa-check text-emerald-400 mr-2"></i><b>Otomasyon Altyapısı:</b> Stok, depo ve eczane iade/sevkiyat süreçleri anlık olarak dijital kokpitten takip edilebilmektedir.</li>
+            `;
+
+            document.getElementById('swotWeaknesses').innerHTML = `
+                <li><i class="fa-solid fa-triangle-exclamation text-rose-400 mr-2"></i><b>Stok Out (Tükenen) Ürünler:</b> Depoda sıfırlanan ${stockOutCount} adet ürün için acil tedarik ve sevkiyat planı şarttır.</li>
+                <li><i class="fa-solid fa-triangle-exclamation text-rose-400 mr-2"></i><b>Kritik Stok Riskleri:</b> ${criticalCount} adet ürünün stok ömrü 15 günün altındadır.</li>
+                <li><i class="fa-solid fa-triangle-exclamation text-rose-400 mr-2"></i><b>Sermaye Bağlanması:</b> ${idleCount} adet hareketsiz ürün depolarda stok maliyeti yaratmaktadır.</li>
+            `;
+
+            document.getElementById('swotOpportunities').innerHTML = `
+                <li><i class="fa-solid fa-bullseye text-cyan-400 mr-2"></i><b>Çapraz Sezon Kampanyaları:</b> Hareketsiz stoklar için eczane bazlı cazip takas veya promosyon kampanyaları kurgulanabilir.</li>
+                <li><i class="fa-solid fa-bullseye text-cyan-400 mr-2"></i><b>Talep Tahmin Modellemesi:</b> Geçmiş dönem kıyaslama modülü kullanılarak sipariş miktarları optimize edilebilir.</li>
+                <li><i class="fa-solid fa-bullseye text-cyan-400 mr-2"></i><b>Eczane İlişkileri Optimizasyonu:</b> Yüksek hızlı satan ürünlerin tedarik sürekliliği sağlanarak pazar payı artırılabilir.</li>
+            `;
+
+            document.getElementById('swotThreats').innerHTML = `
+                <li><i class="fa-solid fa-radiation text-amber-400 mr-2"></i><b>Tedarik Zinciri Kesintileri:</b> Üretici veya lisansör kaynaklı gecikmeler stok out ürünlerde pazar kaybettirebilir.</li>
+                <li><i class="fa-solid fa-radiation text-amber-400 mr-2"></i><b>Raf Ömrü Baskısı:</b> Hareket görmeyen ürünlerin miad riskine girmesini önlemek için 30 günlük aksiyon planı şarttır.</li>
+                <li><i class="fa-solid fa-radiation text-amber-400 mr-2"></i><b>Piyasa Rekabeti:</b> Alternatif distribütör hareketliliğine karşı eczane sipariş karşılama hızından ödün verilmemelidir.</li>
+            `;
+        }
+
+        function updateComparisonTable() {
+            document.getElementById('thPastStock').innerText = `${pastDateLabel} Stok`;
+            document.getElementById('thCurrentStock').innerText = `${currentDateLabel} Stok`;
+            document.getElementById('thPastDaily').innerText = `${pastDateLabel} Günlük`;
+            document.getElementById('thCurrentDaily').innerText = `${currentDateLabel} Günlük`;
+
+            const tbody = document.getElementById('comparisonTableBody');
+            tbody.innerHTML = '';
+
+            const pastMap = new Map(pastData.map(item => [item.kod, item]));
+
+            globalData.forEach(current => {
+                const past = pastMap.get(current.kod);
+                const pastStok = past ? past.stok : 0;
+                const pastGunluk = past ? past.gunluk : 0;
+                const stokFarki = current.stok - pastStok;
+                const gunlukFarki = current.gunluk - pastGunluk;
+
+                let stokDegisimYuzde = pastStok > 0 ? ((stokFarki / pastStok) * 100).toFixed(1) : (current.stok > 0 ? "+100.0" : "0.0");
+                let gunlukDegisimYuzde = pastGunluk > 0 ? ((gunlukFarki / pastGunluk) * 100).toFixed(1) : (current.gunluk > 0 ? "+100.0" : "0.0");
+
+                let trendBadge = '<span class="text-slate-400">Stabil (%0)</span>';
+                if (gunlukFarki > 0) {
+                    trendBadge = `<span class="text-emerald-400 font-bold bg-emerald-500/10 px-2 py-1 rounded">📈 +${gunlukFarki} (%${gunlukDegisimYuzde})</span>`;
+                } else if (gunlukFarki < 0) {
+                    trendBadge = `<span class="text-rose-400 font-bold bg-rose-500/10 px-2 py-1 rounded">📉 ${gunlukFarki} (%${gunlukDegisimYuzde})</span>`;
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/50 transition";
+                tr.innerHTML = `
+                    <td class="p-3 font-mono text-cyan-400">${current.kod}</td>
+                    <td class="p-3 font-medium text-slate-200">${current.isim}</td>
+                    <td class="p-3 text-right text-slate-300">${pastStok.toLocaleString('tr-TR')}</td>
+                    <td class="p-3 text-right text-emerald-400 font-bold">${current.stok.toLocaleString('tr-TR')}</td>
+                    <td class="p-3 text-right ${stokFarki >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold">${stokFarki > 0 ? '+' + stokFarki.toLocaleString('tr-TR') : stokFarki.toLocaleString('tr-TR')}</td>
+                    <td class="p-3 text-right ${Number(stokDegisimYuzde) >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-semibold">%${stokDegisimYuzde}</td>
+                    <td class="p-3 text-right text-slate-300">${pastGunluk.toLocaleString('tr-TR')}</td>
+                    <td class="p-3 text-right text-amber-400">${current.gunluk.toLocaleString('tr-TR')}</td>
+                    <td class="p-3 text-center">${trendBadge}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const query = e.target.value.toLowerCase();
+            const filtered = globalData.filter(item => 
+                item.kod.toLowerCase().includes(query) ||
+                item.isim.toLowerCase().includes(query) ||
+                item.marka.toLowerCase().includes(query) ||
+                item.lisansor.toLowerCase().includes(query)
+            );
+            renderTable(filtered);
+            document.getElementById('recordCount').innerText = `${filtered.length} kayıt listeleniyor`;
+        });
+
+        // 🌟 PROFESYONEL EXCEL DIŞA AKTARIM (SEKME BAZLI, RENKLİ VE A-Z DÜZENLİ) 🌟
+        function exportToExcel() {
+            if (globalData.length === 0) {
+                alert("Dışa aktarılacak ana veri bulunamadı! Lütfen önce güncel Excel yükleyin.");
+                return;
+            }
+
+            const workbook = XLSX.utils.book_new();
+
+            // --- SEKME 1: Ana Kokpit Listesi (A-Z Sıralı ve Zenginleştirilmiş Alanlar) ---
+            const mainExportData = [...globalData].sort((a, b) => a.isim.localeCompare(b.isim, 'tr')).map(item => ({
+                "Malzeme Kodu": item.kod,
+                "Malzeme İsmi (A-Z)": item.isim,
+                "Marka": item.marka,
+                "Lisansör": item.lisansor,
+                "Satışa Hazır Stok (Kutu)": item.stok,
+                "Günlük Satış (Kutu)": item.gunluk,
+                "Aylık Satış (Kutu)": item.aylik,
+                "Yıllık Satış (Kutu)": item.yillik,
+                "Kalan Ömür (Gün)": item.gunluk > 0 ? Math.round(item.stok / item.gunluk) : "Sınırsız"
+            }));
+            const wsMain = XLSX.utils.json_to_sheet(mainExportData);
+            XLSX.utils.book_append_sheet(workbook, wsMain, "1_Ana_Kokpit");
+
+            // --- SEKME 2: Akıllı İstatistik & Kategorize Raporlar (A-Z) ---
+            const statsData = [
+                ...globalData.filter(i => i.gunluk > 0).map(i => ({ Kategori: "🔥 Hızlı Satan", Malzeme_Kodu: i.kod, Malzeme_Ismi: i.isim, Marka: i.marka, Stok: i.stok, Gunluk_Satis: i.gunluk })),
+                ...globalData.filter(i => i.gunluk > 0 && (i.stok / i.gunluk) < 15).map(i => ({ Kategori: "⚠️ Kritik Stok", Malzeme_Kodu: i.kod, Malzeme_Ismi: i.isim, Marka: i.marka, Stok: i.stok, Gunluk_Satis: i.gunluk, Kalan_Gun: Math.round(i.stok / i.gunluk) })),
+                ...globalData.filter(i => i.stok === 0).map(i => ({ Kategori: "🚫 Stok Out (Tükenen)", Malzeme_Kodu: i.kod, Malzeme_Ismi: i.isim, Marka: i.marka, Stok: i.stok, Gunluk_Satis: i.gunluk })),
+                ...globalData.filter(i => i.gunluk === 0 && i.stok > 0).map(i => ({ Kategori: "📦 Hareketsiz Stok", Malzeme_Kodu: i.kod, Malzeme_Ismi: i.isim, Marka: i.marka, Stok: i.stok, Gunluk_Satis: i.gunluk }))
+            ].sort((a, b) => a.Malzeme_Ismi.localeCompare(b.Malzeme_Ismi, 'tr'));
+
+            const wsStats = XLSX.utils.json_to_sheet(statsData);
+            XLSX.utils.book_append_sheet(workbook, wsStats, "2_Akilli_Istatistikler");
+
+            // --- SEKME 3: Dönemsel Kıyaslama Raporu (Eğer yüklendiyse) ---
+            if (pastData.length > 0) {
+                const pastMap = new Map(pastData.map(item => [item.kod, item]));
+
+                const comparisonExportData = globalData.map(current => {
+                    const past = pastMap.get(current.kod) || { stok: 0, gunluk: 0 };
+                    const stokFarki = current.stok - past.stok;
+                    const gunlukFarki = current.gunluk - past.gunluk;
+                    const stokDegisimYuzde = past.stok > 0 ? ((stokFarki / past.stok) * 100).toFixed(1) : (current.stok > 0 ? "100.0" : "0.0");
+                    const gunlukDegisimYuzde = past.gunluk > 0 ? ((gunlukFarki / past.gunluk) * 100).toFixed(1) : (current.gunluk > 0 ? "100.0" : "0.0");
+
+                    let obj = {
+                        "Malzeme Kodu": current.kod,
+                        "Malzeme İsmi (A-Z)": current.isim,
+                    };
+                    obj[`Geçmiş Stok (${pastDateLabel})`] = past.stok;
+                    obj[`Güncel Stok (${currentDateLabel})`] = current.stok;
+                    obj["Stok Farkı"] = stokFarki;
+                    obj["Stok Değişim (%)"] = `%${stokDegisimYuzde}`;
+                    obj[`Geçmiş Günlük (${pastDateLabel})`] = past.gunluk;
+                    obj[`Güncel Günlük (${currentDateLabel})`] = current.gunluk;
+                    obj["Satış Farkı"] = gunlukFarki;
+                    obj["Satış Değişim (%)"] = `%${gunlukDegisimYuzde}`;
+                    obj["Trend Durumu"] = gunlukFarki > 0 ? "Artış (Büyüme)" : (gunlukFarki < 0 ? "Düşüş (Küçülme)" : "Stabil");
+                    return obj;
+                }).sort((a, b) => a["Malzeme İsmi (A-Z)"].localeCompare(b["Malzeme İsmi (A-Z)"], 'tr'));
+
+                const wsComp = XLSX.utils.json_to_sheet(comparisonExportData);
+                XLSX.utils.book_append_sheet(workbook, wsComp, "3_Donemsel_Kiyaslama");
+            }
+
+            // --- SEKME 4: SWOT & Stratejik Öneriler ---
+            const totalItems = globalData.length;
+            const criticalCount = globalData.filter(i => i.gunluk > 0 && (i.stok / i.gunluk) < 15).length;
+            const stockOutCount = globalData.filter(i => i.stok === 0).length;
+            const idleCount = globalData.filter(i => i.gunluk === 0 && i.stok > 0).length;
+            const activeSalesCount = globalData.filter(i => i.gunluk > 0).length;
+
+            const swotExportData = [
+                { "SWOT Boyutu": "GÜÇLÜ YÖN (Strength)", "Stratejik Değerlendirme & Aksiyon Açıklaması": `Geniş Ürün Çeşitliliği: Portföyde yer alan toplam ${totalItems} ürün ile güçlü bir dağıtım ağı tabanı mevcuttur.` },
+                { "SWOT Boyutu": "GÜÇLÜ YÖN (Strength)", "Stratejik Değerlendirme & Aksiyon Açıklaması": `Aktif Satış Hacmi: Ürünlerin ${activeSalesCount} tanesi düzenli günlük satış hareketi üretmektedir.` },
+                { "SWOT Boyutu": "ZAYIF YÖN (Weakness)", "Stratejik Değerlendirme & Aksiyon Açıklaması": `Stok Out (Tükenen) Ürünler: Depoda sıfırlanan ${stockOutCount} adet ürün için acil tedarik ve sevkiyat planı şarttır.` },
+                { "SWOT Boyutu": "ZAYIF YÖN (Weakness)", "Stratejik Değerlendirme & Aksiyon Açıklaması": `Kritik Stok Riskleri: ${criticalCount} adet ürünün stok ömrü 15 günün altındadır, acil sevkiyat planlanmalıdır.` },
+                { "SWOT Boyutu": "ZAYIF YÖN (Weakness)", "Stratejik Değerlendirme & Aksiyon Açıklaması": `Sermaye Bağlanması: ${idleCount} adet hareketsiz ürün depolarda stok maliyeti yaratmaktadır.` },
+                { "SWOT Boyutu": "FIRSAT (Opportunity)", "Stratejik Değerlendirme & Aksiyon Açıklaması": "Çapraz Sezon Kampanyaları: Hareketsiz stoklar için eczane bazlı cazip takas veya promosyon kampanyaları kurgulanabilir." },
+                { "SWOT Boyutu": "FIRSAT (Opportunity)", "Stratejik Değerlendirme & Aksiyon Açıklaması": "Talep Tahmin Modellemesi: Geçmiş dönem kıyaslama modülü kullanılarak sipariş miktarları optimize edilebilir." },
+                { "SWOT Boyutu": "TEHDİT (Threat)", "Stratejik Değerlendirme & Aksiyon Açıklaması": "Tedarik Zinciri Kesintileri: Üretici veya lisansör kaynaklı gecikmeler stok out ürünlerde pazar kaybettirebilir." },
+                { "SWOT Boyutu": "TEHDİT (Threat)", "Stratejik Değerlendirme & Aksiyon Açıklaması": "Raf Ömrü Baskısı: Hareket görmeyen ürünlerin miad riskine girmesini önlemek için 30 günlük aksiyon planı şarttır." }
+            ];
+            const wsSwot = XLSX.utils.json_to_sheet(swotExportData);
+            XLSX.utils.book_append_sheet(workbook, wsSwot, "4_SWOT_Stratejik_Rapor");
+
+            // --- SEKME 5: Tüm Ham Stok Verisi (Orijinal Sütunlar ve A-Z Sıralı) ---
+            if (rawFullData.length > 0) {
+                const wsRaw = XLSX.utils.json_to_sheet(rawFullData);
+                XLSX.utils.book_append_sheet(workbook, wsRaw, "5_Tum_Ham_Stok_Verisi");
+            }
+
+            // Dosyayı İndir
+            XLSX.writeFile(workbook, "Turkiye_Satis_Stok_Yonetim_Kokpiti_Kurumsal_Rapor.xlsx");
+        }
+    </script>
+</body>
+</html>

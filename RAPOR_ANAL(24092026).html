@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rapor | Faturalama Analizi</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root { 
+            --primary: #0f172a; --accent: #0284c7; --bg: #f1f5f9; --border: #e2e8f0; 
+            --success: #16a34a; --danger: #dc2626; --warning: #f59e0b;
+            --table-blue: #0284c7; --table-green: #16a34a;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: var(--bg); color: var(--primary); display: flex; height: 100vh; overflow: hidden; }
+
+        .sidebar { width: 250px; background: var(--primary); color: white; padding: 25px; display: flex; flex-direction: column; flex-shrink: 0; }
+        .logo { font-size: 18px; font-weight: 800; color: var(--success); margin-bottom: 30px; border-bottom: 1px solid #334155; padding-bottom: 10px; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 10px; cursor: pointer; color: #94a3b8; font-size: 14px; font-weight: 600; margin-bottom: 8px; transition: 0.3s; }
+        .nav-item.active { background: var(--accent); color: white; }
+
+        .voice-active { background: #ef4444 !important; color: white !important; animation: pulse-mic 1.5s infinite; }
+        @keyframes pulse-mic {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .content { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .top-bar { height: 70px; background: white; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; }
+        
+        .page { display: none; padding: 20px; flex-grow: 1; overflow: hidden; flex-direction: column; }
+        .page.active { display: flex; }
+
+        .filter-panel { background: #1e293b; border-radius: 15px; padding: 15px; margin-bottom: 15px; flex-shrink: 0; }
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; align-items: flex-end; }
+        .f-box label { font-size: 10px; color: #94a3b8; font-weight: 800; text-transform: uppercase; margin-bottom: 5px; display: block; }
+        
+        .f-input-wrapper { position: relative; display: flex; align-items: center; }
+        .f-input-wrapper i { position: absolute; right: 10px; color: #94a3b8; pointer-events: none; }
+        .f-input { background: #334155; border: 1px solid #475569; color: white; padding: 8px 12px; border-radius: 8px; width: 100%; outline: none; font-size: 13px; appearance: none; }
+
+        .dashboard-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px; flex-shrink: 0; }
+        .stat-card { background: white; border-radius: 12px; padding: 15px 20px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .stat-info span { display: block; font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 5px; }
+        .stat-info h3 { font-size: 20px; font-weight: 800; color: var(--primary); }
+        .stat-icon { width: 45px; height: 45px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; }
+
+        .table-container { background: white; border-radius: 12px; border: 1px solid var(--border); flex-grow: 1; overflow: auto !important; position: relative; height: 100%; }
+        table { border-collapse: separate !important; border-spacing: 0; width: max-content; min-width: 100%; }
+        td, th { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; border-right: 1px solid #f1f5f9; white-space: nowrap; }
+
+        thead th { 
+            position: sticky !important; top: 0 !important; z-index: 500 !important; 
+            background: #f8fafc !important; box-shadow: inset 0 -2px 0 var(--border);
+            font-weight: 800; color: #475569; font-size: 11px; text-align: center;
+        }
+
+        .sticky-col-1 { position: sticky !important; left: 0 !important; z-index: 600 !important; background: white !important; min-width: 50px; text-align: center; }
+        .sticky-col-2 { position: sticky !important; left: 50px !important; z-index: 600 !important; background: white !important; border-right: 3px solid var(--border) !important; min-width: 200px; text-align: left; }
+        thead th.sticky-col-1, thead th.sticky-col-2 { z-index: 700 !important; background: #f8fafc !important; }
+
+        .month-header { background: #0284c7 !important; color: white !important; }
+        .total-header { background: #16a34a !important; color: white !important; }
+        .total-cell { background: #f0fdf4 !important; font-weight: 800; text-align: center; color: #16a34a; }
+        .grand-total-section { background: #ecfdf5 !important; font-weight: 900; }
+        .clickable-cell { cursor: pointer; transition: 0.2s; text-align: center; }
+        .clickable-cell:hover { background: #e0f2fe !important; transform: scale(1.05); }
+        
+        #bOut tr:hover td { background-color: #e2e8f0 !important; } 
+        .btn { padding: 10px 18px; border-radius: 10px; font-weight: 700; cursor: pointer; border: none; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-secondary { background: #475569; color: white; }
+
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 3000; align-items: center; justify-content: center; padding: 20px; }
+        .modal-content { background: white; width: 95%; max-width: 1300px; max-height: 90vh; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; }
+        .modal-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
+        .modal-body { padding: 20px; overflow: auto; flex-grow: 1; }
+
+        .grid-link { color: var(--accent); font-weight: 600; cursor: pointer; text-decoration: none; border-bottom: 1px dashed transparent; transition: 0.2s; }
+        .grid-link:hover { color: #0369a1; border-bottom-color: #0369a1; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="logo">🧿 ANALİZ RAPORU</div>
+    <div class="nav-item active" onclick="nav('p1', this)"><i class="fas fa-upload"></i> VERİ YÜKLE</div>
+    <div class="nav-item" onclick="nav('p2', this)"><i class="fas fa-filter"></i> ANALİZ MOTORU</div>
+    <div class="nav-item" onclick="nav('p3', this)"><i class="fas fa-table-columns"></i> ÜRÜN KARNESİ</div>
+    
+    <div style="margin-top: auto; border-top: 1px solid #334155; padding-top: 20px;">
+        <div class="nav-item" id="micBtn" onclick="toggleSpeech()">
+            <i class="fas fa-microphone"></i> <span id="micText">SESLİ KOMUT</span>
+        </div>
+    </div>
+</div>
+
+<div class="content">
+    <div class="top-bar">
+        <div id="rowInfo" style="font-weight:800; color:var(--accent)">HAFIZA: 0 SATIR</div>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <button class="btn btn-success" onclick="addAllFilteredToBasket()"><i class="fas fa-cart-plus"></i> TÜMÜNÜ SEPETE AT (<span id="filteredCountBadge">0</span>)</button>
+            <button class="btn btn-secondary" onclick="openBasket()"><i class="fas fa-shopping-cart"></i> SEPET (<span id="bCount">0</span>)</button>
+        </div>
+    </div>
+
+    <div id="p1" class="page active">
+        <div style="background: white; border-radius: 24px; padding: 60px; text-align: center; border: 1px solid var(--border);">
+            <i class="fas fa-file-excel fa-4x" style="color:var(--success); margin-bottom:20px;"></i>
+            <h2>Veri Havuzunu Yönetin</h2>
+            <div style="display:flex; justify-content:center; gap:15px; margin-top:40px;">
+                <input type="file" id="excelInput" hidden accept=".xlsx, .xls">
+                <label for="excelInput" class="btn btn-success"><i class="fas fa-search"></i> DOSYA SEÇ</label>
+                <button class="btn btn-warning" onclick="clearMemory()"><i class="fas fa-eraser"></i> HAFIZAYI TEMİZLE</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="p2" class="page">
+        <div class="filter-panel">
+            <div class="filter-grid">
+                <div class="f-box"><label>Depo / Müşteri Ara</label><input type="text" id="mSearch" class="f-input" oninput="runEngine()" placeholder="Depo veya Bayi adı..."></div>
+                <div class="f-box"><label>Ürün Ara</label><input type="text" id="pSearch" class="f-input" oninput="runEngine()" placeholder="Ürün adı veya kodu..."></div>
+                
+                <div class="f-box"><label>Başlangıç</label><div class="f-input-wrapper"><input type="date" id="dStart" class="f-input" onchange="runEngine()"><i class="fas fa-calendar-alt"></i></div></div>
+                <div class="f-box"><label>Bitiş</label><div class="f-input-wrapper"><input type="date" id="dEnd" class="f-input" onchange="runEngine()"><i class="fas fa-calendar-alt"></i></div></div>
+                
+                <div class="f-box" style="min-width: 180px;"><label>FATURALAMA TÜRÜ</label>
+                    <div style="display: flex; gap: 10px; background: #334155; padding: 8px; border-radius: 8px; border: 1px solid #475569;">
+                        <label style="margin:0; cursor:pointer; color:white; font-size:11px; display:flex; align-items:center; gap:4px;">
+                            <input type="radio" name="faturatur" value="ALL" checked onchange="runEngine()"> Hepsi
+                        </label>
+                        <label style="margin:0; cursor:pointer; color:#4ade80; font-size:11px; display:flex; align-items:center; gap:4px;">
+                            <input type="radio" name="faturatur" value="ZS01" onchange="runEngine()"> Satış
+                        </label>
+                        <label style="margin:0; cursor:pointer; color:#f87171; font-size:11px; display:flex; align-items:center; gap:4px;">
+                            <input type="radio" name="faturatur" value="ZI01" onchange="runEngine()"> İade
+                        </label>
+                    </div>
+                </div>
+                
+                <button class="btn btn-danger" onclick="toggleMfOnly()">MF FİLTRE</button>
+                <button class="btn btn-warning" onclick="resetFilters()">SIFIRLA</button>
+            </div>
+        </div>
+
+        <div class="dashboard-cards">
+            <div class="stat-card">
+                <div class="stat-info">
+                    <span>FİLTRELENEN İŞLEM</span>
+                    <h3 id="cardFilteredCount">0</h3>
+                </div>
+                <div class="stat-icon" style="background: var(--accent);"><i class="fas fa-file-lines"></i></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <span>TOPLAM ADET</span>
+                    <h3 id="cardTotalQty">0</h3>
+                </div>
+                <div class="stat-icon" style="background: var(--success);"><i class="fas fa-boxes-stacked"></i></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <span>AKTİF MÜŞTERİ / DEPO</span>
+                    <h3 id="cardActiveDepot">0</h3>
+                </div>
+                <div class="stat-icon" style="background: #8b5cf6;"><i class="fas fa-store"></i></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <span>DÖNEM İADE</span>
+                    <h3 id="cardPeriodReturn">0</h3>
+                </div>
+                <div class="stat-icon" style="background: var(--danger);"><i class="fas fa-rotate-left"></i></div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div id="tableNotice" style="padding: 8px 12px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 700; text-align: center; border-bottom: 1px solid #fde68a;">
+                💡 Performans amaçlı ekranda ilk 500 satır gösterilmektedir. Ancak sağ üstteki **"TÜMÜNÜ SEPETE AT"** butonu ile filtrelenen tüm verileri eksiksiz sepete ve Excel'e aktarabilirsiniz.
+            </div>
+            <table id="mainDataTable"><thead id="hOut"></thead><tbody id="bOut"></tbody></table>
+        </div>
+    </div>
+
+    <div id="p3" class="page">
+        <div class="filter-panel" style="background:#0f172a">
+            <div class="filter-grid" style="grid-template-columns: 2fr 1fr 1fr 1fr auto; align-items: end; gap: 15px;">
+                <div class="f-box"><label>Müşteri Filtre</label><input type="text" id="repSearch" class="f-input" oninput="buildReport()" placeholder="Ürün adı yazın..."></div>
+                <div class="f-box"><label>Tarih Başı</label><div class="f-input-wrapper"><input type="date" id="repStart" class="f-input" onchange="buildReport()"><i class="fas fa-calendar-day"></i></div></div>
+                <div class="f-box"><label>Tarih Sonu</label><div class="f-input-wrapper"><input type="date" id="repEnd" class="f-input" onchange="buildReport()"><i class="fas fa-calendar-day"></i></div></div>
+                
+                <div class="f-box">
+                    <label>Fatura Türü</label>
+                    <div style="color:white; padding: 10px 0;">
+                        <input type="radio" name="ftFilter" value="HEPSI" checked onchange="buildReport()"> Hepsi
+                        <input type="radio" name="ftFilter" value="SATIS" onchange="buildReport()"> Satış
+                        <input type="radio" name="ftFilter" value="IADE" onchange="buildReport()"> İade
+                    </div>
+                </div>
+
+                <button class="btn btn-success" onclick="exportReport()"><i class="fas fa-file-excel"></i> EXCEL AL</button>
+            </div>
+        </div>
+        <div class="table-container"><table id="reportTable"><thead id="repHead"></thead><tbody id="repBody"></tbody></table></div>
+    </div>
+</div>
+
+<div id="mainModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">Detaylar</h3>
+            <div style="display:flex; gap:10px;">
+                <button id="basketExportBtn" class="btn btn-success" style="display:none;" onclick="exportBasket()"><i class="fas fa-file-export"></i> EXCEL AL</button>
+                <button id="basketClearBtn" class="btn btn-warning" style="display:none;" onclick="clearBasket()"><i class="fas fa-trash-can"></i> SEPETİ BOŞALT</button>
+                <button class="btn btn-danger" onclick="closeModal()">KAPAT</button>
+            </div>
+        </div>
+        <div class="modal-body">
+            <div class="table-container"><table id="modalTable"><thead id="modalHead"></thead><tbody id="modalBody"></tbody></table></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let db = []; let cols = []; let basket = []; let mfOnly = false; let currentFiltered = [];
+    const aylar = ["OCAK","ŞUBAT","MART","NİSAN","MAYIS","HAZİRAN","TEMMUZ","AĞUSTOS","EYLÜL","EKİM","KASIM","ARALIK"];
+    const trLower = (s) => s ? s.toString().trim().replace(/İ/g, "i").replace(/I/g, "ı").toLocaleLowerCase('tr-TR') : "";
+
+    let recognition;
+    let isListening = false;
+
+    if ('webkitSpeechRecognition' in window) {
+        recognition = new webkitSpeechRecognition();
+        recognition.lang = 'tr-TR';
+        recognition.continuous = true;
+        recognition.interimResults = false;
+
+        recognition.onresult = (event) => {
+            const last = event.results.length - 1;
+            const command = trLower(event.results[last][0].transcript.trim());
+            processCommand(command);
+        };
+
+        recognition.onend = () => {
+            if(isListening) recognition.start();
+        };
+    }
+
+    function toggleSpeech() {
+        if (!('webkitSpeechRecognition' in window) && !('speechRecognition' in window)) {
+            alert("Tarayıcınız ses tanımayı desteklemiyor. Lütfen güncel bir Chrome veya Edge kullanın.");
+            return;
+        }
+        if (!recognition) { initSpeech(); }
+
+        const btn = document.getElementById('micBtn');
+        const txt = document.getElementById('micText');
+
+        if (!isListening) {
+            try {
+                recognition.start();
+                isListening = true;
+                btn.classList.add('voice-active');
+                txt.innerText = "DİNLENİYOR...";
+            } catch (e) {
+                console.error("Başlatma hatası:", e);
+            }
+        } else {
+            recognition.stop();
+            isListening = false;
+            btn.classList.remove('voice-active');
+            txt.innerText = "SESLİ KOMUT";
+        }
+    }
+
+    function initSpeech() {
+        window.SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.lang = 'tr-TR';
+        recognition.continuous = true;
+        recognition.interimResults = false;
+
+        recognition.onresult = (event) => {
+            const last = event.results.length - 1;
+            const command = event.results[last][0].transcript.toLowerCase().trim();
+            processCommand(command);
+        };
+
+        recognition.onerror = (event) => {
+            console.error("Konuşma tanıma hatası:", event.error);
+            if(event.error === 'not-allowed') alert("Lütfen mikrofon izni veriniz!");
+        };
+    }
+
+    function processCommand(cmd) {
+        if (cmd.includes("analiz") || cmd.includes("motoru")) {
+            nav('p2', document.querySelectorAll('.nav-item')[1]);
+        } else if (cmd.includes("karne") || cmd.includes("ürün")) {
+            nav('p3', document.querySelectorAll('.nav-item')[2]);
+        } else if (cmd.includes("yükle") || cmd.includes("ana sayfa")) {
+            nav('p1', document.querySelectorAll('.nav-item')[0]);
+        } else if (cmd.includes("arama") || cmd.includes("bul")) {
+            let term = cmd.replace("arama", "").replace("yap", "").replace("bul", "").trim().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g,"");
+            if (term.endsWith('.')) term = term.slice(0, -1);
+            if(term) {
+                document.getElementById('mSearch').value = term;
+                nav('p2', document.querySelectorAll('.nav-item')[1]);
+                runEngine();
+            }
+        } else if (cmd.includes("sepeti aç")) {
+            openBasket();
+        } else if (cmd.includes("kapat")) {
+            closeModal();
+        } else if (cmd.includes("temizle")) {
+            if(confirm("Sesli komutla hafıza temizlensin mi?")) clearMemory();
+        }
+    }
+
+    document.getElementById('excelInput').addEventListener('change', function(e) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1, defval: ""});
+            if(json.length > 0) {
+                cols = json[0].map(c => c.toString().toUpperCase().trim());
+                const musteriKey = cols.find(c => c.includes("MÜŞTERİ") || c.includes("MUSTERI") || c.includes("BAYİ") || c.includes("BAYI") || c.includes("DEPO") || c.includes("ALICI"));
+
+                db = json.slice(1)
+                    .filter(r => r.length > 0 && r.some(cell => cell !== null && cell !== undefined && cell !== ""))
+                    .map((r, i) => {
+                    let o = { _id: i };
+                    cols.forEach((c, idx) => {
+                        let val = r[idx];
+                        if ((c.includes("TARİH") || c.includes("TARIH")) && typeof val === 'number' && val > 30000) {
+                            let dateObj = XLSX.SSF.parse_date_code(val);
+                            let y = dateObj.y;
+                            let m = String(dateObj.m).padStart(2, '0');
+                            let d = String(dateObj.d).padStart(2, '0');
+                            let iso = `${y}-${m}-${d}`; 
+                            o["ISO_DATE"] = iso; 
+                            o["M_IDX"] = dateObj.m - 1; 
+                            o[c] = `${d}.${m}.${y}`;     
+                        } else { 
+                            o[c] = val; 
+                        }
+                    });
+                    
+                    if(!o["ISO_DATE"] && o["TARİH"]) {
+                         let parts = o["TARİH"].toString().split('.');
+                         if(parts.length === 3) {
+                             o["ISO_DATE"] = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+                             o["M_IDX"] = parseInt(parts[1]) - 1;
+                         }
+                    }
+
+                    o["_searchStrMusteri"] = musteriKey ? trLower(o[musteriKey]) : Object.keys(o).filter(k => !["_id","ISO_DATE","M_IDX"].includes(k)).map(k => trLower(o[k])).join(" ");
+                    o["_searchStrUrun"] = Object.keys(o)
+                        .filter(k => !["_id", "ISO_DATE", "M_IDX", musteriKey, "_searchStrMusteri"].includes(k))
+                        .map(k => trLower(o[k]))
+                        .join(" ");
+
+                    return o;
+                });
+                updateInfo();
+                runEngine();
+            }
+        };
+        reader.readAsArrayBuffer(e.target.files[0]);
+    });
+
+    function runEngine() {
+        const qDepo = document.getElementById('mSearch').value;
+        const qUrun = document.getElementById('pSearch').value;
+        const qDepoClean = trLower(qDepo.trim());
+        const qUrunClean = trLower(qUrun.trim());
+        const ds = document.getElementById('dStart').value;
+        const de = document.getElementById('dEnd').value;
+        const faturatur = document.querySelector('input[name="faturatur"]:checked').value;
+        const mfKey = cols.find(c => c.includes("MAL FAZLASI"));
+        const ftKey = cols.find(c => c.includes("FATURALAMA TÜRÜ") || c.includes("FAT.TÜRÜ"));
+        const mikKey = cols.find(c => c.includes("ADET") || c.includes("MIKTAR"));
+        const musteriKey = cols.find(c => c.includes("MÜŞTERİ") || c.includes("MUSTERI") || c.includes("BAYİ") || c.includes("BAYI") || c.includes("DEPO") || c.includes("ALICI"));
+
+        currentFiltered = db.filter(r => {
+            if (qDepoClean !== "" && r["_searchStrMusteri"] && !r["_searchStrMusteri"].includes(qDepoClean)) return false;
+            if (qUrunClean !== "" && r["_searchStrUrun"] && !r["_searchStrUrun"].includes(qUrunClean)) return false;
+            if (ds || de) {
+                const rDateStr = r["ISO_DATE"]; 
+                if (rDateStr) {
+                    if (ds && rDateStr < ds) return false;
+                    if (de && rDateStr > de) return false;
+                } else { return false; }
+            }
+            if (faturatur !== "ALL" && ftKey && r[ftKey] !== faturatur) return false;
+            if (mfOnly && mfKey && !r[mfKey].toString().includes("-")) return false;
+            return true;
+        });
+
+        document.getElementById('filteredCountBadge').innerText = currentFiltered.length.toLocaleString('tr-TR');
+        updateDashboardMetrics(currentFiltered, mikKey, musteriKey, ftKey);
+        renderTable(currentFiltered);
+    }
+
+    function updateDashboardMetrics(filteredList, mikKey, musteriKey, ftKey) {
+        let totalQty = 0;
+        let returnQty = 0;
+        let uniqueDepots = new Set();
+
+        filteredList.forEach(r => {
+            let qty = parseFloat(r[mikKey]) || 0;
+            totalQty += qty;
+            let isIade = (ftKey && r[ftKey] && r[ftKey].toString().toUpperCase().includes("ZI01"));
+            if (isIade || qty < 0) { returnQty += Math.abs(qty); }
+            if (musteriKey && r[musteriKey]) { uniqueDepots.add(r[musteriKey].toString().trim()); }
+        });
+
+        document.getElementById('cardFilteredCount').innerText = filteredList.length.toLocaleString('tr-TR');
+        document.getElementById('cardTotalQty').innerText = totalQty.toLocaleString('tr-TR');
+        document.getElementById('cardActiveDepot').innerText = uniqueDepots.size.toLocaleString('tr-TR');
+        document.getElementById('cardPeriodReturn').innerText = returnQty.toLocaleString('tr-TR');
+    }
+
+    // ⭐ DÜZELTİLDİ: Ekrana performans için ilk 500 satır çizilir, ancak sepet/seçim senkronizasyonu korunur.
+    function renderTable(list) {
+        const h = document.getElementById('hOut'); 
+        const b = document.getElementById('bOut');
+        if(!cols.length) return;
+        
+        const mfKey = cols.find(c => c.includes("MAL FAZLASI"));
+        const mikKey = cols.find(c => c.includes("ADET") || c.includes("MIKTAR"));
+        const musteriKey = cols.find(c => c.includes("MÜŞTERİ") || c.includes("MUSTERI") || c.includes("BAYİ") || c.includes("BAYI") || c.includes("DEPO"));
+        const urunKey = cols.find(c => c.includes("MALZEME ADI") || c.includes("ÜRÜN ADI") || c.includes("URUN ADI") || (c.includes("AD") && !c.includes("DEPO") && !c.includes("MÜŞTERİ")));
+
+        h.innerHTML = `<tr><th class="sticky-col-1"><input type="checkbox" onclick="toggleAll(this.checked)"></th>${cols.map((c, i) => `<th class="${i===0?'sticky-col-2':''}">${c}</th>`).join('')}</tr>`;
+        
+        b.innerHTML = list.slice(0, 500).map(r => {
+            let rowStyle = "";
+            let val = parseFloat(r[mikKey]) || 0;
+            let isMf = mfKey && r[mfKey].toString().includes("-");
+
+            if (isMf) rowStyle = 'style="background-color: #fffbeb !important;"';
+            else if (val < 0) rowStyle = 'style="background-color: #fef2f2 !important;"';
+
+            return `<tr ${rowStyle}>
+                <td class="sticky-col-1" ${rowStyle}><input type="checkbox" class="row-check" onchange="autoBasket(${r._id}, this.checked)" ${basket.some(x=>x._id===r._id)?'checked':''}></td>
+                ${cols.map((c, i) => {
+                    let cellContent = r[c];
+                    if (c === musteriKey && cellContent) {
+                        let safeVal = cellContent.toString().replace(/'/g, "\\'");
+                        cellContent = `<span class="grid-link" onclick="openDirectDetail('${safeVal}', 'MUSTERI')">${cellContent}</span>`;
+                    } else if (c === urunKey && cellContent) {
+                        let safeVal = cellContent.toString().replace(/'/g, "\\'");
+                        cellContent = `<span class="grid-link" onclick="openDirectDetail('${safeVal}', 'URUN')">${cellContent}</span>`;
+                    }
+                    return `<td class="${i===0?'sticky-col-2':''}" ${i===0 ? rowStyle : ""}>${cellContent}</td>`;
+                }).join('')}
+            </tr>`;
+        }).join('');
+    }
+
+    // ⭐ EKLENDİ: Filtrelenen TÜM verileri (örn. 500'den fazla olanları da) tek tıkla sepete ekler!
+    function addAllFilteredToBasket() {
+        if (currentFiltered.length === 0) {
+            alert("Sepete eklenecek filtrelenmiş veri bulunmuyor!");
+            return;
+        }
+        const ftKey = cols.find(c => c.includes("FAT") && (c.includes("TİPİ") || c.includes("TÜRÜ") || c.includes("TURU")));
+        
+        currentFiltered.forEach(r => {
+            let isIade = (ftKey && r[ftKey] && r[ftKey].toString().toUpperCase().includes("ZI01"));
+            r.isIadeFlag = isIade;
+            if (!basket.some(x => x._id === r._id)) {
+                basket.push(r);
+            }
+        });
+        
+        document.getElementById('bCount').innerText = basket.length;
+        // Tablo görünümündeki checkbox'ları da güncelleyelim
+        document.querySelectorAll('.row-check').forEach(cb => cb.checked = true);
+        alert(`${currentFiltered.length} adet filtrelenmiş kayıt başarıyla sepete eklendi!`);
+    }
+
+    function openDirectDetail(value, type) {
+        let titlePrefix = type === 'MUSTERI' ? "Müşteri Geçmişi" : "Ürün Dağılım Detayı";
+        const targetKey = type === 'MUSTERI' 
+            ? cols.find(c => c.includes("MÜŞTERİ") || c.includes("MUSTERI") || c.includes("BAYİ") || c.includes("BAYI") || c.includes("DEPO"))
+            : cols.find(c => c.includes("MALZEME ADI") || c.includes("ÜRÜN ADI") || c.includes("URUN ADI") || (c.includes("AD") && !c.includes("DEPO") && !c.includes("MÜŞTERİ")));
+
+        let filteredDetails = db.filter(r => r[targetKey] && r[targetKey].toString() === value);
+        if(filteredDetails.length === 0) return;
+
+        document.getElementById('modalTitle').innerText = `${titlePrefix} | ${value} (${filteredDetails.length} Kayıt)`;
+        document.getElementById('modalHead').innerHTML = `<tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>`;
+        document.getElementById('modalBody').innerHTML = filteredDetails.map(r => `<tr>${cols.map(c => `<td>${r[c]}</td>`).join('')}</tr>`).join('');
+        
+        document.getElementById('basketExportBtn').style.display = 'none';
+        document.getElementById('basketClearBtn').style.display = 'none';
+        document.getElementById('mainModal').style.display = 'flex';
+    }
+
+    function toggleAll(status) {
+        currentFiltered.slice(0, 500).forEach(r => autoBasket(r._id, status));
+        document.querySelectorAll('.row-check').forEach(cb => cb.checked = status);
+    }
+
+    function autoBasket(id, check) {
+        const item = db.find(x => x._id === id);
+        const ftKey = cols.find(c => c.includes("FAT") && (c.includes("TİPİ") || c.includes("TÜRÜ") || c.includes("TURU")));
+        const isIade = (ftKey && item[ftKey] && item[ftKey].toString().toUpperCase().includes("ZI01"));
+        
+        if (check) {
+            item.isIadeFlag = isIade;
+            if (!basket.some(x => x._id === id)) { basket.push(item); }
+        } else {
+            basket = basket.filter(x => x._id !== id);
+        }
+        document.getElementById('bCount').innerText = basket.length;
+    }
+
+    function basketByProduct(pName, status) {
+        const adKey = cols.find(c => c.includes("MALZEME ADI") || c.includes("ÜRÜN ADI") || c.includes("URUN ADI") || (c.includes("AD") && !c.includes("DEPO") && !c.includes("MÜŞTERİ")));
+        const ftKey = cols.find(c => c.includes("FAT") && (c.includes("TİPİ") || c.includes("TÜRÜ") || c.includes("TURU")));
+        const ftSelected = document.querySelector('input[name="ftFilter"]:checked').value;
+
+        db.filter(r => {
+            if (r[adKey] !== pName) return false;
+            if (ftSelected === "SATIS") {
+                let isIade = ftKey && r[ftKey].toString().toUpperCase().includes("ZI01");
+                if (isIade) return false;
+            } else if (ftSelected === "IADE") {
+                let isIade = ftKey && r[ftKey].toString().toUpperCase().includes("ZI01");
+                if (!isIade) return false;
+            }
+            return true;
+        }).forEach(r => autoBasket(r._id, status));
+    }
+
+    function buildReport() {
+        if(!cols.length) return;
+        const mainCheck = document.getElementById('selectAllProducts'); if(mainCheck) mainCheck.checked = false;
+        const q = trLower(document.getElementById('repSearch').value);
+        const ds = document.getElementById('repStart').value;
+        const de = document.getElementById('repEnd').value;
+        
+        const kodKey = cols.find(c => c === "MALZEME" || c.includes("ÜRÜN KODU") || c.includes("URUN KODU"));
+        const adKey = cols.find(c => c.includes("MALZEME ADI") || c.includes("ÜRÜN ADI") || c.includes("URUN ADI") || (c.includes("AD") && !c.includes("DEPO") && !c.includes("MÜŞTERİ")));
+        const mikKey = cols.find(c => c.includes("ADET") || c.includes("MIKTAR"));
+        const mfKey = cols.find(c => c.includes("MAL FAZLASI"));
+        const ftKey = cols.find(c => c.includes("FATURALAMA TÜRÜ") || c.includes("FAT.TÜRÜ"));
+        
+        const summary = {};
+        const ftSelected = document.querySelector('input[name="ftFilter"]:checked').value;
+
+        db.forEach(r => {
+            const pCode = r[kodKey] || "KODSUZ";
+            const pName = r[adKey] || "İSİMSİZ ÜRÜN";
+            
+            if(q !== "" && !trLower(pName).includes(q) && !trLower(pCode).includes(q)) return;
+            if(ds && r["ISO_DATE"] < ds) return;
+            if(de && r["ISO_DATE"] > de) return;
+
+            let val = parseFloat(r[mikKey]) || 0;
+            let isMf = mfKey && r[mfKey].toString().includes("-");
+            let isIade = ftKey && r[ftKey].toString().toUpperCase().includes("ZI01");
+            let isSatis = !isMf && !isIade;
+
+            if(ftSelected === "SATIS" && !isSatis) return;
+            if(ftSelected === "IADE" && !isIade) return;
+
+            const uniqueKey = pCode + " - " + pName;
+
+            if(!summary[uniqueKey]) summary[uniqueKey] = { 
+                code: pCode, name: pName,
+                aylar: Array.from({length:12}, () => ({net:0, mf:0, iade:0, top:0})),
+                genel: {net:0, mf:0, iade:0, top:0}
+            };
+            const m = r["M_IDX"];
+            if(m >= 0 && m <= 11) {
+                if(isMf) { summary[uniqueKey].aylar[m].mf += val; summary[uniqueKey].genel.mf += val; }
+                else if(isIade) { summary[uniqueKey].aylar[m].iade += Math.abs(val); summary[uniqueKey].genel.iade += Math.abs(val); }
+                else { summary[uniqueKey].aylar[m].net += val; summary[uniqueKey].genel.net += val; }
+                
+                summary[uniqueKey].aylar[m].top = summary[uniqueKey].aylar[m].net + summary[uniqueKey].aylar[m].mf - summary[uniqueKey].aylar[m].iade;
+                summary[uniqueKey].genel.top = summary[uniqueKey].genel.net + summary[uniqueKey].genel.mf - summary[uniqueKey].genel.iade;
+            }
+        });
+        
+        document.getElementById('repHead').innerHTML = `
+            <tr>
+                <th rowspan="2" class="sticky-col-1"><input type="checkbox" id="selectAllProducts" onclick="toggleAllReportProducts(this.checked)"></th>
+                <th rowspan="2" class="sticky-col-2" style="left:50px !important;">MALZEME KODU</th>
+                <th rowspan="2" style="position: sticky !important; left: 170px !important; z-index: 700 !important; background: #f8fafc !important; border-right: 3px solid var(--border) !important; min-width: 220px; text-align: left;">MALZEME ADI</th>
+                ${aylar.map(a => `<th colspan="4" class="month-header">${a}</th>`).join('')}
+                <th colspan="4" class="total-header">GENEL TOPLAM</th>
+            </tr>
+            <tr>
+                ${aylar.map(() => `<th>Net</th><th>MF</th><th>İade</th><th class="total-cell">Top.</th>`).join('')}
+                <th>Net</th><th>MF</th><th>İade</th><th class="total-cell">Top.</th>
+            </tr>`;
+                
+        let html = "";
+        for (let k in summary) {
+            let row = summary[k];
+            let safeP = row.name.replace(/'/g, "\\'"); 
+            
+            html += `<tr>
+                <td class="sticky-col-1"><input type="checkbox" class="product-check" data-pname="${safeP}" onchange="basketByProduct('${safeP}', this.checked)"></td>
+                <td style="position: sticky !important; left: 50px !important; z-index: 600 !important; background: white !important; font-weight:600; color:#475569;">${row.code}</td>
+                <td style="position: sticky !important; left: 170px !important; z-index: 600 !important; background: white !important; border-right: 3px solid var(--border) !important; font-weight:700; color:#1e293b; white-space: nowrap; text-align:left;">${row.name}</td>`;
+                    
+            row.aylar.forEach((a, i) => {
+                let iadeStyle = a.iade > 0 ? 'style="color:red; font-weight:bold;"' : '';
+                html += `
+                    <td class="clickable-cell" onclick="showDetail('${safeP}', ${i}, 'NET')">${a.net || 0}</td>
+                    <td class="clickable-cell" onclick="showDetail('${safeP}', ${i}, 'MF')">${a.mf || 0}</td>
+                    <td class="clickable-cell" ${iadeStyle} onclick="showDetail('${safeP}', ${i}, 'IADE')">${a.iade || 0}</td>
+                    <td class="total-cell clickable-cell" onclick="showDetail('${safeP}', ${i}, 'TOP')">${a.top || 0}</td>`;
+            });
+
+            html += `
+                <td class="grand-total-section text-center" style="color:#0284c7">${row.genel.net}</td>
+                <td class="grand-total-section text-center" style="color:#f59e0b">${row.genel.mf}</td>
+                <td class="grand-total-section text-center" style="color:#dc2626">${row.genel.iade}</td>
+                <td class="total-cell grand-total-section">${row.genel.top}</td>
+            </tr>`;
+        }
+        document.getElementById('repBody').innerHTML = html;
+    }
+
+    function showDetail(pName, mIdx, type) {
+        const adKey = cols.find(c => c.includes("MALZEME ADI") || c.includes("ÜRÜN ADI") || c.includes("URUN ADI") || (c.includes("AD") && !c.includes("DEPO") && !c.includes("MÜŞTERİ")));
+        const mfKey = cols.find(c => c.includes("MAL FAZLASI"));
+        const mikKey = cols.find(c => c.includes("ADET") || c.includes("MIKTAR"));
+        const ftKey = cols.find(c => c.includes("FAT") && (c.includes("TİPİ") || c.includes("TÜRÜ") || c.includes("TURU")));
+        
+        let res = db.filter(r => {
+            if(r[adKey] !== pName || r["M_IDX"] !== mIdx) return false;
+            let val = parseFloat(r[mikKey]) || 0;
+            let isMf = mfKey && r[mfKey].toString().includes("-");
+            let isIade = ftKey && r[ftKey].toString().toUpperCase().includes("ZI01");
+            
+            if(type==='NET') return !isMf && !isIade && val > 0;
+            if(type==='MF') return isMf;
+            if(type==='IADE') return isIade;
+            return true;
+        });
+        
+        document.getElementById('modalTitle').innerText = pName + " | " + aylar[mIdx] + " (" + type + ")";
+        document.getElementById('modalHead').innerHTML = `<tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>`;
+        document.getElementById('modalBody').innerHTML = res.map(r => `<tr>${cols.map(c => `<td>${r[c]}</td>`).join('')}</tr>`).join('');
+        
+        document.getElementById('basketExportBtn').style.display = 'none';
+        document.getElementById('basketClearBtn').style.display = 'none';
+        document.getElementById('mainModal').style.display = 'flex';
+    }
+
+    function openBasket() {
+        if(basket.length === 0) { alert("Sepetiniz boş!"); return; }
+        document.getElementById('modalTitle').innerText = "Sepet İçeriği (" + basket.length + ")";
+        document.getElementById('modalHead').innerHTML = `<tr><th>TÜR</th>${cols.map(c => `<th>${c}</th>`).join('')}</tr>`;
+        
+        document.getElementById('modalBody').innerHTML = basket.map(r => {
+            let turHtml = r.isIadeFlag ? '<td style="color:red; font-weight:bold; background:#fef2f2;">İADE</td>' : '<td style="color:#16a34a; font-weight:bold; background:#f0fdf4;">SATIŞ</td>';
+            return `<tr>${turHtml}${cols.map(c => `<td>${r[c]}</td>`).join('')}</tr>`;
+        }).join('');
+        
+        document.getElementById('basketExportBtn').style.display = 'inline-flex';
+        document.getElementById('basketClearBtn').style.display = 'inline-flex';
+        document.getElementById('mainModal').style.display = 'flex';
+    }
+
+    function clearBasket() {
+        if(confirm("Sepeti boşaltmak istediğinize emin misiniz?")) {
+            basket = []; updateInfo(); closeModal(); runEngine();
+        }
+    }
+
+    function exportBasket() {
+        if(basket.length === 0) { alert("Sepet boş!"); return; }
+        
+        let htmlContent = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head><meta charset="utf-8"></head>
+        <body>
+        <table border="1" style="border-collapse: collapse; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 10pt;">
+            <thead>
+                <tr>
+                    <th style="background-color: #0f172a; color: white; border: 1px solid #cbd5e1; padding: 8px; text-align: center; font-weight: bold;">TÜR</th>
+                    ${cols.map(c => `<th style="background-color: #0f172a; color: white; border: 1px solid #cbd5e1; padding: 8px; text-align: center; font-weight: bold;">${c}</th>`).join('')}
+                </tr>
+            </thead>
+            <tbody>
+                ${basket.map(r => {
+                    let turBg = r.isIadeFlag ? '#fef2f2' : '#f0fdf4';
+                    let turColor = r.isIadeFlag ? '#dc2626' : '#16a34a';
+                    let turText = r.isIadeFlag ? 'İADE' : 'SATIŞ';
+                    return `<tr>
+                        <td style="background-color: ${turBg}; color:${turColor}; font-weight: bold; text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${turText}</td>${cols.map(c => `<td style="border: 1px solid #cbd5e1; padding: 6px; text-align: left;">${r[c] !== undefined ? r[c] : ''}</td>`).join('')}
+                    </tr>`;
+                }).join('')}
+            </tbody>
+        </table>
+        </body></html>`;
+
+        let blob = new Blob(['\ufeff' + htmlContent], { type: 'application/vnd.ms-excel' });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = "Sepet_Listesi_Renkli.xls";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function exportReport() {
+        if(!cols.length) return;
+        const q = trLower(document.getElementById('repSearch').value);
+        const ds = document.getElementById('repStart').value;
+        const de = document.getElementById('repEnd').value;
+        
+        const kodKey = cols.find(c => c === "MALZEME" || c.includes("ÜRÜN KODU") || c.includes("URUN KODU"));
+        const adKey = cols.find(c => c.includes("MALZEME ADI") || c.includes("ÜRÜN ADI") || c.includes("URUN ADI") || (c.includes("AD") && !c.includes("DEPO") && !c.includes("MÜŞTERİ")));
+        const mikKey = cols.find(c => c.includes("ADET") || c.includes("MIKTAR"));
+        const mfKey = cols.find(c => c.includes("MAL FAZLASI"));
+        const ftKey = cols.find(c => c.includes("FATURALAMA TÜRÜ") || c.includes("FAT.TÜRÜ"));
+        
+        const summary = {};
+        const ftSelected = document.querySelector('input[name="ftFilter"]:checked').value;
+
+        db.forEach(r => {
+            const pCode = r[kodKey] || "KODSUZ";
+            const pName = r[adKey] || "İSİMSİZ ÜRÜN";
+            
+            if(q !== "" && !trLower(pName).includes(q) && !trLower(pCode).includes(q)) return;
+            if(ds && r["ISO_DATE"] < ds) return;
+            if(de && r["ISO_DATE"] > de) return;
+
+            let val = parseFloat(r[mikKey]) || 0;
+            let isMf = mfKey && r[mfKey].toString().includes("-");
+            let isIade = ftKey && r[ftKey].toString().toUpperCase().includes("ZI01");
+            let isSatis = !isMf && !isIade;
+
+            if(ftSelected === "SATIS" && !isSatis) return;
+            if(ftSelected === "IADE" && !isIade) return;
+
+            const uniqueKey = pCode + " - " + pName;
+
+            if(!summary[uniqueKey]) summary[uniqueKey] = { 
+                code: pCode, name: pName,
+                aylar: Array.from({length:12}, () => ({net:0, mf:0, iade:0, top:0})),
+                genel: {net:0, mf:0, iade:0, top:0}
+            };
+            const m = r["M_IDX"];
+            if(m >= 0 && m <= 11) {
+                if(isMf) { summary[uniqueKey].aylar[m].mf += val; summary[uniqueKey].genel.mf += val; }
+                else if(isIade) { summary[uniqueKey].aylar[m].iade += Math.abs(val); summary[uniqueKey].genel.iade += Math.abs(val); }
+                else { summary[uniqueKey].aylar[m].net += val; summary[uniqueKey].genel.net += val; }
+                
+                summary[uniqueKey].aylar[m].top = summary[uniqueKey].aylar[m].net + summary[uniqueKey].aylar[m].mf - summary[uniqueKey].aylar[m].iade;
+                summary[uniqueKey].genel.top = summary[uniqueKey].genel.net + summary[uniqueKey].genel.mf - summary[uniqueKey].genel.iade;
+            }
+        });
+
+        let thBaseStyle = "border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-weight: bold; background-color: #f8fafc; color: #475569;";
+        let monthHeaderStyle = "border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-weight: bold; background-color: #0284c7; color: white;";
+        let totalHeaderStyle = "border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-weight: bold; background-color: #16a34a; color: white;";
+        let totalCellStyle = "border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-weight: bold; background-color: #f0fdf4; color: #16a34a;";
+        let grandTotalStyle = "border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-weight: bold; background-color: #ecfdf5;";
+
+        let htmlContent = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head><meta charset="utf-8"></head>
+        <body>
+        <table border="1" style="border-collapse: collapse; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 10pt;">
+            <thead>
+                <tr>
+                    <th rowspan="2" style="${thBaseStyle}">MALZEME KODU</th>
+                    <th rowspan="2" style="${thBaseStyle} text-align: left;">MALZEME ADI</th>
+                    ${aylar.map(a => `<th colspan="4" style="${monthHeaderStyle}">${a}</th>`).join('')}
+                    <th colspan="4" style="${totalHeaderStyle}">GENEL TOPLAM</th>
+                </tr>
+                <tr>
+                    ${aylar.map(() => `
+                        <th style="${thBaseStyle}">Net</th>
+                        <th style="${thBaseStyle}">MF</th>
+                        <th style="${thBaseStyle}">İade</th>
+                        <th style="${totalCellStyle}">Top.</th>
+                    `).join('')}
+                    <th style="${thBaseStyle}">Net</th>
+                    <th style="${thBaseStyle}">MF</th>
+                    <th style="${thBaseStyle}">İade</th>
+                    <th style="${totalCellStyle}">Top.</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+        for (let k in summary) {
+            let row = summary[k];
+            htmlContent += `<tr>
+                <td style="border: 1px solid #cbd5e1; padding: 6px; font-weight: 600; color: #475569; text-align: center;">${row.code}</td>
+                <td style="border: 1px solid #cbd5e1; padding: 6px; font-weight: 700; color: #1e293b; text-align: left;">${row.name}</td>`;
+            
+            row.aylar.forEach(a => {
+                let iadeColor = a.iade > 0 ? 'color: red; font-weight: bold;' : '';
+                htmlContent += `
+                    <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center;">${a.net || 0}</td>
+                    <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center;">${a.mf || 0}</td>
+                    <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center; ${iadeColor}">${a.iade || 0}</td>
+                    <td style="${totalCellStyle}">${a.top || 0}</td>`;
+            });
+
+            htmlContent += `
+                <td style="${grandTotalStyle} color: #0284c7; text-align: center;">${row.genel.net}</td>
+                <td style="${grandTotalStyle} color: #f59e0b; text-align: center;">${row.genel.mf}</td>
+                <td style="${grandTotalStyle} color: #dc2626; text-align: center;">${row.genel.iade}</td>
+                <td style="${grandTotalStyle} ${totalCellStyle}">${row.genel.top}</td>
+            </tr>`;
+        }
+
+        htmlContent += `</tbody></table></body></html>`;
+
+        let blob = new Blob(['\ufeff' + htmlContent], { type: 'application/vnd.ms-excel' });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = "Urun_Karnesi_Raporu_Renkli.xls";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function toggleMfOnly() {
+        mfOnly = !mfOnly;
+        const btn = document.querySelector('button[onclick="toggleMfOnly()"]');
+        if(mfOnly) { btn.style.background = "#16a34a"; btn.innerText = "MF AKTİF"; } 
+        else { btn.style.background = "var(--danger)"; btn.innerText = "MF FİLTRE"; }
+        runEngine();
+    }
+
+    function clearMemory() {
+        if(confirm("Tüm veri havuzu temizlensin mi?")) {
+            db = []; cols = []; basket = []; currentFiltered = [];
+            document.getElementById('hOut').innerHTML = "";
+            document.getElementById('bOut').innerHTML = "";
+            document.getElementById('repHead').innerHTML = "";
+            document.getElementById('repBody').innerHTML = "";
+            updateInfo(); resetFilters();
+        }
+    }
+
+    function toggleAllReportProducts(status) {
+        const checkboxes = document.querySelectorAll('#repBody .product-check');
+        checkboxes.forEach(cb => {
+            cb.checked = status;
+            const pName = cb.getAttribute('data-pname');
+            if(pName) basketByProduct(pName, status);
+        });
+    }
+
+    function updateInfo() {
+        const infoEl = document.getElementById('rowInfo');
+        if(infoEl) infoEl.innerText = "HAFIZA: " + db.length + " SATIR";
+    }
+
+    function resetFilters() {
+        document.getElementById('mSearch').value = "";
+        document.getElementById('pSearch').value = "";
+        if(document.getElementById('dStart')) document.getElementById('dStart').value = "";
+        if(document.getElementById('dEnd')) document.getElementById('dEnd').value = "";
+        const firstRadio = document.querySelector('input[name="faturatur"][value="ALL"]');
+        if(firstRadio) firstRadio.checked = true;
+        mfOnly = false;
+        const mfBtn = document.querySelector('button[onclick="toggleMfOnly()"]');
+        if(mfBtn) { mfBtn.style.background = "var(--danger)"; mfBtn.innerText = "MF FİLTRE"; }
+        runEngine();
+    }
+
+    function closeModal() { document.getElementById('mainModal').style.display = 'none'; }
+
+    function nav(pageId, element) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.getElementById(pageId).classList.add('active');
+        element.classList.add('active');
+        if(pageId === 'p3') buildReport();
+    }
+</script>
+</body>
+</html>

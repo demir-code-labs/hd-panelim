@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>IMS Command Center</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-sidebar: #0f172a;
+            --accent: #6366f1;
+            --accent-light: #e0e7ff;
+            --border: #e2e8f0;
+            --excel: #059669;
+            --danger: #dc2626;
+        }
+        body { margin:0; font-family: Calibri, sans-serif; background: #f8fafc; display:flex; height: 100vh; overflow:hidden; }
+        
+        /* SIDEBAR */
+        .sidebar { width: 270px; background: var(--bg-sidebar); color: white; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; z-index: 10; overflow-y: auto; }
+        .logo { font-size: 18px; font-weight: 900; letter-spacing: 1px; color: #38bdf8; margin-bottom: 25px; display:flex; align-items:center; gap:10px; }
+        .nav-item { padding: 11px 15px; border-radius: 8px; cursor: pointer; margin-bottom: 6px; font-weight: 700; font-size: 13px; color: #94a3b8; display: flex; align-items: center; gap: 12px; transition: all 0.2s; }
+        .nav-item:hover, .nav-item.active { background: var(--accent); color: white; }
+
+        /* MAIN CONTENT */
+        .main-content { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .top-bar { height: 70px; background: white; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; box-sizing: border-box; }
+        
+        /* KPI KARTLARI PANELİ */
+        .kpi-container { display: none; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 15px 30px 0 30px; background: white; }
+        .kpi-card { background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; display: flex; flex-direction: column; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .kpi-title { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+        .kpi-value { font-size: 18px; font-weight: 900; color: #1e293b; margin-top: 4px; }
+
+        .pill-container { display: none !important; }
+
+        /* DİNAMİK FİLTRE PANELİ */
+        .filter-panel { padding: 15px 30px; background: white; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        
+        .search-container { position: relative; flex: 1; min-width: 200px; max-width: 280px; }
+        .search-input { width: 100%; padding: 9px 15px 9px 38px; border-radius: 8px; border: 1px solid var(--border); font-size: 12px; outline: none; box-sizing: border-box; background: #fff; }
+        .search-container i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
+        .clear-search-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8; cursor: pointer; display: none; }
+
+        select.search-input { padding-left: 12px; cursor: pointer; }
+
+        .btn { padding: 9px 16px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 12px; }
+        .btn-accent { background: var(--accent); color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+
+        .page { display: none; flex: 1; overflow: hidden; padding: 20px 30px; box-sizing: border-box; }
+        .page.active { display: flex; flex-direction: column; }
+
+        /* TABLE CONTAINER & STICKY FIXES */
+        .table-container { flex: 1; background: white; border-radius: 12px; border: 1px solid var(--border); overflow: auto; position: relative; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 12px; }
+        th, td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; white-space: nowrap; background-clip: padding-box; }
+        
+        /* STICKY HEADERS & COLUMNS (Göz zevkini bozan boşlukları sıfırlayan nokta atışı koordinatlar) */
+        thead th { position: sticky; top: 0; z-index: 5; background: #1e293b; color: white; text-align: center; font-weight: 800; }
+        thead tr:nth-child(2) th { top: 37px; }
+
+        .sticky-col-1 { position: sticky; left: 0px; z-index: 4; background: white; text-align: center; width: 50px; min-width: 50px; }
+        .sticky-col-2 { position: sticky; left: 50px; z-index: 4; background: white; font-weight: bold; min-width: 140px; }
+        .sticky-col-3 { position: sticky; left: 190px; z-index: 4; background: white; min-width: 180px; }
+        .sticky-col-4 { position: sticky; left: 370px; z-index: 4; background: white; min-width: 180px; border-right: 2px solid #cbd5e1 !important; }
+
+        thead th.sticky-col-1 { z-index: 6; background: #1e293b; left: 0px; }
+        thead th.sticky-col-2 { z-index: 6; background: #1e293b; left: 50px; }
+        thead th.sticky-col-3 { z-index: 6; background: #1e293b; left: 190px; }
+        thead th.sticky-col-4 { z-index: 6; background: #1e293b; left: 370px; border-right: 2px solid #475569 !important; }
+
+        .bg-purple { background-color: #faf5ff; color: #6b21a8; }
+        .bg-blue { background-color: #f0f9ff; color: #0369a1; }
+        .bg-orange { background-color: #fffbeb; color: #b45309; }
+        
+        .cart-wrapper { position: relative; cursor: pointer; display: flex; align-items: center; }
+        .btn-cart { background: var(--accent-light); color: var(--accent); padding: 9px 13px; border-radius: 8px; display:flex; align-items:center; justify-content:center; }
+        .cart-badge { position: absolute; top: -5px; right: -5px; background: var(--danger); color: white; font-size: 10px; font-weight: 900; width: 18px; height: 18px; border-radius: 50%; display: none; align-items: center; justify-content: center; }
+
+        .modal { display: none; position: fixed; z-index: 99999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); align-items: center; justify-content: center; }
+        .modal-content { background: white; width: 450px; max-width: 90%; border-radius: 12px; padding: 25px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body class="theme-national">
+
+<div class="sidebar">
+    <div class="logo"><i class="fas fa-bolt"></i> IMS COMMANDER</div>
+    <div class="nav-item active" onclick="nav('upload', this, 'national')"><i class="fas fa-database"></i> VERİ YÜKLE</div>
+    <div class="nav-item" onclick="nav('national', this, 'national')"><i class="fas fa-chart-line"></i> NATIONAL</div>
+    <div class="nav-item" onclick="nav('territory', this, 'territory')"><i class="fas fa-map-location-dot"></i> AREAS</div>
+    <div class="nav-item" onclick="nav('ozet', this, 'ozet')"><i class="fas fa-layer-group"></i> TST ÖZET</div>
+    <div class="nav-item" onclick="nav('details', this, 'details')"><i class="fas fa-microscope"></i> TST DETAY</div>
+
+    <!-- STRATEJİK TOP 3 & DİP 3 PANELİ -->
+    <div id="top3SidebarPanel" style="display:none; margin-top:20px; padding:12px; background:rgba(255,255,255,0.04); border-radius:10px; border:1px solid rgba(255,255,255,0.08); font-family:Calibri, sans-serif;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-size:10px; font-weight:bold; color:#38bdf8; text-transform:uppercase; letter-spacing:1px;">STRATEJİK PANEL</span>
+            <select id="sidebarMetricSelect" onchange="filterData()" style="background:#1e293b; color:#38bdf8; border:1px solid rgba(56,189,248,0.3); border-radius:4px; font-size:10px; padding:2px 4px; outline:none; cursor:pointer; font-weight:bold;">
+                <option value="VALUES">VALUES</option>
+                <option value="UNITS">UNIT</option>
+                <option value="SHARE">SHARE</option>
+            </select>
+        </div>
+
+        <div style="font-size:11px; font-weight:bold; color:#38bdf8; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:5px;">
+            <i class="fas fa-trophy" style="color:#f59e0b;"></i> En İyi 3 (Zirve)
+        </div>
+        <div id="top3ListContent" style="font-size:11px; color:#cbd5e1; line-height:1.45; margin-bottom:12px;">Veri yüklenmedi</div>
+        <div style="border-top:1px solid rgba(255,255,255,0.1); margin-bottom:10px;"></div>
+        <div style="font-size:11px; font-weight:bold; color:#f87171; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:5px;">
+            <i class="fas fa-triangle-exclamation" style="color:#ef4444;"></i> En Düşük 3 (Risk)
+        </div>
+        <div id="bot3ListContent" style="font-size:11px; color:#cbd5e1; line-height:1.45; margin-bottom:15px;">Veri yüklenmedi</div>
+
+        <!-- PAZAR PAYI & GÖRECELİ BÜYÜME UYARI KUTUSU (ŞİFRELİ GİZLE/GÖSTER) -->
+        <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-size:10px; font-weight:bold; color:#f59e0b; text-transform:uppercase; display:flex; align-items:center; gap:4px;">
+                    <i class="fas fa-shield-halved"></i> Stratejik P.P Analizi
+                </span>
+                <i class="fas fa-lock" id="marketShareLockIcon" onclick="toggleMarketShareInsight()" style="font-size:11px; color:#94a3b8; cursor:pointer;" title="Şifre ile Göster/Gizle"></i>
+            </div>
+            <div id="marketShareInsightContent" style="display:none; font-size:10.5px; color:#fef08a; background:rgba(245, 158, 11, 0.1); padding:8px; border-radius:6px; border:1px solid rgba(245, 158, 11, 0.3); line-height:1.4;">
+                Kilitli: Görmek için kilit ikonuna tıklayıp şifreyi giriniz.
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="top-bar">
+        <h3 id="pageTitle" style="margin:0; color:#1e293b; font-weight:800;">Giriş Paneli</h3>
+        <div id="infoBox" style="display:none; color:var(--excel); font-weight:800; background: #ecfdf5; border:1px solid #a7f3d0; padding: 5px 15px; border-radius: 20px; font-size:12px;">VERİ SETİ HAZIR ✨</div>
+    </div>
+
+    <div class="kpi-container" id="kpiSection">
+        <div class="kpi-card">
+            <span class="kpi-title">Toplam Pazar Hacmi (Values)</span>
+            <span class="kpi-value" id="kpiTotalVolume">-</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">Ortalama Büyüme / Trend</span>
+            <span class="kpi-value" id="kpiAvgGrowth">-</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">Filtrelenen Satır / Ürün Sayısı</span>
+            <span class="kpi-value" id="kpiRowCount">-</span>
+        </div>
+    </div>
+
+    <div class="filter-panel" id="filterSection" style="display:none;">
+        <div class="search-container">
+            <i class="fas fa-search"></i>
+            <input type="text" id="globalSearch" class="search-input" placeholder="Genel arama..." oninput="filterData()">
+            <i class="fas fa-times-circle clear-search-btn" id="clearSearchIcon" onclick="clearSearchInput()"></i>
+        </div>
+
+        <select id="comboTerritory" class="search-input" style="width:140px;" onchange="filterData()">
+            <option value="">Tüm Territoriler</option>
+        </select>
+
+        <select id="comboMarket" class="search-input" style="width:140px;" onchange="filterData()">
+            <option value="">Tüm Marketler</option>
+        </select>
+
+        <select id="comboProduct" class="search-input" style="width:140px;" onchange="filterData()">
+            <option value="">Tüm Ürünler</option>
+        </select>
+
+        <select id="dateStart" class="search-input" style="width:110px;" onchange="filterData()"></select>
+        <select id="dateEnd" class="search-input" style="width:110px;" onchange="filterData()"></select>
+        
+        <button class="btn btn-warning" onclick="resetAllFilters()"><i class="fas fa-sync-alt"></i></button>
+        <button class="btn btn-accent" onclick="exportFullTableExcel()" style="background:#059669; color:white;" title="Excel Aktar"><i class="fas fa-file-excel"></i></button>
+        <button class="btn btn-accent" onclick="exportPDFReport()" style="background:#dc2626; color:white;" title="Antetli PDF İndir"><i class="fas fa-file-pdf"></i></button>
+
+        <div class="cart-wrapper" onclick="openCart()">
+            <div class="btn-cart"><i class="fas fa-shopping-basket fa-lg"></i></div>
+            <span class="cart-badge" id="cartBadge">0</span>
+        </div>
+    </div>
+
+    <div id="upload" class="page active">
+        <div style="text-align: center; margin: auto; padding: 50px; background:white; border-radius:20px; border: 2px dashed var(--border); max-width: 600px; box-shadow:0 10px 15px -3px rgba(0,0,0,0.05);">
+            <i class="fas fa-cloud-upload-alt fa-3x" style="color:var(--accent); margin-bottom:15px;"></i>
+            <h2 style="font-weight:800; color:#1e293b; margin-top:0;">IMS Veri Merkezi</h2>
+            <p style="color:#64748b; font-size:13px; margin-bottom:25px;">Lütfen analiz için Excel (.xlsx / .xls) dosyanızı seçin.</p>
+            <div style="display:flex; gap:15px; justify-content:center;">
+                <input type="file" id="imsInput" hidden accept=".xlsx, .xls">
+                <button class="btn btn-accent" style="padding:12px 25px;" onclick="document.getElementById('imsInput').click()"><i class="fas fa-file-upload"></i> DOSYA SEÇ VE YÜKLE</button>
+                <button id="mainClearBtn" class="btn btn-danger" style="display:none; padding:12px 25px;" onclick="location.reload()"><i class="fas fa-trash-alt"></i> SIFIRLA</button>
+            </div>
+            <div id="uploadStatus" style="margin-top:20px; font-weight:bold; font-size:13px; color:#059669;"></div>
+        </div>
+    </div>
+
+    <div id="national" class="page"><div class="table-container"><table id="nationalTable"><thead></thead><tbody></tbody></table></div></div>
+    <div id="territory" class="page"><div class="table-container"><table id="territoryTable"><thead></thead><tbody></tbody></table></div></div>
+    <div id="ozet" class="page"><div class="table-container"><table id="ozetTable"><thead></thead><tbody></tbody></table></div></div>
+    <div id="details" class="page"><div class="table-container"><table id="detailsTable"><thead></thead><tbody></tbody></table></div></div>
+</div>
+
+<div id="cartModal" class="modal" onclick="this.style.display='none'">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h2 style="color:var(--accent); font-weight:800; margin-bottom:20px; display:flex; align-items:center; gap:10px; font-size:18px;">
+            <i class="fas fa-shopping-basket"></i> Seçili Ürünler Paneli
+        </h2>
+        <div id="cartList" style="max-height:300px; overflow-y:auto; margin-bottom:20px; padding-right:5px;"></div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <button class="btn btn-accent" style="justify-content:center;" onclick="exportSelected()"><i class="fas fa-file-excel"></i> EXCEL AKTAR</button>
+            <button class="btn btn-danger" style="justify-content:center;" onclick="clearCart()"><i class="fas fa-trash-alt"></i> SEPETİ BOŞALT</button>
+        </div>
+        <button class="btn btn-warning" style="width:100%; margin-top:12px; justify-content:center; background:#f8fafc; color:#1e293b; border:1px solid var(--border);" onclick="document.getElementById('cartModal').style.display='none'">KAPAT</button>
+    </div>
+</div>
+
+<div id="customCellDetailModal" style="display:none; position:fixed; z-index:99999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); backdrop-filter:blur(2px); align-items:center; justify-content:center;">
+    <div style="background:#ffffff; width:450px; max-width:90%; border-radius:12px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1); overflow:hidden; font-family:Calibri, sans-serif;">
+        <div style="background:#1e293b; color:white; padding:15px 20px; display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="margin:0; font-size:16px; font-weight:bold;">📊 Hücre / Trend Analizi (In & Out)</h3>
+            <button onclick="closeCellDetailModal()" style="background:transparent; border:none; color:white; font-size:18px; cursor:pointer;">&times;</button>
+        </div>
+        <div style="padding:20px; font-size:13px; color:#334155; line-height:1.6;">
+            <div style="margin-bottom:8px; border-bottom:1px solid #e2e8f0; padding-bottom:4px;"><strong>Territory:</strong> <span id="modalTerritory">-</span></div>
+            <div style="margin-bottom:8px; border-bottom:1px solid #e2e8f0; padding-bottom:4px;"><strong>Market:</strong> <span id="modalMarket">-</span></div>
+            <div style="margin-bottom:8px; border-bottom:1px solid #e2e8f0; padding-bottom:4px;"><strong>Product:</strong> <span id="modalProduct">-</span></div>
+            <div style="margin-bottom:8px; border-bottom:1px solid #e2e8f0; padding-bottom:4px;"><strong>Dönem / Ölçüt:</strong> <span id="modalHeaderInfo" style="color:var(--accent); font-weight:bold;">-</span></div>
+            
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:12px;">
+                <div style="background:#f0fdf4; padding:10px; border-radius:8px; border:1px solid #bbf7d0; text-align:center;">
+                    <span style="font-size:10px; color:#15803d; display:block; font-weight:bold;">ÖNCEKİ DÖNEM (IN)</span>
+                    <span id="modalPrevValue" style="font-size:16px; font-weight:bold; color:#166534;">-</span>
+                </div>
+                <div style="background:#eff6ff; padding:10px; border-radius:8px; border:1px solid #bfdbfe; text-align:center;">
+                    <span style="font-size:10px; color:#1d4ed8; display:block; font-weight:bold;">SEÇİLEN DÖNEM (OUT)</span>
+                    <span id="modalCellValue" style="font-size:16px; font-weight:bold; color:#1e40af;">-</span>
+                </div>
+            </div>
+            <div id="modalTrendBox" style="margin-top:10px; padding:8px; border-radius:6px; text-align:center; font-weight:bold; font-size:12px;"></div>
+        </div>
+        <div style="background:#f1f5f9; padding:12px 20px; text-align:right;">
+            <button onclick="closeCellDetailModal()" style="background:#334155; color:white; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; font-weight:bold;">Kapat</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let db = {}; let currentSheet = "";
+    let currentSortColumn = null;
+    let currentSortDirection = 'asc';
+    let fileLoaded = false;
+    let marketShareUnlocked = false;
+
+    const sheetKeyMap = {
+        'national': ['National', 'NATIONAL', 'national'],
+        'territory': ['Areas', 'AREAS', 'areas', 'Bölgeler', 'BÖLGELER'],
+        'ozet': ['TST-Özet', 'TST Özet', 'TST_Ozet', 'TST ÖZET'],
+        'details': ['TST-Detay', 'TST Detay', 'TST_Detay', 'TST DETAY']
+    };
+
+    function getSheetNameForId(id) {
+        let candidates = sheetKeyMap[id] || [id];
+        for (let c of candidates) {
+            if (db[c]) return c;
+        }
+        let keys = Object.keys(db);
+        if (keys.length === 0) return null;
+        if (id === 'national') return keys[0];
+        if (id === 'territory' && keys.length > 1) return keys[1];
+        if (id === 'ozet' && keys.length > 2) return keys[2];
+        if (id === 'details' && keys.length > 3) return keys[3];
+        return keys[0];
+    }
+
+    function toggleMarketShareInsight() {
+        const contentBox = document.getElementById('marketShareInsightContent');
+        const lockIcon = document.getElementById('marketShareLockIcon');
+
+        if (!marketShareUnlocked) {
+            let pwd = prompt("Stratejik Pazar Payı analizini görüntülemek için şifreyi giriniz:");
+            if (pwd === "1234" || pwd === "halil" || pwd === "IMS2026") {
+                marketShareUnlocked = true;
+                lockIcon.className = "fas fa-unlock";
+                lockIcon.style.color = "#38bdf8";
+                contentBox.style.display = 'block';
+                updateMarketShareAnalysisNote();
+            } else if (pwd !== null) {
+                alert("Hatalı şifre!");
+            }
+        } else {
+            marketShareUnlocked = false;
+            lockIcon.className = "fas fa-lock";
+            lockIcon.style.color = "#94a3b8";
+            contentBox.style.display = 'none';
+        }
+    }
+
+    function updateMarketShareAnalysisNote() {
+        if (!marketShareUnlocked) return;
+        const contentBox = document.getElementById('marketShareInsightContent');
+        contentBox.innerHTML = `
+            <b>Pazar Payı Çapraz Okuma Notu:</b><br>
+            • <b>Values & Units Artışta, Share Düşüşte:</b> Mutlak ciro/kutu büyüse de pazar büyüme hızının gerisinde kalındığını gösterir. Göreceli pazar payı kaybı riski vardır!<br>
+            • Doğru Okuma: P.P erimesi, rakip büyümesinin gerisinde kalındığının sinyalidir.
+        `;
+    }
+
+    function nav(id, el, theme) {
+        if (id !== 'upload' && !fileLoaded) {
+            alert("Devam edebilmek için lütfen önce 'VERİ YÜKLE' sekmesinden IMS Excel dosyanızı yükleyin! ⚡");
+            return;
+        }
+
+        document.querySelectorAll('.page, .nav-item').forEach(x => x.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        el.classList.add('active');
+        document.body.className = 'theme-' + theme;
+        
+        currentSheet = getSheetNameForId(id);
+        document.getElementById('pageTitle').innerText = el.innerText.replace(/[^a-zA-Zİİ0-9\s]/g, '').trim();
+        
+        const isUpload = (id === 'upload');
+        document.getElementById('filterSection').style.display = isUpload ? 'none' : 'flex';
+        document.getElementById('kpiSection').style.display = isUpload ? 'none' : 'grid';
+        document.getElementById('top3SidebarPanel').style.display = isUpload ? 'none' : 'block';
+
+        currentSortColumn = null;
+        if(!isUpload && currentSheet) {
+            populateComboboxes(currentSheet);
+            render(currentSheet, id + 'Table');
+        }
+    }
+
+    document.getElementById('imsInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const wb = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
+                db = {};
+                wb.SheetNames.forEach(n => {
+                    db[n] = XLSX.utils.sheet_to_json(wb.Sheets[n], {header: 1});
+                });
+                
+                fileLoaded = true;
+                document.getElementById('uploadStatus').innerText = `"${file.name}" başarıyla yüklendi!`;
+                document.getElementById('infoBox').style.display = 'block';
+                document.getElementById('mainClearBtn').style.display = 'inline-flex';
+
+                let sName = getSheetNameForId('national') || wb.SheetNames[0];
+                populateDateSelects(sName);
+                populateComboboxes(sName);
+                
+                const nationalNavEl = document.querySelector('.sidebar .nav-item:nth-child(2)');
+                if (nationalNavEl) nav('national', nationalNavEl, 'national');
+
+            } catch (err) {
+                alert("Dosya okunurken hata: " + err.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    function populateComboboxes(sName) {
+        let data = db[sName];
+        if (!data) return;
+
+        let territories = new Set();
+        let markets = new Set();
+        let products = new Set();
+
+        for (let i = 4; i < data.length; i++) {
+            let row = data[i];
+            if (row[0] && !row[0].toString().includes("Total")) territories.add(row[0].toString().trim());
+            if (row[1]) markets.add(row[1].toString().trim());
+            if (row[2]) products.add(row[2].toString().trim());
+        }
+
+        const tCombo = document.getElementById('comboTerritory');
+        const mCombo = document.getElementById('comboMarket');
+        const pCombo = document.getElementById('comboProduct');
+
+        tCombo.innerHTML = '<option value="">Tüm Territoriler</option>';
+        Array.from(territories).sort().forEach(t => tCombo.innerHTML += `<option value="${t}">${t}</option>`);
+
+        mCombo.innerHTML = '<option value="">Tüm Marketler</option>';
+        Array.from(markets).sort().forEach(m => mCombo.innerHTML += `<option value="${m}">${m}</option>`);
+
+        pCombo.innerHTML = '<option value="">Tüm Ürünler</option>';
+        Array.from(products).sort().forEach(p => pCombo.innerHTML += `<option value="${p}">${p}</option>`);
+    }
+
+    function render(sName, tId, q = "", start = "", end = "", selT = "", selM = "", selP = "") {
+        let data = db[sName]; if (!data) return;
+        let hIdx = 3; 
+        const table = document.getElementById(tId); if (!table) return;
+        const thead = table.querySelector('thead'); 
+        const tbody = table.querySelector('tbody');
+        const ay = data[2] || []; 
+        const bas = data[hIdx] || [];
+
+        function getHeaderColor(idx) { const colors = ['#0ea5e9', '#8b5cf6', '#f59e0b']; return colors[idx % 3]; }
+
+        let h1 = `<tr>
+            <th rowspan="2" class="sticky-col-1"><input type="checkbox" onclick="toggleAll(this)"></th>
+            <th rowspan="2" class="sticky-col-2" style="cursor:pointer;" onclick="sortTable(0, '${tId}')">${bas[0]||'Territory'} <i class="fas fa-sort" style="font-size:10px; opacity:0.6;"></i></th>
+            <th rowspan="2" class="sticky-col-3" style="cursor:pointer;" onclick="sortTable(1, '${tId}')">${bas[1]||'Market'} <i class="fas fa-sort" style="font-size:10px; opacity:0.6;"></i></th>
+            <th rowspan="2" class="sticky-col-4" style="cursor:pointer;" onclick="sortTable(2, '${tId}')">${bas[2]||'Product'} <i class="fas fa-sort" style="font-size:10px; opacity:0.6;"></i></th>`;
+        
+        let h2 = `<tr>`;
+        let gorunurSutunlar = []; 
+        
+        for(let i=3; i<bas.length; i+=3) {
+            let ayAdi = ay[i] || "";
+            if (start && ayAdi < start) continue;
+            if (end && ayAdi > end) continue;
+
+            h1 += `<th colspan="3" style="background:#1e293b; color:white;">${ayAdi}</th>`;
+            for(let j=0; j<3; j++) {
+                h2 += `<th style="background:${getHeaderColor(j)}; color:white; cursor:pointer;" onclick="sortTable(${i+j}, '${tId}')">${bas[i+j]} <i class="fas fa-sort" style="font-size:10px; opacity:0.6;"></i></th>`;
+                gorunurSutunlar.push(i+j);
+            }
+        }
+        thead.innerHTML = h1 + "</tr>" + h2 + "</tr>";
+
+        let rowsToProcess = data.slice(hIdx + 1).filter(row => {
+            let tVal = (row[0] || "").toString().trim();
+            let mVal = (row[1] || "").toString().trim();
+            let pVal = (row[2] || "").toString().trim();
+
+            if (selT && tVal !== selT) return false;
+            if (selM && mVal !== selM) return false;
+            if (selP && pVal !== selP) return false;
+
+            if (q && !row.some(c => c && c.toString().toLowerCase().includes(q.toLowerCase()))) return false;
+            if (tVal.includes("Total")) return false;
+            return true;
+        });
+
+        if (currentSortColumn !== null) {
+            rowsToProcess.sort((rowA, rowB) => {
+                let valA = rowA[currentSortColumn] !== undefined ? rowA[currentSortColumn] : "";
+                let valB = rowB[currentSortColumn] !== undefined ? rowB[currentSortColumn] : "";
+                let numA = parseFloat(valA); let numB = parseFloat(valB);
+
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    return currentSortDirection === 'asc' ? numA - numB : numB - numA;
+                } else {
+                    let strA = valA.toString().toLowerCase(); let strB = valB.toString().toLowerCase();
+                    if (strA < strB) return currentSortDirection === 'asc' ? -1 : 1;
+                    if (strA > strB) return currentSortDirection === 'asc' ? 1 : -1;
+                    return 0;
+                }
+            });
+        }
+
+        updateStrategicSidebar(rowsToProcess, gorunurSutunlar, ay, bas);
+        updateKPICards(rowsToProcess, gorunurSutunlar, bas);
+
+        let bHtml = "";
+        rowsToProcess.forEach((row) => {
+            let rHtml = `<tr>
+                <td class="sticky-col-1"><input type="checkbox" class="row-cb" onchange="updateCartBadge()"></td>
+                <td class="sticky-col-2">${row[0]||''}</td>
+                <td class="sticky-col-3 row-market">${row[1]||''}</td>
+                <td class="sticky-col-4 row-product">${row[2]||''}</td>`;
+        
+            gorunurSutunlar.forEach(i => {
+                let val = parseFloat(row[i]) || 0;
+                let prevVal = (i >= 6) ? (parseFloat(row[i-3]) || 0) : 0;
+                let arrowIcon = "";
+
+                if (i >= 6) { 
+                    if (val > prevVal) arrowIcon = ' <i class="fas fa-caret-up" style="color:var(--excel); font-size:16px; vertical-align:middle; margin-left:4px;"></i>';
+                    else if (val < prevVal) arrowIcon = ' <i class="fas fa-caret-down" style="color:var(--danger); font-size:16px; vertical-align:middle; margin-left:4px;"></i>';
+                }
+
+                let disp = val.toLocaleString('tr-TR', {minimumFractionDigits: 2});
+                if (bas[i] && bas[i].toUpperCase().includes("SHARE")) disp += " %";
+                
+                let hUp = bas[i].toUpperCase();
+                let cls = hUp.includes("VALUES") ? "bg-purple" : (hUp.includes("UNITS") && !hUp.includes("SHARE") ? "bg-blue" : "bg-orange");
+                
+                rHtml += `<td class="interactive-cell ${cls}" style="text-align:right; font-weight:700; white-space:nowrap; padding-right:15px; cursor:pointer;">${disp}${arrowIcon}</td>`;
+            });
+            bHtml += rHtml + "</tr>";
+        });
+        tbody.innerHTML = bHtml;
+        updateCartBadge();
+        enableCellClickDetails(table);
+    }
+
+    function updateKPICards(rows, gorunurSutunlar, basRow) {
+        let totalVol = 0;
+        let growthSum = 0;
+        let growthCount = 0;
+        
+        let targetCol = gorunurSutunlar[gorunurSutunlar.length - 3] || gorunurSutunlar[0];
+        for (let i = gorunurSutunlar.length - 1; i >= 0; i--) {
+            if ((basRow[gorunurSutunlar[i]] || "").toUpperCase().includes('VALUES')) {
+                targetCol = gorunurSutunlar[i];
+                break;
+            }
+        }
+
+        rows.forEach(r => {
+            totalVol += parseFloat(r[targetCol]) || 0;
+            if (gorunurSutunlar.length >= 6) {
+                let lastVal = parseFloat(r[gorunurSutunlar[gorunurSutunlar.length - 3]]) || 0;
+                let prevVal = parseFloat(r[gorunurSutunlar[gorunurSutunlar.length - 6]]) || 0;
+                if (prevVal > 0) {
+                    growthSum += ((lastVal - prevVal) / prevVal) * 100;
+                    growthCount++;
+                }
+            }
+        });
+
+        let avgGrowth = growthCount > 0 ? (growthSum / growthCount) : 0;
+
+        document.getElementById('kpiTotalVolume').innerText = totalVol.toLocaleString('tr-TR', {maximumFractionDigits: 0});
+        
+        let growthEl = document.getElementById('kpiAvgGrowth');
+        growthEl.innerText = (avgGrowth >= 0 ? "+" : "") + avgGrowth.toFixed(1) + "%";
+        growthEl.style.color = avgGrowth >= 0 ? "var(--excel)" : "var(--danger)";
+        
+        document.getElementById('kpiRowCount').innerText = rows.length.toLocaleString('tr-TR');
+    }
+
+    function updateStrategicSidebar(rows, gorunurSutunlar, ayRow, basRow) {
+        const topContainer = document.getElementById('top3ListContent');
+        const botContainer = document.getElementById('bot3ListContent');
+        const metricSelect = document.getElementById('sidebarMetricSelect');
+        const chosenMetric = metricSelect ? metricSelect.value : 'VALUES';
+
+        if (!rows.length || !gorunurSutunlar.length) {
+            topContainer.innerHTML = "Veri bulunamadı.";
+            botContainer.innerHTML = "Veri bulunamadı.";
+            return;
+        }
+
+        let targetCol = gorunurSutunlar[gorunurSutunlar.length - 3] || gorunurSutunlar[0];
+        for (let i = gorunurSutunlar.length - 1; i >= 0; i--) {
+            let colIdx = gorunurSutunlar[i];
+            let headerName = (basRow[colIdx] || "").toUpperCase();
+            if (chosenMetric === 'VALUES' && headerName.includes('VALUES')) { targetCol = colIdx; break; }
+            if (chosenMetric === 'UNITS' && headerName.includes('UNITS') && !headerName.includes('SHARE')) { targetCol = colIdx; break; }
+            if (chosenMetric === 'SHARE' && headerName.includes('SHARE')) { targetCol = colIdx; break; }
+        }
+
+        let monthName = ayRow[targetCol] || "Dönem";
+        let criteriaName = basRow[targetCol] || chosenMetric;
+
+        let scoredRows = rows.map(r => ({
+            territory: r[0] || 'Merkez',
+            market: r[1] || 'Pazar',
+            product: r[2] || 'Ürün',
+            val: parseFloat(r[targetCol]) || 0
+        }));
+
+        scoredRows.sort((a, b) => b.val - a.val);
+        let top3 = scoredRows.slice(0, 3);
+
+        let filteredForLow = scoredRows.filter(x => x.val > 0);
+        filteredForLow.sort((a, b) => a.val - b.val);
+        let bot3 = filteredForLow.slice(0, 3);
+
+        let topHtml = `<div style="font-size:10px; color:#94a3b8; margin-bottom:5px;">📅 ${monthName} (${criteriaName})</div>`;
+        top3.forEach((item, idx) => {
+            let medals = ['🥇', '🥈', '🥉'];
+            let valFormatted = item.val.toLocaleString('tr-TR', {maximumFractionDigits: (chosenMetric === 'SHARE' ? 2 : 0)});
+            if (chosenMetric === 'SHARE') valFormatted += "%";
+            topHtml += `<div style="margin-bottom:7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${item.product} | ${item.territory}">
+                ${medals[idx]} <b style="color:#fff; font-size:11.5px;">${item.product}</b><br>
+                <span style="color:#94a3b8; font-size:10.5px;">📍 ${item.territory} ➔ <b style="color:#38bdf8; font-size:12px;">${valFormatted}</b></span>
+            </div>`;
+        });
+        topContainer.innerHTML = topHtml;
+
+        let botHtml = `<div style="font-size:10px; color:#94a3b8; margin-bottom:5px;">📅 ${monthName} (${criteriaName})</div>`;
+        if (bot3.length === 0) {
+            botHtml += `<div style="color:#94a3b8; font-size:11px;">Kritik düşüş verisi yok.</div>`;
+        } else {
+            bot3.forEach((item, idx) => {
+                let flags = ['🔻', '⚠️', '📉'];
+                let valFormatted = item.val.toLocaleString('tr-TR', {maximumFractionDigits: (chosenMetric === 'SHARE' ? 2 : 0)});
+                if (chosenMetric === 'SHARE') valFormatted += "%";
+                botHtml += `<div style="margin-bottom:7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${item.product} | ${item.territory}">
+                    ${flags[idx]} <b style="color:#fca5a5; font-size:11.5px;">${item.product}</b><br>
+                    <span style="color:#94a3b8; font-size:10.5px;">📍 ${item.territory} ➔ <b style="color:#f87171; font-size:12px;">${valFormatted}</b></span>
+                </div>`;
+            });
+        }
+        botContainer.innerHTML = botHtml;
+    }
+
+    function sortTable(colIndex, tId) {
+        if (currentSortColumn === colIndex) {
+            currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSortColumn = colIndex;
+            currentSortDirection = 'asc';
+        }
+        filterData();
+    }
+
+    function toggleAll(master) {
+        document.querySelectorAll('.page.active table tbody .row-cb').forEach(cb => cb.checked = master.checked);
+        updateCartBadge();
+    }
+
+    function updateCartBadge() {
+        const selectedCount = document.querySelectorAll('.page.active table tbody .row-cb:checked').length;
+        const badge = document.getElementById('cartBadge');
+        if (badge) {
+            badge.innerText = selectedCount;
+            badge.style.display = selectedCount > 0 ? 'flex' : 'none';
+        }
+    }
+
+    function clearCart() {
+        document.querySelectorAll('.row-cb').forEach(cb => cb.checked = false);
+        updateCartBadge();
+        document.getElementById('cartList').innerHTML = "<div style='text-align:center; padding:30px;'>Sepetiniz boşaltıldı.</div>";
+        document.getElementById('cartModal').style.display = 'none';
+    }
+
+    function openCart() {
+        const selected = document.querySelectorAll('.page.active table tbody .row-cb:checked');
+        const list = document.getElementById('cartList');
+        
+        if(!selected.length) {
+            list.innerHTML = "<div style='text-align:center; padding:30px; color:#64748b;'>Henüz ürün seçilmedi.</div>";
+        } else {
+            let html = "";
+            selected.forEach(cb => {
+                const tr = cb.closest('tr');
+                const product = tr.querySelector('.row-product')?.innerText || 'Ürün';
+                const market = tr.querySelector('.row-market')?.innerText || 'Pazar';
+                
+                html += `<div style="background:#f8fafc; padding:10px; margin-bottom:6px; border-left:4px solid var(--accent); border-radius:4px;">
+                            <div style="font-weight:800; font-size:12px; color:#1e293b;">${product}</div>
+                            <div style="font-size:11px; color:#64748b;">${market}</div>
+                       </div>`;
+            });
+            list.innerHTML = html;
+        }
+        document.getElementById('cartModal').style.display = 'flex';
+    }
+
+    function closeCellDetailModal() {
+        document.getElementById('customCellDetailModal').style.display = 'none';
+    }
+
+    function enableCellClickDetails(table) {
+        if (table.dataset.clickBound) return;
+        table.dataset.clickBound = "true";
+
+        table.addEventListener('click', function(e) {
+            const td = e.target.closest('td');
+            if (!td || td.cellIndex <= 3) return;
+
+            const tr = td.closest('tr');
+            if (!tr) return;
+
+            const territory = tr.cells[1] ? tr.cells[1].innerText.trim() : '';
+            const market = tr.cells[2] ? tr.cells[2].innerText.trim() : '';
+            const product = tr.cells[3] ? tr.cells[3].innerText.trim() : '';
+            const cellValue = td.innerText.trim();
+
+            let prevColIdx = td.cellIndex - 1;
+            let prevValText = "-";
+            if (prevColIdx >= 4 && tr.cells[prevColIdx]) {
+                prevValText = tr.cells[prevColIdx].innerText.trim().replace(/[▲▼]/g, '');
+            }
+
+            let currNum = parseFloat(cellValue.replace(/[▲▼%]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+            let prevNum = parseFloat(prevValText.replace(/[▲▼%]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+            
+            let diff = currNum - prevNum;
+            let pct = prevNum > 0 ? ((diff / prevNum) * 100).toFixed(1) : 0;
+
+            const theadRows = table.querySelectorAll('thead tr');
+            let headerInfo = "In/Out Analizi";
+
+            if (theadRows.length >= 2) {
+                const th1Cells = theadRows[0].querySelectorAll('th');
+                const th2Cells = theadRows[1].querySelectorAll('th');
+                let accumulatedCols = 4; let currentMonth = "";
+                
+                for (let i = 4; i < th1Cells.length; i++) {
+                    let colspan = parseInt(th1Cells[i].getAttribute('colspan')) || 1;
+                    if (td.cellIndex >= accumulatedCols && td.cellIndex < accumulatedCols + colspan) {
+                        currentMonth = th1Cells[i].innerText.trim();
+                        break;
+                    }
+                    accumulatedCols += colspan;
+                }
+                let subHeader = th2Cells[td.cellIndex - 4] ? th2Cells[td.cellIndex - 4].innerText.trim() : '';
+                headerInfo = `${currentMonth} ➔ ${subHeader}`;
+            }
+
+            document.getElementById('modalTerritory').innerText = territory;
+            document.getElementById('modalMarket').innerText = market;
+            document.getElementById('modalProduct').innerText = product;
+            document.getElementById('modalHeaderInfo').innerText = headerInfo;
+            document.getElementById('modalPrevValue').innerText = prevValText;
+            document.getElementById('modalCellValue').innerText = cellValue;
+            
+            const trendBox = document.getElementById('modalTrendBox');
+            if (diff > 0) {
+                trendBox.style.background = "#ecfdf5";
+                trendBox.style.color = "#059669";
+                trendBox.innerHTML = `▲ Büyüme / Giriş (In ➔ Out): +${diff.toLocaleString('tr-TR', {maximumFractionDigits:2})} (+%${pct})`;
+            } else if (diff < 0) {
+                trendBox.style.background = "#fef2f2";
+                trendBox.style.color = "#dc2626";
+                trendBox.innerHTML = `▼ Düşüş / Kayıp (In ➔ Out): ${diff.toLocaleString('tr-TR', {maximumFractionDigits:2})} (%${pct})`;
+            } else {
+                trendBox.style.background = "#f8fafc";
+                trendBox.style.color = "#64748b";
+                trendBox.innerHTML = `◼ Değişim Yok (Nötr)`;
+            }
+
+            document.getElementById('customCellDetailModal').style.display = 'flex';
+        });
+    }
+
+    function filterData() {
+        const q = document.getElementById('globalSearch').value;
+        const start = document.getElementById('dateStart').value;
+        const end = document.getElementById('dateEnd').value;
+        const selT = document.getElementById('comboTerritory').value;
+        const selM = document.getElementById('comboMarket').value;
+        const selP = document.getElementById('comboProduct').value;
+
+        document.getElementById('clearSearchIcon').style.display = q ? 'block' : 'none';
+        
+        window.requestAnimationFrame(() => {
+            render(currentSheet, document.querySelector('.page.active table').id, q, start, end, selT, selM, selP);
+        });
+    }
+
+    function resetAllFilters() {
+        document.getElementById('globalSearch').value = "";
+        document.getElementById('comboTerritory').value = "";
+        document.getElementById('comboMarket').value = "";
+        document.getElementById('comboProduct').value = "";
+        document.getElementById('dateStart').value = "";
+        document.getElementById('dateEnd').value = "";
+        document.getElementById('sidebarMetricSelect').value = "VALUES";
+        document.getElementById('clearSearchIcon').style.display = 'none';
+        currentSortColumn = null;
+        render(currentSheet, document.querySelector('.page.active table').id);
+    }
+
+    function exportFullTableExcel() {
+        const table = document.querySelector('.page.active table');
+        if (!table) return alert("Aktif tablo bulunamadı!");
+
+        const theadRows = table.querySelectorAll('thead tr');
+        const tbodyRows = table.querySelectorAll('tbody tr');
+        if (theadRows.length < 2 || !tbodyRows.length) return alert("Aktarılacak veri bulunamadı!");
+
+        let row1 = `<tr><th rowspan="2" style="background:#1e293b; color:white; text-align:center; font-weight:bold; border:0.5pt solid #cbd5e1; padding:8px;">Territories</th>` +
+                     `<th rowspan="2" style="background:#1e293b; color:white; text-align:center; font-weight:bold; border:0.5pt solid #cbd5e1; padding:8px;">Market</th>` +
+                     `<th rowspan="2" style="background:#1e293b; color:white; text-align:center; font-weight:bold; border:0.5pt solid #cbd5e1; padding:8px;">Products</th>`;
+        
+        let row2 = `<tr>`;
+        const th1Cells = theadRows[0].querySelectorAll('th');
+        const th2Cells = theadRows[1].querySelectorAll('th');
+        const subHeaderColors = ["#3b82f6", "#8b5cf6", "#f59e0b"];
+
+        let th2Cursor = 0;
+        for (let i = 4; i < th1Cells.length; i++) {
+            let th = th1Cells[i];
+            let colspan = parseInt(th.getAttribute('colspan')) || 1;
+            let text = th.innerText.trim();
+
+            if (colspan > 1) {
+                row1 += `<th colspan="${colspan}" style="background:#1e293b; color:white; text-align:center; font-weight:bold; border:0.5pt solid #cbd5e1; padding:8px;">${text}</th>`;
+                for (let c = 0; c < colspan; c++) {
+                    let subText = th2Cells[th2Cursor] ? th2Cells[th2Cursor].innerText.replace(/[\▲\▼]/g, '').trim() : '';
+                    let colorBg = subHeaderColors[c % subHeaderColors.length];
+                    row2 += `<th style="background:${colorBg}; color:white; text-align:center; font-weight:bold; border:0.5pt solid #cbd5e1; padding:6px;">${subText}</th>`;
+                    th2Cursor++;
+                }
+            } else {
+                row1 += `<th rowspan="2" style="background:#1e293b; color:white; text-align:center; font-weight:bold; border:0.5pt solid #cbd5e1; padding:8px;">${text}</th>`;
+            }
+        }
+        row1 += `</tr>`; row2 += `</tr>`;
+        let theadHtml = `<thead>${row1}${row2}</thead>`;
+
+        let tbodyHtml = `<tbody>`;
+        tbodyRows.forEach(tr => {
+            let territory = tr.cells[1] ? tr.cells[1].innerText.trim() : '';
+            let market = tr.cells[2] ? tr.cells[2].innerText.trim() : '';
+            let product = tr.cells[3] ? tr.cells[3].innerText.trim() : '';
+
+            let rowHtml = `<tr>
+                <td style="text-align:left; font-weight:bold; border:0.5pt solid #cbd5e1; padding:6px;">${territory}</td>
+                <td style="text-align:left; border:0.5pt solid #cbd5e1; padding:6px;">${market}</td>
+                <td style="text-align:left; border:0.5pt solid #cbd5e1; padding:6px;">${product}</td>`;
+
+            for (let c = 4; c < tr.cells.length; c++) {
+                let cell = tr.cells[c];
+                if (!cell) continue;
+
+                let rawHtml = cell.innerHTML;
+                let rawText = cell.innerText.trim();
+                
+                let fontColor = "#000000";
+                let arrowSymbol = "";
+
+                let isGreen = rawHtml.includes('text-emerald') || rawHtml.includes('text-green') || rawHtml.includes('fa-caret-up') || rawHtml.includes('fa-arrow-up') || rawText.includes('▲');
+                let isRed = rawHtml.includes('text-red') || rawHtml.includes('text-rose') || rawHtml.includes('fa-caret-down') || rawHtml.includes('fa-arrow-down') || rawText.includes('▼');
+
+                if (isGreen && !isRed) {
+                    fontColor = "#059669";
+                    arrowSymbol = " ▲";
+                } else if (isRed) {
+                    fontColor = "#DC2626";
+                    arrowSymbol = " ▼";
+                }
+
+                let cleanVal = rawText.replace(/[▲▼]/g, '').trim();
+                let finalCellVal = cleanVal + arrowSymbol;
+
+                rowHtml += `<td style="text-align:right; font-weight:700; white-space:nowrap; border:0.5pt solid #cbd5e1; padding:6px; color:${fontColor};">${finalCellVal}</td>`;
+            }
+            rowHtml += `</tr>`;
+            tbodyHtml += rowHtml;
+        });
+        tbodyHtml += `</tbody>`;
+
+        let fullHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><style>table { border-collapse: collapse; font-family: Calibri, sans-serif; font-size: 11pt; }</style></head><body><table>${theadHtml}${tbodyHtml}</table></body></html>`;
+
+        const blob = new Blob(['\ufeff', fullHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `IMS_Tablo_${currentSheet}_${new Date().toLocaleDateString()}.xls`;
+        link.click();
+    }
+
+    function exportSelected() {
+        const table = document.querySelector('.page.active table');
+        if (!table) return alert("Aktif tablo bulunamadı!");
+
+        const selectedCbs = table.querySelectorAll('tbody .row-cb:checked');
+        if (!selectedCbs.length) return alert("Lütfen ürün seçiniz!");
+
+        const theadRows = table.querySelectorAll('thead tr');
+        let row1 = `<tr><th rowspan="2" style="background:#1e293b; color:white; text-align:center; font-weight:bold; border:0.5pt solid #cbd5e1; padding:8px;">Territories</th>` +
+                     `<th rowspan="2" style="background:#1e293b; color:white; text-align:center; font-weight:bold; border:0.5pt solid #cbd5e1; padding:8px;">Market</th>` +
+                     `<th rowspan="2" style="background:#1e293b; color:white; text-align:center; font-weight:bold; border:0.5pt solid #cbd5e1; padding:8px;">Products</th>`;
+        
+        let row2 = `<tr>`;
+        const th1Cells = theadRows[0].querySelectorAll('th');
+        const th2Cells = theadRows[1].querySelectorAll('th');
+        const subHeaderColors = ["#3b82f6", "#8b5cf6", "#f59e0b"];
+
+        let th2Cursor = 0;
+        for (let i = 4; i < th1Cells.length; i++) {
+            let th = th1Cells[i];
+            let colspan = parseInt(th.getAttribute('colspan')) || 1;
+            let text = th.innerText.trim();
+
+            if (colspan > 1) {
+                row1 += `<th colspan="${colspan}" style="background:#1e293b; color:white; text-align:center; font-weight:bold; border:0.5pt solid #cbd5e1; padding:8px;">${text}</th>`;
+                for (let c = 0; c < colspan; c++) {
+                    let subText = th2Cells[th2Cursor] ? th2Cells[th2Cursor].innerText.replace(/[\▲\▼]/g, '').trim() : '';
+                    let colorBg = subHeaderColors[c % subHeaderColors.length];
+                    row2 += `<th style="background:${colorBg}; color:white; text-align:center; font-weight:bold; border:0.5pt solid #cbd5e1; padding:6px;">${subText}</th>`;
+                    th2Cursor++;
+                }
+            } else {
+                row1 += `<th rowspan="2" style="background:#1e293b; color:white; text-align:center; font-weight:bold; border:0.5pt solid #cbd5e1; padding:8px;">${text}</th>`;
+            }
+        }
+        row1 += `</tr>`; row2 += `</tr>`;
+        let theadHtml = `<thead>${row1}${row2}</thead>`;
+
+        let tbodyHtml = `<tbody>`;
+        selectedCbs.forEach(cb => {
+            let tr = cb.closest('tr');
+            if (!tr) return;
+
+            let territory = tr.cells[1] ? tr.cells[1].innerText.trim() : '';
+            let market = tr.cells[2] ? tr.cells[2].innerText.trim() : '';
+            let product = tr.cells[3] ? tr.cells[3].innerText.trim() : '';
+
+            let rowHtml = `<tr>
+                <td style="text-align:left; font-weight:bold; border:0.5pt solid #cbd5e1; padding:6px;">${territory}</td>
+                <td style="text-align:left; border:0.5pt solid #cbd5e1; padding:6px;">${market}</td>
+                <td style="text-align:left; border:0.5pt solid #cbd5e1; padding:6px;">${product}</td>`;
+
+            for (let c = 4; c < tr.cells.length; c++) {
+                let cell = tr.cells[c];
+                if (!cell) continue;
+                let rawText = cell.innerText.trim();
+                
+                let fontColor = "#000000";
+                let arrowSymbol = "";
+
+                if (cell.querySelector('.fa-caret-up') || rawText.includes('▲')) {
+                    fontColor = "#059669";
+                    arrowSymbol = " ▲";
+                } else if (cell.querySelector('.fa-caret-down') || rawText.includes('▼')) {
+                    fontColor = "#DC2626";
+                    arrowSymbol = " ▼";
+                }
+
+                let cleanVal = rawText.replace(/[▲▼]/g, '').trim();
+                let finalCellVal = cleanVal + arrowSymbol;
+                
+                rowHtml += `<td style="text-align:right; font-weight:700; white-space:nowrap; border:0.5pt solid #cbd5e1; padding:6px; color:${fontColor};">${finalCellVal}</td>`;
+            }
+            rowHtml += `</tr>`;
+            tbodyHtml += rowHtml;
+        });
+        tbodyHtml += `</tbody>`;
+
+        let fullHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><style>table { border-collapse: collapse; font-family: Calibri, sans-serif; font-size: 11pt; }</style></head><body><table>${theadHtml}${tbodyHtml}</table></body></html>`;
+
+        const blob = new Blob(['\ufeff', fullHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `IMS_Secilenler_${new Date().toLocaleDateString()}.xls`;
+        link.click();
+    }
+
+    function exportPDFReport() {
+        try {
+            if (!window.jspdf) {
+                alert("Hata: window.jspdf nesnesi bulunamadı!");
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('l', 'mm', 'a4');
+
+            doc.setFillColor(30, 41, 59);
+            doc.rect(0, 0, 297, 20, 'F');
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(12);
+            doc.text("IMS COMMAND CENTER - KURUMSAL ANALIZ RAPORU", 14, 13);
+
+            let sheetTitle = (typeof currentSheet !== 'undefined' && currentSheet) ? String(currentSheet).toUpperCase() : 'GENEL';
+            doc.setFontSize(8.5);
+            doc.text(`Tarih: ${new Date().toLocaleDateString()} | Sekme: ${sheetTitle}`, 195, 13);
+
+            const table = document.querySelector('.page.active table');
+            if (!table) {
+                alert("Hata: Aktif tablo bulunamadı!");
+                return;
+            }
+
+            const selectedCbs = table.querySelectorAll('tbody .row-cb:checked');
+            const targetRows = selectedCbs.length > 0 ? Array.from(selectedCbs).map(cb => cb.closest('tr')) : table.querySelectorAll('tbody tr');
+
+            if (targetRows.length === 0) {
+                alert("Raporlanacak veri satırı bulunamadı!");
+                return;
+            }
+
+            let totalCols = targetRows[0].cells.length - 1;
+            let startY = 28;
+            let startX = 14;
+            let availableWidth = 269; 
+            let dynamicColWidth = availableWidth / totalCols;
+
+            let headers = [];
+            for (let i = 0; i < totalCols; i++) {
+                if (i === 0) headers.push("Territory");
+                else if (i === 1) headers.push("Market");
+                else if (i === 2) headers.push("Product");
+                else {
+                    let mod = (i - 3) % 3;
+                    if (mod === 0) headers.push("VAL");
+                    else if (mod === 1) headers.push("UNIT");
+                    else headers.push("MS %");
+                }
+            }
+
+            doc.setFillColor(30, 41, 59);
+            doc.rect(startX, startY, availableWidth, 7, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(6);
+            doc.setFont("helvetica", "bold");
+
+            let currentX = startX;
+            for (let i = 0; i < totalCols; i++) {
+                let hText = headers[i] || `K${i+1}`;
+                doc.text(hText, currentX + 0.8, startY + 4.5);
+                currentX += dynamicColWidth;
+            }
+
+            let currentY = startY + 7;
+
+            doc.setFont("helvetica", "normal");
+            targetRows.forEach((tr, rowIndex) => {
+                if (!tr) return;
+                if (currentY > 190) {
+                    doc.addPage();
+                    currentY = 20;
+                }
+
+                let rowCells = [];
+                for (let c = 1; c < tr.cells.length; c++) {
+                    let cellText = tr.cells[c] ? tr.cells[c].innerText : '';
+                    rowCells.push(String(cellText).replace(/[\r\n]+/g, " ").trim());
+                }
+
+                if (rowIndex % 2 === 0) {
+                    doc.setFillColor(248, 250, 252);
+                    doc.rect(startX, currentY, availableWidth, 6.5, 'F');
+                }
+
+                let cellX = startX;
+                rowCells.forEach((text, cIdx) => {
+                    doc.setTextColor(15, 23, 42);
+                    
+                    let safeText = text ? String(text) : "";
+                    let maxLen = dynamicColWidth < 18 ? 9 : 16;
+                    let displayVal = safeText.length > maxLen ? safeText.substring(0, maxLen) + "." : safeText;
+
+                    if (cIdx >= 3) {
+                        if (safeText.includes('▲')) {
+                            doc.setTextColor(5, 150, 105); 
+                        } else if (safeText.includes('▼')) {
+                            doc.setTextColor(220, 38, 38); 
+                        }
+                    }
+
+                    doc.text(String(displayVal), cellX + 0.8, currentY + 4.5);
+                    cellX += dynamicColWidth;
+                });
+
+                doc.setDrawColor(203, 213, 225);
+                doc.rect(startX, currentY, availableWidth, 6.5);
+
+                currentY += 6.5;
+            });
+
+            let sheetName = (typeof currentSheet !== 'undefined' && currentSheet) ? String(currentSheet) : 'Rapor';
+            doc.save(`IMS_Rapor_${sheetName}_${new Date().toLocaleDateString()}.pdf`);
+
+        } catch (error) {
+            alert("PDF Hatası: " + error.message);
+        }
+    }
+
+    function populateDateSelects(sName) {
+        let data = db[sName];
+        if (!data) return;
+
+        let ayRow = data[2]; 
+        if (!ayRow) return; 
+
+        let hamAylar = ayRow.slice(3); 
+        let duzgunAylar = []; let sonDeger = "";
+
+        hamAylar.forEach(ay => {
+            if (ay) sonDeger = ay;
+            duzgunAylar.push(sonDeger);
+        });
+
+        let uniqueAylar = [...new Set(duzgunAylar.filter(a => a))]; 
+        const startSelect = document.getElementById('dateStart');
+        const endSelect = document.getElementById('dateEnd');
+        
+        startSelect.innerHTML = '<option value="">Başlangıç</option>';
+        endSelect.innerHTML = '<option value="">Bitiş</option>';
+
+        uniqueAylar.forEach(ay => {
+            startSelect.innerHTML += `<option value="${ay}">${ay}</option>`;
+            endSelect.innerHTML += `<option value="${ay}">${ay}</option>`;
+        });
+    }
+
+    function showTrendAnalysisModal(territory, market, product, periodLabel, inVal, outVal, isPercentage) {
+        let modal = document.getElementById('customCellDetailModal');
+        if (!modal) return;
+
+        document.getElementById('modalTerritory').innerText = territory || '-';
+        document.getElementById('modalMarket').innerText = market || '-';
+        document.getElementById('modalProduct').innerText = product || '-';
+        document.getElementById('modalHeaderInfo').innerText = periodLabel || '-';
+
+        let unitSuffix = isPercentage ? " %" : "";
+        document.getElementById('modalPrevValue').innerText = inVal.toLocaleString('tr-TR', {minimumFractionDigits: isPercentage?3:2}) + unitSuffix;
+        document.getElementById('modalCellValue').innerText = outVal.toLocaleString('tr-TR', {minimumFractionDigits: isPercentage?3:2}) + unitSuffix;
+
+        let diff = outVal - inVal;
+        let percentGrowth = inVal === 0 ? (outVal > 0 ? 100 : (outVal < 0 ? -100 : 0)) : (diff / Math.abs(inVal)) * 100;
+        let isPositive = diff >= 0;
+
+        let trendBox = document.getElementById('modalTrendBox');
+        trendBox.style.cssText = isPositive ? 
+            "margin-top:10px; padding:8px; border-radius:6px; text-align:center; font-weight:bold; font-size:12px; background:#ecfdf5; color:#059669; border:1px solid #10b981;" : 
+            "margin-top:10px; padding:8px; border-radius:6px; text-align:center; font-weight:bold; font-size:12px; background:#fef2f2; color:#dc2626; border:1px solid #ef4444;";
+        
+        trendBox.innerHTML = `${isPositive ? "▲" : "▼"} Fark (In &rarr; Out): ${diff > 0 ? '+' : ''}${diff.toFixed(3)}${unitSuffix} (%${percentGrowth.toFixed(1)})`;
+
+        modal.style.display = 'flex';
+    }
+
+    document.addEventListener('click', function(e) {
+        if (e.target.type === 'checkbox' || e.target.closest('input[type="checkbox"]')) {
+            return; 
+        }
+
+        let td = e.target.closest('tbody td');
+        if (!td) return;
+
+        let tr = td.closest('tr');
+        if (!tr) return;
+
+        let table = tr.closest('table');
+        if (!table || !table.tHead) return;
+
+        let allCells = Array.from(tr.children);
+        let cellIndex = allCells.indexOf(td);
+        
+        if (cellIndex < 4) return;
+
+        e.stopImmediatePropagation();
+        e.preventDefault();
+
+        let territory = tr.cells[1] ? tr.cells[1].innerText.trim() : '';
+        let market = tr.cells[2] ? tr.cells[2].innerText.trim() : '';
+        let product = tr.cells[3] ? tr.cells[3].innerText.trim() : '';
+
+        let thRow2 = table.tHead.rows.length > 1 ? table.tHead.rows[1] : null;
+        let currentMetricName = thRow2 && thRow2.cells[cellIndex] ? thRow2.cells[cellIndex].innerText.replace(/[\▲\▼]/g, '').trim().toUpperCase() : "";
+
+        let rawOutText = td.innerText.trim();
+        let isPercentage = rawOutText.includes('%');
+
+        if (!currentMetricName || currentMetricName.includes('2026')) {
+            if (isPercentage) currentMetricName = "UNIT MARKET SHARE";
+            else if (cellIndex % 3 === 1) currentMetricName = "VALUES REPORT";
+            else if (cellIndex % 3 === 2) currentMetricName = "UNITS REPORT";
+            else currentMetricName = "UNIT MARKET SHARE";
+        }
+
+        let targetPrevCellIndex = cellIndex - 3;
+        if (targetPrevCellIndex < 4) {
+            alert("En sol sütundaki ilk dönem için önceki ay verisi bulunmuyor.");
+            return;
+        }
+
+        let prevTd = allCells[targetPrevCellIndex];
+        if (!prevTd) {
+            alert("Önceki döneme ait hücre bulunamadı!");
+            return;
+        }
+
+        let rawInText = prevTd.innerText.trim();
+
+        let outVal = parseFloat(rawOutText.replace(/[▲▼]/g, '').replace(/\./g, '').replace(',', '.').replace('%', '')) || 0;
+        let inVal = parseFloat(rawInText.replace(/[▲▼]/g, '').replace(/\./g, '').replace(',', '.').replace('%', '')) || 0;
+
+        let periodLabel = `${currentMetricName} (Önceki Dönem Kıyaslaması)`;
+
+        showTrendAnalysisModal(territory, market, product, periodLabel, inVal, outVal, isPercentage);
+    }, true);
+</script>
+</body>
+</html>

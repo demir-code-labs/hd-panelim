@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>İTS Yönetim ve Stok Paneli</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+        }
+        /* Sekme (Tab) Menü Tasarımı */
+        .tab-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 25px;
+        }
+        .tab-btn {
+            background-color: #e4e6eb;
+            border: none;
+            padding: 12px 25px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #4b4f56;
+        }
+        .tab-btn:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+        .tab-btn:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+        .tab-btn.active {
+            background-color: #0056b3;
+            color: white;
+        }
+
+        /* Sekme İçerik Alanları */
+        .tab-content {
+            display: none;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        /* 1. Sayfa: Kart Tasarımı */
+        .card-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 70vh;
+        }
+        .card {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 440px;
+        }
+        h2 { color: #0056b3; margin-bottom: 10px; }
+        p { color: #666; font-size: 14px; margin-bottom: 25px; }
+        .btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s;
+            font-weight: bold;
+        }
+        .btn:hover { background-color: #0056b3; }
+        
+        /* Şık Durum Rozeti (Badge) Tasarımı */
+        .status-badge {
+            margin-top: 22px;
+            font-size: 13px;
+            color: #555;
+            background-color: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px dashed #cbd5e1;
+            display: inline-block;
+            width: 90%;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        /* Özel Güvenlik Modal (Pencere) Tasarımı */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-box {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 380px;
+            text-align: center;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.3);
+        }
+        .modal-box h3 { color: #d9534f; margin-top: 0; }
+        .modal-input {
+            width: 90%;
+            padding: 10px;
+            margin: 15px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+            text-align: center;
+        }
+        .modal-btn-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .modal-btn-onay {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .modal-btn-iptal {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* 2. Sayfa: Tablo ve Veri Yönetimi Paneli */
+        .data-panel {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+        .action-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            font-size: 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        .action-btn:hover { background-color: #0056b3; }
+        
+        .excel-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            font-size: 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        .excel-btn:hover { background-color: #218838; }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        th, td {
+            border: 1px solid #dcdcdc;
+            padding: 10px 12px;
+            text-align: center;
+            vertical-align: middle;
+        }
+        th {
+            background-color: #0A192F;
+            color: #FFFFFF;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        
+        .zorunlu-Hucre {
+            background-color: #FFFDE7 !important;
+        }
+        .zorunlu-Hucre:focus {
+            background-color: #FFF9C4 !important;
+            outline: 2px solid #007bff;
+        }
+
+        .zorunlu-baslik {
+            color: #ffc107;
+        }
+        .istege-bagli-baslik {
+            color: #b0bec5;
+            font-weight: normal;
+        }
+
+        td[contenteditable="true"] {
+            cursor: text;
+            min-width: 120px;
+            word-break: break-word;
+        }
+        
+        input.table-input {
+            width: 95%;
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 13px;
+            text-align: center;
+        }
+        input.table-input:focus {
+            outline: 2px solid #007bff;
+        }
+
+        tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+        .del-row-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .del-row-btn:hover { background-color: #c82333; }
+    </style>
+</head>
+<body>
+
+    <!-- Üst Sekme Geçiş Butonları -->
+    <div class="tab-container">
+        <button class="tab-btn active" onclick="sekmeDegis(event, 'sayfa1')">1. İTS Hızlı Giriş</button>
+        <button class="tab-btn" onclick="sekmeDegis(event, 'sayfa2')">2. Stok & Excel Raporları</button>
+    </div>
+
+    <!-- 1. SAYFA: İTS Giriş Modülü -->
+    <div id="sayfa1" class="tab-content active">
+        <div class="card-wrapper">
+            <div class="card">
+                <h2>İTS Otomatik Giriş</h2>
+                <p>GLN: <b id="maskelenmisGln">869***********000</b></p>
+                <button class="btn" onclick="yetkiKontrolPenceresiAc()">İTS Web Sayfasını Aç</button>
+                <div class="status-badge" id="mesaj">📌 GLN Hafızaya Alınmaya Hazır</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GÜVENLİK DUVARI MODAL PENCERESİ -->
+    <div class="modal-overlay" id="guvenlikModal">
+        <div class="modal-box">
+            <h3>🔒 Bilgisayar / Kullanıcı Doğrulama</h3>
+            <p style="font-size: 13px; color: #555;" id="modalAciklama">Bu bilgisayarı kullanan yetkili adını giriniz (Bu işlem bir defaya mahsus hafızaya alınacaktır):</p>
+            <input type="text" id="yetkiliAdiInput" class="modal-input" placeholder="Örn: Adınız Soyadınız">
+            <div class="modal-btn-group">
+                <button class="modal-btn-onay" onclick="yetkiyiDogrulaVeKaydet()">Kaydet & Devam Et</button>
+                <button class="modal-btn-iptal" onclick="guvenlikModaliniKapat()">İptal</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. SAYFA: Akıllı Stok Raporu ve Renkli Excel Modülü -->
+    <div id="sayfa2" class="tab-content">
+        <div class="data-panel">
+            <div class="panel-header">
+                <h2 style="margin:0; color:#0A192F;">İTS Stok Hareketleri Takip Listesi</h2>
+                <div class="btn-group">
+                    <button class="action-btn" onclick="satirEkle()">➕ Yeni Satır Ekle</button>
+                    <button class="excel-btn" onclick="renkliExcelDisaAktar()">📥 Excel'e Aktar</button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table id="stokTablosu">
+                    <thead>
+                        <tr>
+                            <th>BARKOD <span class="zorunlu-baslik">*</span></th>
+                            <th>SERİ NO <span class="zorunlu-baslik">*</span></th>
+                            <th>NO / UZUN KOD <span class="istege-bagli-baslik">(İsteğe Bağlı)</span></th>
+                            <th>ÜRÜN ADI <span class="zorunlu-baslik">*</span></th>
+                            <th>DEPO ADI <span class="zorunlu-baslik">*</span></th>
+                            <th>MİAD <span class="zorunlu-baslik">*</span></th>
+                            <th>DEPO ALIŞ TARİHİ <span class="zorunlu-baslik">*</span></th>
+                            <th>BİZDEN ÇIKIŞ TARİHİ <span class="zorunlu-baslik">*</span></th>
+                            <th>DEPO ALIM FİYATI <span class="zorunlu-baslik">*</span></th>
+                            <th>PARTİ NO <span class="zorunlu-baslik">*</span></th>
+                            <th class="islem-kolonu">İŞLEM</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabloGovde">
+                        <tr>
+                            <td contenteditable="true" class="zorunlu-Hucre"></td>
+                            <td contenteditable="true" class="zorunlu-Hucre"></td>
+                            <td contenteditable="true"></td>
+                            <td contenteditable="true" class="zorunlu-Hucre"></td>
+                            <td contenteditable="true" class="zorunlu-Hucre"></td>
+                            <td><input type="date" class="table-input zorunlu-Hucre"></td>
+                            <td><input type="date" class="table-input zorunlu-Hucre"></td>
+                            <td><input type="date" class="table-input zorunlu-Hucre"></td>
+                            <td><input type="number" step="0.01" class="table-input zorunlu-Hucre" value=""></td>
+                            <td contenteditable="true" class="zorunlu-Hucre"></td>
+                            <td class="islem-kolonu"><button class="del-row-btn" onclick="satirSil(this)">Sil</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function sekmeDegis(evt, sayfaId) {
+            let contents = document.getElementsByClassName("tab-content");
+            for (let i = 0; i < contents.length; i++) {
+                contents[i].classList.remove("active");
+            }
+            let buttons = document.getElementsByClassName("tab-btn");
+            for (let i = 0; i < buttons.length; i++) {
+                buttons[i].classList.remove("active");
+            }
+            document.getElementById(sayfaId).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+
+        const yetkiliListesi = ["H.Demir", "h.demir", "Admin", "Ahmet", "Mehmet"];
+
+        function yetkiKontrolPenceresiAc() {
+            let kayitliKullanici = localStorage.getItem("its_yetkili_kullanici");
+
+            if (kayitliKullanici && yetkiliListesi.includes(kayitliKullanici)) {
+                itsGirisYapProseduru(kayitliKullanici);
+            } else {
+                document.getElementById("guvenlikModal").style.display = "flex";
+                document.getElementById("yetkiliAdiInput").value = "";
+                document.getElementById("yetkiliAdiInput").focus();
+            }
+        }
+
+        function guvenlikModaliniKapat() {
+            document.getElementById("guvenlikModal").style.display = "none";
+        }
+
+        function yetkiyiDogrulaVeKaydet() {
+            let girilenDeger = document.getElementById("yetkiliAdiInput").value.trim();
+
+            if (yetkiliListesi.includes(girilenDeger)) {
+                localStorage.setItem("its_yetkili_kullanici", girilenDeger);
+                guvenlikModaliniKapat();
+                itsGirisYapProseduru(girilenDeger);
+            } else {
+                alert("❌ Yetkisiz Erişim! Bu bilgisayarda tanımlı olmayan kullanıcı.");
+                document.getElementById("yetkiliAdiInput").focus();
+            }
+        }
+
+        function itsGirisYapProseduru(kullaniciAdi) {
+            const tamGlnKodu = "86997830000110000"; 
+
+            alert(`Hoş geldiniz ${kullaniciAdi}! İTS sayfası açılınca bir kez 'TAB' tuşuna basın ve ardından 'Ctrl + V' ile GLN'yi yapıştırın.`);
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(tamGlnKodu).then(function() {
+                    guncelleBasariMesaji(kullaniciAdi);
+                }).catch(function(err) {
+                    fallbackKopyala(tamGlnKodu, kullaniciAdi);
+                });
+            } else {
+                fallbackKopyala(tamGlnKodu, kullaniciAdi);
+            }
+
+            window.open("https://paydas.its.gov.tr/hesap_yonetimi/giris", "_blank");
+        }
+
+        function guncelleBasariMesaji(kullaniciAdi) {
+            let mesajDiv = document.getElementById("mesaj");
+            mesajDiv.innerHTML = `✔ ${kullaniciAdi} için GLN Kopyalandı & İTS Açıldı!`;
+            mesajDiv.style.backgroundColor = "#e6f4ea";
+            mesajDiv.style.color = "#137333";
+            mesajDiv.style.borderColor = "#ceead6";
+        }
+
+        function fallbackKopyala(metin, kullaniciAdi) {
+            let textArea = document.createElement("textarea");
+            textArea.value = metin;
+            textArea.style.position = "fixed";
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.opacity = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                let basarili = document.execCommand('copy');
+                if (basarili) {
+                    guncelleBasariMesaji(kullaniciAdi);
+                } else {
+                    let mesajDiv = document.getElementById("mesaj");
+                    mesajDiv.innerText = "⚠ Kopyalanamadı, lütfen manuel yapıştırın.";
+                }
+            } catch (err) {
+                let mesajDiv = document.getElementById("mesaj");
+                mesajDiv.innerText = "⚠ Kopyalama hatası!";
+            }
+
+            document.body.removeChild(textArea);
+        }
+
+        function satirEkle() {
+            let tbody = document.getElementById("tabloGovde");
+            let yeniSatir = document.createElement("tr");
+            
+            yeniSatir.innerHTML = `
+                <td contenteditable="true" class="zorunlu-Hucre"></td>
+                <td contenteditable="true" class="zorunlu-Hucre"></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true" class="zorunlu-Hucre"></td>
+                <td contenteditable="true" class="zorunlu-Hucre"></td>
+                <td><input type="date" class="table-input zorunlu-Hucre"></td>
+                <td><input type="date" class="table-input zorunlu-Hucre"></td>
+                <td><input type="date" class="table-input zorunlu-Hucre"></td>
+                <td><input type="number" step="0.01" class="table-input zorunlu-Hucre" value=""></td>
+                <td contenteditable="true" class="zorunlu-Hucre"></td>
+                <td class="islem-kolonu"><button class="del-row-btn" onclick="satirSil(this)">Sil</button></td>
+            `;
+            tbody.appendChild(yeniSatir);
+        }
+
+        function satirSil(buton) {
+            let satir = buton.parentNode.parentNode;
+            satir.parentNode.removeChild(satir);
+        }
+
+        function renkliExcelDisaAktar() {
+            let tbody = document.getElementById("tabloGovde");
+            let rows = tbody.querySelectorAll("tr");
+
+            if (rows.length === 0) {
+                alert("⚠ Tabloda dışa aktarılacak veri bulunamadı.");
+                return;
+            }
+
+            let zorunluIndeksler = [0, 1, 3, 4, 5, 6, 7, 8, 9];
+            let sutunAdlari = ["BARKOD", "SERİ NO", "NO / UZUN KOD", "ÜRÜN ADI", "DEPO ADI", "MİAD", "DEPO ALIŞ TARİHİ", "BİZDEN ÇIKIŞ TARİHİ", "DEPO ALIM FİYATI", "PARTİ NO"];
+
+            // 1. Alan Kontrolleri
+            for (let i = 0; i < rows.length; i++) {
+                let tds = rows[i].querySelectorAll("td");
+                for (let j = 0; j < zorunluIndeksler.length; j++) {
+                    let colIdx = zorunluIndeksler[j];
+                    let cell = tds[colIdx];
+                    let deger = "";
+
+                    let input = cell.querySelector("input");
+                    if (input) {
+                        deger = input.value.trim();
+                    } else {
+                        deger = cell.innerText.trim();
+                    }
+
+                    if (deger === "") {
+                        alert(`❌ Eksik Veri! ${i + 1}. satırdaki "${sutunAdlari[colIdx]}" alanı zorunludur ve boş bırakılamaz.`);
+                        if (input) { input.focus(); } else { cell.focus(); }
+                        return;
+                    }
+                }
+            }
+
+            // 2. Güvenli Tablo Klonlama ve Değer Senkronizasyonu
+            let orijinalTablo = document.getElementById("stokTablosu");
+            let kopyaTablo = orijinalTablo.cloneNode(true);
+
+            // Önce input içindeki güncel değerleri klon tablonun hücre metinlerine aktaralım
+            let kopyaTrs = kopyaTablo.querySelectorAll("tbody tr");
+            let orijinalTrs = orijinalTablo.querySelectorAll("tbody tr");
+
+            kopyaTrs.forEach((kopyaTr, rIdx) => {
+                let orijinalTr = orijinalTrs[rIdx];
+                if (!orijinalTr) return;
+
+                let kopyaTds = kopyaTr.querySelectorAll("td");
+                let orijinalTds = orijinalTr.querySelectorAll("td");
+
+                kopyaTds.forEach((td, cIdx) => {
+                    let orijinalTd = orijinalTds[cIdx];
+                    if (!orijinalTd) return;
+
+                    let input = orijinalTd.querySelector("input");
+                    if (input) {
+                        td.innerText = input.value;
+                    }
+                });
+            });
+
+            // 3. İŞLEM sütununu her satırdan ve başlıktan güvenli bir şekilde temizle
+            let islemIndex = -1;
+            let headers = kopyaTablo.querySelectorAll("thead th");
+            headers.forEach((th, idx) => {
+                if (th.classList.contains("islem-kolonu") || th.innerText.includes("İŞLEM")) {
+                    islemIndex = idx;
+                }
+            });
+
+            if (islemIndex !== -1) {
+                kopyaTablo.querySelectorAll("tr").forEach(tr => {
+                    if (tr.cells[islemIndex]) {
+                        tr.deleteCell(islemIndex);
+                    }
+                });
+            }
+
+            // Yıldızları ve açıklamaları başlıktan temizle
+            kopyaTablo.querySelectorAll("thead th").forEach(th => {
+                th.innerHTML = th.innerText.replace("*", "").replace("(İsteğe Bağlı)", "").trim();
+            });
+
+            // 4. Excel Belgesi HTML Şablonu Oluşturma
+            let tabloHTML = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            tabloHTML += '<head><meta charset="UTF-8"><style>';
+            tabloHTML += 'table { border-collapse: collapse; width: 100%; font-family: Segoe UI, Tahoma, sans-serif; font-size: 11pt; }';
+            tabloHTML += 'th { background-color: #0A192F; color: #FFFFFF; font-weight: bold; border: 1px solid #000000; text-align: center; padding: 8px; }';
+            tabloHTML += 'td { border: 1px solid #CCCCCC; text-align: center; padding: 6px; vertical-align: middle; mso-number-format:"\\@"; }';
+            tabloHTML += 'tr:nth-child(even) { background-color: #F9FAFB; }';
+            tabloHTML += '</style></head><body><table>';
+            tabloHTML += kopyaTablo.innerHTML;
+            tabloHTML += '</table></body></html>';
+
+            // 5. İndirme Tetikleyicisi
+            let blob = new Blob([tabloHTML], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+            let url = URL.createObjectURL(blob);
+            let a = document.createElement('a');
+            a.href = url;
+            a.download = 'ITS_Stok_Hareketleri.xls';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+        }
+    </script>
+</body>
+</html>

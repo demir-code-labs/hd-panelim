@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧿 MATRİX | PHARMA V11.1 DIAMOND FINAL</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #f1f5f9; --card: #ffffff; --accent: #4f46e5;
+            --success: #10b981; --warning: #f59e0b; --text: #1e293b;
+            --border: #e2e8f0; --secondary: #64748b; --danger: #ef4444;
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; }
+        .container { max-width: 1550px; margin: auto; }
+        .calculator-card { background: var(--card); border-radius: 24px; padding: 25px; border: 1px solid var(--border); box-shadow: 0 20px 40px rgba(0,0,0,0.06); }
+        .tab-wrapper { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid var(--bg); padding-bottom: 15px; }
+        
+        .tabs { display: flex; gap: 8px; padding: 5px; background: #e2e8f0; border-radius: 14px; }
+        .tab-btn { padding: 10px 18px; border-radius: 10px; border: none; cursor: pointer; font-weight: 700; font-size: 12px; transition: 0.3s; display: flex; align-items: center; gap: 8px; background: #cbd5e1; color: #475569; }
+        .tab-btn[data-tab="calc_page"].active { background: #4f46e5; color: white; }
+        .tab-btn[data-tab="assistant_page"].active { background: #f59e0b; color: white; }
+        .tab-btn[data-tab="list_page"].active { background: #0ea5e9; color: white; }
+
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        .btn-export { width: 42px; height: 42px; border-radius: 10px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: white; transition: 0.3s; }
+        
+        .form-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+        label { display: block; font-size: 9px; font-weight: 800; color: var(--secondary); margin-bottom: 5px; text-transform: uppercase; }
+        input, textarea { width: 100%; background: #fff; border: 1.5px solid var(--border); padding: 10px; border-radius: 10px; color: var(--text); font-weight: 600; outline: none; box-sizing: border-box; font-size: 13px; }
+        
+        .search-container { position: relative; margin-bottom: 15px; display: flex; gap: 10px; align-items: center; }
+        .search-wrapper { position: relative; flex: 1; }
+        .search-wrapper i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--secondary); }
+        .search-input { padding-left: 40px !important; border-radius: 15px !important; height: 45px; border: 2px solid var(--border) !important; }
+
+        .summary-container { grid-column: span 6; display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin: 15px 0; }
+        .summary-box { padding: 12px; border-radius: 14px; border: 1px solid var(--border); background: #fff; text-align: center; border-left: 5px solid var(--accent); }
+        .summary-box span { display: block; font-size: 8px; font-weight: 800; color: var(--secondary); text-transform: uppercase; margin-bottom: 2px; }
+        .summary-box b { font-size: 14px; color: var(--text); font-weight: 800; }
+
+        .btn-main { width: auto; min-width: 220px; border: none; padding: 12px 25px; border-radius: 12px; font-weight: 800; cursor: pointer; font-size: 13px; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn-save { background: var(--success); color: white; }
+        .btn-update { background: var(--warning); color: white; }
+        .btn-clear-asst { background: var(--danger); color: white; width: 45px; height: 45px; border-radius: 12px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background: #f8fafc; padding: 12px; font-size: 9px; color: var(--secondary); text-align: left; text-transform: uppercase; border-bottom: 2px solid var(--border); }
+        td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 12px; }
+        .badge-id { font-family: monospace; background: #e2e8f0; padding: 2px 6px; border-radius: 5px; font-size: 10px; font-weight: 700; }
+        .icon-btn { width: 35px; height: 35px; border-radius: 10px; border: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; margin-right: 5px; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+		<h2><i class="fas fa-calculator"></i> MF <span style="color:#60a5fa">KAMPANYA</span></h2>
+		<p>| PHARMA V11.1 DIAMOND FINAL</p>
+		<div class="calculator-card">
+        <div class="tab-wrapper">
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="calc_page" onclick="openTab(event, 'calc_page')"><i class="fas fa-calculator"></i> HESAPLAMA</button>
+                <button class="tab-btn" data-tab="assistant_page" onclick="openTab(event, 'assistant_page')"><i class="fas fa-magic"></i> ASİSTAN</button>
+                <button class="tab-btn" data-tab="list_page" onclick="openTab(event, 'list_page')"><i class="fas fa-history"></i> ARŞİV</button>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-export" style="background:#1d6f42" onclick="exportToExcel()"><i class="fas fa-file-excel"></i></button>
+                <button class="btn-export" style="background:#e11d48" onclick="exportToPDF()"><i class="fas fa-file-pdf"></i></button>
+            </div>
+        </div>
+
+        <div id="calc_page" class="tab-content active">
+            <div class="form-grid">
+                <input type="hidden" id="edit_index" value="-1">
+                <div class="input-group"><label>İŞLEM ID</label><input type="text" id="p_id" readonly></div>
+                <div class="input-group"><label>TARİH</label><input type="date" id="p_date"></div>
+                <div class="input-group"><label>DEPO ADI</label><input type="text" id="p_depo" onblur="formatProper(this)"></div>
+                <div class="input-group"><label>ŞUBE / ŞEHİR</label><input type="text" id="p_depo_city" onblur="formatProper(this)"></div>
+                <div class="input-group"><label>MÜŞTERİ ADI</label><input type="text" id="p_customer" onblur="formatProper(this)"></div>
+                <div class="input-group"><label>İLÇE / İL</label><input type="text" id="p_cust_loc" onblur="formatProper(this)"></div>
+
+                <div style="grid-column: span 2"><label>ÜRÜN ADI</label><input type="text" id="p_name" onblur="formatProper(this)"></div>
+                <div class="input-group"><label>İ.S.F. (BİRİM)</label><input type="number" id="p_price" placeholder="0.00" oninput="doCalc()"></div>
+                <div class="input-group"><label>ANA MAL</label><input type="number" id="p_qty" value="1" oninput="doCalc()"></div>
+                <div class="input-group"><label>MF ADETİ</label><input type="number" id="p_mf" value="0" oninput="doCalc()"></div>
+                <div class="input-group"><label>KKİ (%)</label><input type="number" id="p_kki" value="0" oninput="doCalc()"></div>
+                <div class="input-group"><label>KDV (%)</label><input type="number" id="p_tax" value="20" oninput="doCalc()"></div>
+                <div style="grid-column: span 2"><label>TOPLAM STOK GÜCÜ</label><input type="text" id="p_stok" readonly style="color:var(--accent); font-weight:800"></div>
+
+                <div class="summary-container">
+                    <div class="summary-box" style="border-left-color:#3b82f6"><span>BİRİM (NET)</span><b id="res_net">0.00 TL</b></div>
+                    <div class="summary-box" style="border-left-color:#3b82f6"><span>KKİ SONRASI</span><b id="res_kki">0.00 TL</b></div>
+                    <div class="summary-box"><span>MF ORANI</span><b id="res_ratio">%0</b></div>
+                    <div class="summary-box" style="border-left-color:var(--success)"><span>MALİYET (KDV'Lİ)</span><b id="res_taxed">0.00 TL</b></div>
+                    <div class="summary-box"><span>KDV TUTARI</span><b id="res_kdv">0.00 TL</b></div>
+                    <div class="summary-box" style="border-left-color:var(--success)"><span>FATURA TOPLAM</span><b id="res_grand">0.00 TL</b></div>
+                </div>
+
+                <div style="grid-column: span 6; display:flex; justify-content:center; gap:15px;">
+                    <button class="btn-main btn-save" id="btn_save" onclick="saveData()">
+                        <i class="fas fa-check-circle"></i> <span>KAYDET VE ARŞİVE EKLE</span>
+                    </button>
+                    <button class="btn-main" onclick="fullReset()" style="background:var(--secondary); color:white;">
+                        <i class="fas fa-plus"></i> <span>YENİ İŞLEM</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="assistant_page" class="tab-content">
+            <textarea id="bulk_input" placeholder="Excel verilerini buraya yapıştırın..." oninput="parseAssistant()" style="width:100%; height:100px; border:2px dashed var(--warning); margin-bottom:15px;"></textarea>
+            <div class="search-container">
+                <div class="search-wrapper">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="asst_search" class="search-input" placeholder="Asistan hafızasında ara (Ürün veya KKİ)..." oninput="filterAssistant()">
+                </div>
+                <button class="btn-clear-asst" onclick="clearAssistant()" title="Hafızayı Sıfırla"><i class="fas fa-trash-alt"></i></button>
+            </div>
+            <div id="assistant_results" style="max-height: 400px; overflow-y: auto; border-radius: 12px;"></div>
+        </div>
+
+        <div id="list_page" class="tab-content">
+            <div class="search-container">
+                <div class="search-wrapper">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="archive_search" class="search-input" placeholder="Arşivde ara (Depo, Müşteri veya Ürün)..." oninput="renderTable()">
+                </div>
+            </div>
+            <div style="max-height: 500px; overflow-y: auto; border-radius: 12px;">
+                <table id="main_table">
+                    <thead>
+                        <tr>
+                            <th>ID</th><th>DEPO</th><th>MÜŞTERİ</th><th>ÜRÜN</th><th>MİKTAR</th><th>B.MALİYET</th><th>İŞLEM</th>
+                        </tr>
+                    </thead>
+                    <tbody id="result_body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let savedData = [];
+    let assistantData = [];
+
+    window.onload = () => { 
+        generateID(); 
+        document.getElementById('p_date').valueAsDate = new Date();
+        const cached = localStorage.getItem('matrix_asst_data');
+        if(cached) { assistantData = JSON.parse(cached); filterAssistant(); }
+    };
+
+    function fixTR(text) {
+        if(!text) return "";
+        const map = {'ç':'c','Ç':'C','ğ':'g','Ğ':'G','ı':'i','İ':'I','ö':'o','Ö':'O','ş':'s','Ş':'S','ü':'u','Ü':'U'};
+        return text.replace(/[çÇğĞıİöÖşŞüÜ]/g, m => map[m]);
+    }
+
+    function formatProper(el) {
+        if (!el.value) return;
+        el.value = el.value.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    }
+
+    function openTab(evt, tabName) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabName).classList.add('active');
+        evt.currentTarget.classList.add('active');
+    }
+
+    function resetDashboard() {
+        ['res_net', 'res_kki', 'res_taxed', 'res_grand', 'res_kdv'].forEach(id => document.getElementById(id).innerText = "0.00 TL");
+        document.getElementById('res_ratio').innerText = "%0";
+        document.getElementById('p_stok').value = "";
+    }
+
+    function doCalc() {
+        const isf = parseFloat(document.getElementById('p_price').value) || 0;
+        const ana = parseFloat(document.getElementById('p_qty').value) || 0;
+        const mf = parseFloat(document.getElementById('p_mf').value) || 0;
+        const kki = parseFloat(document.getElementById('p_kki').value) || 0;
+        const tax = parseFloat(document.getElementById('p_tax').value) || 0;
+        const total = ana + mf;
+        
+        if (total > 0 && isf > 0) {
+            const uNet = (isf * ana) / total;
+            const uKki = uNet * (1 - (kki/100));
+            const uTax = uKki * (1 + (tax/100));
+            const grand = uTax * total;
+            const fmt = (n) => n.toLocaleString('tr-TR', {minimumFractionDigits:2}) + " TL";
+            
+            document.getElementById('p_stok').value = total + " ADET";
+            document.getElementById('res_net').innerText = fmt(uNet);
+            document.getElementById('res_kki').innerText = fmt(uKki);
+            document.getElementById('res_taxed').innerText = fmt(uTax);
+            document.getElementById('res_grand').innerText = fmt(grand);
+            document.getElementById('res_kdv').innerText = fmt(grand - (uKki * total));
+            document.getElementById('res_ratio').innerText = "%" + ((mf/total)*100).toFixed(1);
+            return { uTax, grand, total, uNet, uKki, isf, ana, mf, kki, tax };
+        } else {
+            resetDashboard();
+            return null;
+        }
+    }
+
+    function saveData() {
+        const math = doCalc();
+        if(!math) return alert("Lütfen gerekli alanları doldurun!");
+        const item = {
+            id: document.getElementById('p_id').value,
+            date: document.getElementById('p_date').value,
+            depo: document.getElementById('p_depo').value,
+            depo_city: document.getElementById('p_depo_city').value,
+            cust: document.getElementById('p_customer').value,
+            cust_loc: document.getElementById('p_cust_loc').value,
+            name: document.getElementById('p_name').value,
+            res: math
+        };
+        const idx = parseInt(document.getElementById('edit_index').value);
+        if(idx === -1) savedData.unshift(item);
+        else { savedData[idx] = item; setButtonState(false); }
+        renderTable();
+        fullReset();
+        alert("İşlem Arşive Kaydedildi!");
+    }
+
+    function setButtonState(isEdit) {
+        const btn = document.getElementById('btn_save');
+        if(isEdit) {
+            btn.className = "btn-main btn-update";
+            btn.innerHTML = '<i class="fas fa-sync-alt"></i> <span>GÜNCELLEMEYİ KAYDET</span>';
+        } else {
+            btn.className = "btn-main btn-save";
+            btn.innerHTML = '<i class="fas fa-check-circle"></i> <span>KAYDET VE ARŞİVE EKLE</span>';
+            document.getElementById('edit_index').value = "-1";
+        }
+    }
+
+    // ARŞİV MULTİ ARAMA MOTORU
+    function renderTable() {
+        const query = document.getElementById('archive_search').value.toLowerCase();
+        const tbody = document.getElementById('result_body'); tbody.innerHTML = "";
+        
+        const filtered = savedData.filter(i => 
+            i.depo.toLowerCase().includes(query) || 
+            i.cust.toLowerCase().includes(query) || 
+            i.name.toLowerCase().includes(query) ||
+            i.id.toLowerCase().includes(query)
+        );
+
+        filtered.forEach((item, i) => {
+            tbody.innerHTML += `<tr>
+                <td><span class="badge-id">${item.id}</span></td>
+                <td><b>${item.depo}</b><br><small>${item.depo_city}</small></td>
+                <td><b>${item.cust}</b><br><small>${item.cust_loc}</small></td>
+                <td>${item.name}</td>
+                <td>${item.res.ana}+${item.res.mf}</td>
+                <td style="color:var(--success); font-weight:700">${item.res.uTax.toLocaleString('tr-TR', {minimumFractionDigits:2})} TL</td>
+                <td>
+                    <button class="icon-btn" style="background:#eef2ff; color:var(--accent)" onclick="editRow(${savedData.indexOf(item)})"><i class="fas fa-pen"></i></button>
+                    <button class="icon-btn" style="background:#fef2f2; color:var(--danger)" onclick="deleteRow(${savedData.indexOf(item)})"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>`;
+        });
+    }
+
+    function parseAssistant() {
+        const val = document.getElementById('bulk_input').value.trim();
+        if(!val) return;
+        const lines = val.split('\n');
+        assistantData = [];
+        lines.forEach(line => {
+            const cols = line.split('\t');
+            if(cols.length >= 3) assistantData.push({ n: cols[0], k: cols[1], p: cols[2] });
+        });
+        localStorage.setItem('matrix_asst_data', JSON.stringify(assistantData));
+        filterAssistant();
+    }
+
+    // ASİSTAN MULTİ ARAMA MOTORU
+    function filterAssistant() {
+        const query = document.getElementById('asst_search').value.toLowerCase();
+        let html = '<table><thead><tr><th>ÜRÜN</th><th>KKİ</th><th>FİYAT</th><th>İŞLEM</th></tr></thead><tbody>';
+        
+        const filtered = assistantData.filter(i => 
+            i.n.toLowerCase().includes(query) || 
+            i.k.toLowerCase().includes(query)
+        );
+
+        filtered.forEach(i => {
+            html += `<tr><td><b>${i.n}</b></td><td>%${i.k}</td><td>${i.p} TL</td>
+            <td style="text-align:right"><button onclick="transferToCalc('${i.n}','${i.k}','${i.p}')" style="background:var(--accent); color:white; border:none; padding:5px 12px; border-radius:8px; cursor:pointer;">Aktar</button></td></tr>`;
+        });
+        document.getElementById('assistant_results').innerHTML = html + '</tbody></table>';
+    }
+
+    function transferToCalc(n, k, p) {
+        document.getElementById('p_name').value = n;
+        document.getElementById('p_kki').value = k.replace(',', '.');
+        document.getElementById('p_price').value = p.replace(',', '.').replace('TL','').trim();
+        openTab({currentTarget: document.querySelector('.tab-btn[data-tab="calc_page"]')}, 'calc_page');
+        doCalc();
+    }
+
+    function editRow(i) {
+        const item = savedData[i];
+        document.getElementById('p_id').value = item.id;
+        document.getElementById('p_date').value = item.date;
+        document.getElementById('p_depo').value = item.depo;
+        document.getElementById('p_depo_city').value = item.depo_city;
+        document.getElementById('p_customer').value = item.cust;
+        document.getElementById('p_cust_loc').value = item.cust_loc;
+        document.getElementById('p_name').value = item.name;
+        document.getElementById('p_price').value = item.res.isf;
+        document.getElementById('p_qty').value = item.res.ana;
+        document.getElementById('p_mf').value = item.res.mf;
+        document.getElementById('p_kki').value = item.res.kki;
+        document.getElementById('p_tax').value = item.res.tax;
+        document.getElementById('edit_index').value = i;
+        setButtonState(true);
+        openTab({currentTarget: document.querySelector('.tab-btn[data-tab="calc_page"]')}, 'calc_page');
+        doCalc();
+    }
+
+    function fullReset() {
+        ['p_depo', 'p_depo_city', 'p_customer', 'p_cust_loc', 'p_name', 'p_price', 'p_kki'].forEach(f => document.getElementById(f).value = "");
+        document.getElementById('p_qty').value = "1"; document.getElementById('p_mf').value = "0";
+        setButtonState(false); generateID(); resetDashboard();
+    }
+
+    function generateID() { if(document.getElementById('edit_index').value === "-1") document.getElementById('p_id').value = "MX-" + Math.floor(1000 + Math.random() * 9000); }
+
+    function exportToExcel() {
+        if(savedData.length === 0) return alert("Dışa aktarılacak veri yok!");
+        const data = savedData.map(i => ({
+            "İŞLEM ID": i.id, "TARİH": i.date, "DEPO": i.depo, "DEPO ŞEHİR": i.depo_city, "MÜŞTERİ": i.cust, "İLÇE/İL": i.cust_loc,
+            "ÜRÜN": i.name, "İ.S.F.": i.res.isf, "ANA": i.res.ana, "MF": i.res.mf, "KKİ": i.res.kki, "B.NET": i.res.uNet.toFixed(2),
+            "B.MALİYET (KDVLI)": i.res.uTax.toFixed(2), "TOPLAM": i.res.grand.toFixed(2)
+        }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Matrix");
+        XLSX.writeFile(wb, "Matrix_Raporu.xlsx");
+    }
+
+    function exportToPDF() {
+        if(savedData.length === 0) return alert("Veri yok!");
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4');
+        doc.text("Matrix Pharma Analiz Raporu", 14, 15);
+        const rows = savedData.map(i => [i.id, i.date, fixTR(i.depo), fixTR(i.cust), fixTR(i.name), `${i.res.ana}+${i.res.mf}`, i.res.uTax.toFixed(2) + " TL"]);
+        doc.autoTable({ startY: 22, head: [['ID', 'Tarih', 'Depo', 'Musteri', 'Urun', 'Miktar', 'B.Maliyet']], body: rows });
+        doc.save("Matrix_Analiz.pdf");
+    }
+
+    function clearAssistant() { if(confirm("Hafıza tamamen temizlensin mi?")) { assistantData = []; localStorage.removeItem('matrix_asst_data'); filterAssistant(); } }
+    function deleteRow(i) { if(confirm("Silmek istediğinize emin misiniz?")) { savedData.splice(i, 1); renderTable(); } }
+</script>
+</body>
+</html>

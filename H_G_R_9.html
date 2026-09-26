@@ -1,0 +1,2081 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Dönemsel Hedef, Realizasyon & Saha Koçluğu Yönetim Paneli</title>
+    <!-- Standart Güvenli SheetJS Kütüphanesi -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #1e1b4b;
+            --accent: #4f46e5;
+            --accent-hover: #4338ca;
+            --success: #059669;
+            --danger: #e11d48;
+            --bg-color: #f8fafc;
+            --border-color: #e2e8f0;
+            --coaching-primary: #7c3aed;
+            --coaching-light: #f5f3ff;
+            --coaching-border: #ddd6fe;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 15px;
+            color: #1e293b;
+        }
+
+        .header-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            padding: 15px 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+            margin-bottom: 15px;
+            border-left: 6px solid var(--accent);
+            border: 1px solid var(--border-color);
+        }
+
+        .header-title h2 { margin: 0; color: var(--primary); font-size: 20px; font-weight: 700; letter-spacing: -0.025em; }
+        .header-title p { margin: 4px 0 0 0; font-size: 12px; color: #64748b; font-weight: 500; }
+
+        .datetime-widget {
+            background: #eef2ff;
+            padding: 8px 14px;
+            border-radius: 8px;
+            text-align: right;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+            border: 1px solid #c7d2fe;
+        }
+
+        .control-panel {
+            background: white;
+            padding: 14px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            flex-wrap: wrap;
+            border: 1px solid var(--border-color);
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .file-upload-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-upload-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .btn-custom {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 9px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+        }
+        .btn-custom:hover { background-color: var(--accent-hover); transform: translateY(-1px); }
+
+        .filter-select {
+            padding: 8px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            background-color: #fff;
+            color: var(--primary);
+            outline: none;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+        .filter-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+
+        .filter-btn {
+            background-color: #0284c7;
+            color: white;
+            border: none;
+            padding: 9px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .filter-btn:hover { background-color: #0369a1; }
+
+        .clear-filter-btn {
+            background-color: #64748b;
+            color: white;
+            border: none;
+            padding: 9px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .clear-filter-btn:hover { background-color: #475569; }
+
+        .storage-action-btn {
+            border: none;
+            padding: 9px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: all 0.2s;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .storage-action-btn.save { background-color: var(--success); }
+        .storage-action-btn.save:hover { background-color: #047857; }
+        
+        .storage-action-btn.clear { background-color: var(--danger); }
+        .storage-action-btn.clear:hover { background-color: #be123c; }
+
+        .tab-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background-color: #e2e8f0;
+            border: none;
+            padding: 10px 18px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s;
+            color: #475569;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+        .tab-btn:hover { background-color: #cbd5e1; color: #1e293b; }
+
+        .tab-btn.active {
+            background-color: var(--accent);
+            color: white;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+        }
+
+        .tab-btn.coaching-tab-btn {
+            background-color: #ede9fe;
+            color: #6d28d9;
+            border: 1px solid #ddd6fe;
+        }
+        .tab-btn.coaching-tab-btn:hover { background-color: #ddd6fe; }
+        .tab-btn.coaching-tab-btn.active {
+            background-color: var(--coaching-primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+            border-color: var(--coaching-primary);
+        }
+
+        .table-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+            overflow: auto;
+            max-height: 70vh;
+            display: none;
+            position: relative;
+            border: 1px solid var(--border-color);
+        }
+
+        .table-card.active { display: block; }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 11px;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 9px 8px;
+            text-align: center;
+            background-clip: padding-box;
+            vertical-align: middle;
+        }
+
+        th {
+            background-color: var(--primary);
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            white-space: normal;
+            word-wrap: break-word;
+            line-height: 1.2;
+            height: 40px;
+        }
+
+        .period-summary-header { background-color: #0369a1 !important; color: white; font-weight: bold; }
+
+        tr:nth-child(even) td:not(.period-total-cell):not([class*="summary"]):not(.d-weighted) { background-color: #f8fafc; }
+        tr:nth-child(odd) td:not(.period-total-cell):not([class*="summary"]):not(.d-weighted) { background-color: #ffffff; }
+        tr:hover td:not([class*="summary"]):not(.d-weighted) { background-color: #f1f5f9; }
+
+        .text-left { text-align: left !important; }
+
+        /* --- KESİN SOL 6 SÜTUN SABİTLEME --- */
+        th:nth-child(1), td:nth-child(1) { position: sticky; left: 0px; width: 120px; min-width: 120px; max-width: 120px; }
+        th:nth-child(2), td:nth-child(2) { position: sticky; left: 120px; width: 85px; min-width: 85px; max-width: 85px; }
+        th:nth-child(3), td:nth-child(3) { position: sticky; left: 205px; width: 85px; min-width: 85px; max-width: 85px; }
+        th:nth-child(4), td:nth-child(4) { position: sticky; left: 290px; width: 140px; min-width: 140px; max-width: 140px; }
+        th:nth-child(5), td:nth-child(5) { position: sticky; left: 430px; width: 60px; min-width: 60px; max-width: 60px; }
+        th:nth-child(6), td:nth-child(6) { position: sticky; left: 490px; width: 75px; min-width: 75px; max-width: 75px; }
+
+        td:nth-child(1), td:nth-child(2), td:nth-child(3), td:nth-child(4), td:nth-child(5), td:nth-child(6) {
+            z-index: 5;
+            background-color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        tr:nth-child(even) td:nth-child(-n+6) { background-color: #f8fafc; }
+
+        th:nth-child(-n+6) {
+            z-index: 30 !important;
+            background-color: var(--primary);
+            white-space: normal;
+        }
+
+        th:nth-child(n+7) {
+            width: 75px;
+            min-width: 75px;
+            max-width: 75px;
+        }
+
+        input.realized-input, input.weight-input {
+            width: 65px;
+            padding: 5px 3px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 11px;
+            outline: none;
+            transition: all 0.2s;
+        }
+        input.realized-input:focus, input.weight-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+        }
+
+        input.weight-input {
+            background-color: #eef2ff;
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        .period-total-cell {
+            background-color: #f0f9ff !important;
+            font-weight: bold;
+            color: #0369a1;
+        }
+
+        .summary-row td {
+            background-color: #e2e8f0 !important;
+            font-weight: bold;
+            color: #0f172a;
+            border-top: 2px solid var(--primary);
+            z-index: 10 !important;
+        }
+
+        .summary-row td.clickable-cell {
+            cursor: pointer;
+            position: relative;
+            transition: background-color 0.2s;
+        }
+        .summary-row td.clickable-cell:hover {
+            background-color: #cbd5e1 !important;
+            text-decoration: underline;
+        }
+        .summary-row td.clickable-cell::after {
+            content: " ⓘ";
+            font-size: 10px;
+            color: var(--accent);
+        }
+
+        .realized-low { color: var(--danger); font-weight: bold; }
+        .realized-mid { color: #d97706; font-weight: bold; }
+        .realized-high { color: var(--success); font-weight: bold; }
+
+        .d-weighted {
+            color: #3730a3 !important;
+            font-weight: bold !important;
+            background-color: #eef2ff !important;
+        }
+
+        .export-btn-group {
+            display: flex;
+            gap: 10px;
+            margin: 15px;
+            flex-wrap: wrap;
+        }
+
+        .export-btn {
+            background-color: var(--success);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 11px;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
+        }
+        .export-btn:hover { background-color: #047857; transform: translateY(-1px); }
+
+        .export-pure-btn {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 11px;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+        }
+        .export-pure-btn:hover { background-color: var(--accent-hover); transform: translateY(-1px); }
+
+        /* KOÇLUK SEKME ÖZEL STİLLERİ */
+        .coaching-container {
+            padding: 24px;
+            background: white;
+            border-radius: 12px;
+        }
+        .coaching-form-card {
+            background: var(--coaching-light);
+            border: 1px solid var(--coaching-border);
+            border-radius: 10px;
+            padding: 24px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px -1px rgba(124, 58, 237, 0.04);
+        }
+        .coaching-form-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--coaching-border);
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+        }
+        .coaching-form-card h3 {
+            margin: 0;
+            color: var(--coaching-primary);
+            font-size: 17px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+        }
+        .auto-fill-btn {
+            background-color: #0d9488;
+            color: white;
+            border: none;
+            padding: 7px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 11px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 4px rgba(13, 148, 136, 0.2);
+        }
+        .auto-fill-btn:hover { background-color: #0f766e; transform: translateY(-1px); }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 18px;
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 12px;
+            color: #475569;
+            margin-bottom: 6px;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 12px;
+            background: #fff;
+            box-sizing: border-box;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: var(--coaching-primary);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+        }
+        .form-group textarea { resize: vertical; height: 80px; }
+
+        .label-with-mic {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .label-with-mic label {
+            margin-bottom: 0 !important;
+        }
+        .mic-btn {
+            background: #f3e8ff;
+            color: var(--coaching-primary);
+            border: 1px solid var(--coaching-border);
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+        .mic-btn:hover {
+            background: var(--coaching-primary);
+            color: white;
+        }
+        .mic-btn.recording {
+            background: var(--danger) !important;
+            color: white !important;
+            border-color: #fda4af;
+            animation: pulse-mic 1.2s infinite;
+        }
+        @keyframes pulse-mic {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.4); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 6px rgba(225, 29, 72, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(225, 29, 72, 0); }
+        }
+
+        .competency-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-bottom: 20px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+        .competency-table th, .competency-table td {
+            border: 1px solid var(--coaching-border);
+            padding: 10px 12px;
+            font-size: 12px;
+            vertical-align: middle;
+            box-sizing: border-box;
+            text-align: left !important;
+        }
+        .competency-table th {
+            background-color: var(--coaching-primary);
+            color: white;
+            text-align: left !important;
+            font-weight: 600;
+        }
+        .competency-table td:nth-child(1) { width: 32%; }
+        .competency-table td:nth-child(2) { width: 53%; }
+        .competency-table td:nth-child(3) { width: 15%; text-align: left !important; }
+        
+        .competency-table select {
+            width: 100%;
+            padding: 6px;
+            border-radius: 6px;
+            border: 1px solid var(--coaching-border);
+            font-weight: bold;
+            color: var(--coaching-primary);
+            box-sizing: border-box;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        .info-icon-btn {
+            background: rgba(255, 255, 255, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 6px;
+            transition: background 0.2s;
+            vertical-align: middle;
+        }
+        .info-icon-btn:hover { background: rgba(255, 255, 255, 0.45); }
+
+        .coaching-save-btn {
+            background-color: var(--coaching-primary);
+            color: white;
+            border: none;
+            padding: 11px 22px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 10px rgba(124, 58, 237, 0.25);
+        }
+        .coaching-save-btn:hover { background-color: #6d28d9; transform: translateY(-1px); }
+
+        .history-list-card h4 {
+            color: var(--primary);
+            margin-bottom: 15px;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .coaching-history-item {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-left: 5px solid var(--coaching-primary);
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 14px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            transition: all 0.2s;
+        }
+        .coaching-history-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .coaching-history-item div p { margin: 4px 0; line-height: 1.5; color: #334155; }
+        
+        .coaching-item-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-left: 15px;
+        }
+        .btn-action-coach {
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+        .btn-edit-coach {
+            background: #f1f5f9;
+            color: var(--coaching-primary);
+            border: 1px solid var(--coaching-border);
+        }
+        .btn-edit-coach:hover { background: var(--coaching-light); border-color: var(--coaching-primary); }
+
+        .btn-delete-coach {
+            background: #fff1f2;
+            color: var(--danger);
+            border: 1px solid #fecdd3;
+        }
+        .btn-delete-coach:hover { background: var(--danger); color: white; }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(2px);
+        }
+        .modal-card {
+            background: white;
+            width: 520px;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+            position: relative;
+            border-top: 6px solid var(--accent);
+        }
+        .modal-card.coaching-modal { border-top-color: var(--coaching-primary); }
+        .modal-card h3 { margin-top: 0; color: var(--primary); font-size: 18px; font-weight: 700; }
+        .modal-card.coaching-modal h3 { color: var(--coaching-primary); }
+        .modal-card p { font-size: 13px; color: #475569; line-height: 1.6; }
+        .modal-card .formula-box {
+            background: #f1f5f9;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #0f172a;
+            margin: 12px 0;
+            border-left: 4px solid var(--accent);
+        }
+        .rating-guide-list {
+            list-style: none;
+            padding: 0;
+            margin: 12px 0;
+        }
+        .rating-guide-list li {
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            background: #f8fafc;
+            border-left: 4px solid var(--coaching-primary);
+            font-size: 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            border-left-width: 4px;
+        }
+        .modal-btn-group {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .modal-close-btn {
+            background: #64748b;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .modal-close-btn:hover { background: #475569; }
+        .coaching-modal .modal-save-btn { background: var(--coaching-primary); color: white; border: none; padding: 8px 18px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background 0.2s; }
+        .coaching-modal .modal-save-btn:hover { background: #6d28d9; }
+    </style>
+</head>
+<body>
+
+    <div class="header-panel">
+        <div class="header-title">
+            <h2>📊 Dönemsel Hedef, Realizasyon & Saha Koçluğu Yönetim Paneli</h2>
+            <p>Personel Filtreleme, Renkli Excel, Sesli Komut ve Saha Koçluk Değerlendirme Modülü</p>
+        </div>
+        <div class="datetime-widget" id="liveDateTime">Yükleniyor...</div>
+    </div>
+
+    <div class="control-panel">
+        <div class="control-group">
+            <div class="file-upload-wrapper">
+                <button class="btn-custom">Hedef Dosyası Seç</button>
+                <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="handleExcelUpload(event)">
+            </div>
+            <span id="fileStatus" style="font-size: 12px; color: #64748b; font-weight: 500;">Dosya seçilmedi.</span>
+        </div>
+
+        <div class="control-group">
+            <select id="personelFilter" class="filter-select">
+                <option value="">-- Tüm Personel (A-Z) --</option>
+            </select>
+            <button class="filter-btn" onclick="applyPersonelFilter()">Filtrele</button>
+            <button class="clear-filter-btn" onclick="clearPersonelFilter()">Sıfırla</button>
+            <button id="storageBtn" class="storage-action-btn clear" onclick="handleStorageAction()">🗑️ Hafızayı Temizle</button>
+        </div>
+    </div>
+
+    <div class="tab-container">
+        <button class="tab-btn active" onclick="switchTab(event, 'tab1')">1. Dönem (Ocak - Nisan)</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab2')">2. Dönem (Mayıs - Ağustos)</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab3')">3. Dönem (Eylül - Aralık)</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab4')">4. Dönem (Yıllık Özet)</button>
+        <button class="tab-btn coaching-tab-btn" onclick="switchTab(event, 'tabCoaching')">🎯 Saha Koçluğu & Gelişim</button>
+    </div>
+
+    <!-- 1. DÖNEM -->
+    <div id="tab1" class="table-card active">
+        <div class="export-btn-group">
+            <button class="export-btn" onclick="exportStyledExcel('table1', '1_Donem_Realizasyon_Raporu.xls')">Renkli Excel İndir</button>
+            <button class="export-pure-btn" onclick="exportPureTableToExcel('table1', '1_Donem_Saf_Veri.xlsx')">Saf Veri İndir</button>
+        </div>
+        <table id="table1">
+            <thead>
+                <tr>
+                    <th>PERSONEL</th>
+                    <th>Personel IMS KOD</th>
+                    <th>Ürünler IMS KOD</th>
+                    <th>ÜRÜNLER</th>
+                    <th>Birim</th>
+                    <th>Ağırlık (%)</th>
+                    <th>Ocak<br>Hedef</th><th>Ocak<br>Gerçekleşen</th><th>Ocak<br>% Real</th><th>Ocak<br>Ağırlıklı %</th>
+                    <th>Şubat<br>Hedef</th><th>Şubat<br>Gerçekleşen</th><th>Şubat<br>% Real</th><th>Şubat<br>Ağırlıklı %</th>
+                    <th>Mart<br>Hedef</th><th>Mart<br>Gerçekleşen</th><th>Mart<br>% Real</th><th>Mart<br>Ağırlıklı %</th>
+                    <th>Nisan<br>Hedef</th><th>Nisan<br>Gerçekleşen</th><th>Nisan<br>% Real</th><th>Nisan<br>Ağırlıklı %</th>
+                    <th class="period-summary-header">1. Dönem<br>Hedef</th>
+                    <th class="period-summary-header">1. Dönem<br>Gerçekleşen</th>
+                    <th class="period-summary-header">1. Dönem<br>% Realizasyon</th>
+                    <th class="period-summary-header">1. Dönem<br>Puanı</th>
+                </tr>
+            </thead>
+            <tbody id="tbody1"></tbody>
+        </table>
+    </div>
+
+    <!-- 2. DÖNEM -->
+    <div id="tab2" class="table-card">
+        <div class="export-btn-group">
+            <button class="export-btn" onclick="exportStyledExcel('table2', '2_Donem_Realizasyon_Raporu.xls')">Renkli Excel İndir</button>
+            <button class="export-pure-btn" onclick="exportPureTableToExcel('table2', '2_Donem_Saf_Veri.xlsx')">Saf Veri İndir</button>
+        </div>
+        <table id="table2">
+            <thead>
+                <tr>
+                    <th>PERSONEL</th>
+                    <th>Personel IMS KOD</th>
+                    <th>Ürünler IMS KOD</th>
+                    <th>ÜRÜNLER</th>
+                    <th>Birim</th>
+                    <th>Ağırlık (%)</th>
+                    <th>Mayıs<br>Hedef</th><th>Mayıs<br>Gerçekleşen</th><th>Mayıs<br>% Real</th><th>Mayıs<br>Ağırlıklı %</th>
+                    <th>Haziran<br>Hedef</th><th>Haziran<br>Gerçekleşen</th><th>Haziran<br>% Real</th><th>Haziran<br>Ağırlıklı %</th>
+                    <th>Temmuz<br>Hedef</th><th>Temmuz<br>Gerçekleşen</th><th>Temmuz<br>% Real</th><th>Temmuz<br>Ağırlıklı %</th>
+                    <th>Ağustos<br>Hedef</th><th>Ağustos<br>Gerçekleşen</th><th>Ağustos<br>% Real</th><th>Ağustos<br>Ağırlıklı %</th>
+                    <th class="period-summary-header">2. Dönem<br>Hedef</th>
+                    <th class="period-summary-header">2. Dönem<br>Gerçekleşen</th>
+                    <th class="period-summary-header">2. Dönem<br>% Realizasyon</th>
+                    <th class="period-summary-header">2. Dönem<br>Puanı</th>
+                </tr>
+            </thead>
+            <tbody id="tbody2"></tbody>
+        </table>
+    </div>
+
+    <!-- 3. DÖNEM -->
+    <div id="tab3" class="table-card">
+        <div class="export-btn-group">
+            <button class="export-btn" onclick="exportStyledExcel('table3', '3_Donem_Realizasyon_Raporu.xls')">Renkli Excel İndir</button>
+            <button class="export-pure-btn" onclick="exportPureTableToExcel('table3', '3_Donem_Saf_Veri.xlsx')">Saf Veri İndir</button>
+        </div>
+        <table id="table3">
+            <thead>
+                <tr>
+                    <th>PERSONEL</th>
+                    <th>Personel IMS KOD</th>
+                    <th>Ürünler IMS KOD</th>
+                    <th>ÜRÜNLER</th>
+                    <th>Birim</th>
+                    <th>Ağırlık (%)</th>
+                    <th>Eylül<br>Hedef</th><th>Eylül<br>Gerçekleşen</th><th>Eylül<br>% Real</th><th>Eylül<br>Ağırlıklı %</th>
+                    <th>Ekim<br>Hedef</th><th>Ekim<br>Gerçekleşen</th><th>Ekim<br>% Real</th><th>Ekim<br>Ağırlıklı %</th>
+                    <th>Kasım<br>Hedef</th><th>Kasım<br>Gerçekleşen</th><th>Kasım<br>% Real</th><th>Kasım<br>Ağırlıklı %</th>
+                    <th>Aralık<br>Hedef</th><th>Aralık<br>Gerçekleşen</th><th>Aralık<br>% Real</th><th>Aralık<br>Ağırlıklı %</th>
+                    <th class="period-summary-header">3. Dönem<br>Hedef</th>
+                    <th class="period-summary-header">3. Dönem<br>Gerçekleşen</th>
+                    <th class="period-summary-header">3. Dönem<br>% Realizasyon</th>
+                    <th class="period-summary-header">3. Dönem<br>Puanı</th>
+                </tr>
+            </thead>
+            <tbody id="tbody3"></tbody>
+        </table>
+    </div>
+
+    <!-- 4. DÖNEM (YILLIK) -->
+    <div id="tab4" class="table-card">
+        <div class="export-btn-group">
+            <button class="export-btn" onclick="exportStyledExcel('table4', 'Yillik_Ozet_Realizasyon_Raporu.xls')">Renkli Excel İndir</button>
+            <button class="export-pure-btn" onclick="exportPureTableToExcel('table4', 'Yillik_Ozet_Saf_Veri.xlsx')">Saf Veri İndir</button>
+        </div>
+        <table id="table4">
+            <thead>
+                <tr>
+                    <th>PERSONEL</th>
+                    <th>Personel IMS KOD</th>
+                    <th>Ürünler IMS KOD</th>
+                    <th>ÜRÜNLER</th>
+                    <th>Birim</th>
+                    <th>Ağırlık (%)</th>
+                    <th class="period-summary-header">Yıllık<br>Hedef</th>
+                    <th class="period-summary-header">Yıllık<br>Gerçekleşen</th>
+                    <th class="period-summary-header">Yıllık<br>Realizasyon %</th>
+                    <th class="period-summary-header">Yıllık<br>Toplam Puan</th>
+                </tr>
+            </thead>
+            <tbody id="tbody4"></tbody>
+        </table>
+    </div>
+
+    <!-- SAHA KOÇLUĞU & GELİŞİM MODÜLÜ SEKMESİ -->
+    <div id="tabCoaching" class="table-card">
+        <div class="coaching-container">
+            <div class="coaching-form-card">
+                <div class="coaching-form-header">
+                    <h3>🎯 Yeni Saha Koçluğu ve Gün Sonu Değerlendirmesi</h3>
+                    <button type="button" class="auto-fill-btn" onclick="autoFillSWOT()">✨ Kriterlerden Otomatik Doldur</button>
+                </div>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Değerlendirilecek Personel</label>
+                        <select id="coachPersonelSelect"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Ziyaret / Değerlendirme Tarihi</label>
+                        <input type="date" id="coachDate">
+                    </div>
+                    <div class="form-group">
+                        <label>Ziyaret Edilen Bölge / Kurum</label>
+                        <input type="text" id="coachRegion" placeholder="Örn: Merkez Hastaneler Bölgesi">
+                    </div>
+                    <div class="form-group">
+                        <label>Eşlik Eden Yönetici</label>
+                        <input type="text" id="coachManager" placeholder="Yönetici Adı Soyadı">
+                    </div>
+                </div>
+
+                <table class="competency-table">
+                    <thead>
+                        <tr>
+                            <th>Koçluk Yetkinlik Kriteri</th>
+                            <th>Açıklama</th>
+                            <th>
+                                Puan (1 - 5) 
+                                <button type="button" class="info-icon-btn" title="Derecelendirme Kriterleri Rehberi" onclick="showRatingGuideModal()">i</button>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>1. Ürün Bilgisi ve Bilimsel Anlatım</strong></td>
+                            <td>Ürün portföyüne hâkimiyet, endikasyonlar ve net mesaj iletme becerisi.</td>
+                            <td>
+                                <select id="comp1" onchange="autoFillSWOT()">
+                                    <option value="5">5 - Çok İyi (Rol Model)</option>
+                                    <option value="4">4 - İyi (Beklentiyi Karşılıyor)</option>
+                                    <option value="3" selected>3 - Orta (Gelişime Açık)</option>
+                                    <option value="2">2 - Zayıf (Destek Gerekli)</option>
+                                    <option value="1">1 - Yetersiz</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>2. Müşteri İletişimi & İlişki Yönetimi</strong></td>
+                            <td>Hekim/eczacı ile diyalog kurma, güven verme ve aktif dinleme.</td>
+                            <td>
+                                <select id="comp2" onchange="autoFillSWOT()">
+                                    <option value="5">5 - Çok İyi (Rol Model)</option>
+                                    <option value="4">4 - İyi (Beklentiyi Karşılıyor)</option>
+                                    <option value="3" selected>3 - Orta (Gelişime Açık)</option>
+                                    <option value="2">2 - Zayıf (Destek Gerekli)</option>
+                                    <option value="1">1 - Yetersiz</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>3. Ziyaret Planlaması & Kapanış</strong></td>
+                            <td>Ziyaretin amacı, zaman yönetimi ve net bir aksiyonla (kapanışla) bitirilmesi.</td>
+                            <td>
+                                <select id="comp3" onchange="autoFillSWOT()">
+                                    <option value="5">5 - Çok İyi (Rol Model)</option>
+                                    <option value="4">4 - İyi (Beklentiyi Karşılıyor)</option>
+                                    <option value="3" selected>3 - Orta (Gelişime Açık)</option>
+                                    <option value="2">2 - Zayıf (Destek Gerekli)</option>
+                                    <option value="1">1 - Yetersiz</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>4. Saha Disiplini & Raporlama</strong></td>
+                            <td>Günlük plan uyumu, CRM/IMS takibi ve mesleki duruş.</td>
+                            <td>
+                                <select id="comp4" onchange="autoFillSWOT()">
+                                    <option value="5">5 - Çok İyi (Rol Model)</option>
+                                    <option value="4">4 - İyi (Beklentiyi Karşılıyor)</option>
+                                    <option value="3" selected>3 - Orta (Gelişime Açık)</option>
+                                    <option value="2">2 - Zayıf (Destek Gerekli)</option>
+                                    <option value="1">1 - Yetersiz</option>
+                                </select>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="form-grid">
+                    <div class="form-group" style="grid-column: span 1;">
+                        <div class="label-with-mic">
+                            <label>Güçlü Yönler (Saha Gözlemi)</label>
+                            <button type="button" class="mic-btn" onclick="toggleSpeechRecognition('coachStrengths', this)">🎤 Sesli Yaz</button>
+                        </div>
+                        <textarea id="coachStrengths" placeholder="Personelin sahada başarılı olduğu noktalar..."></textarea>
+                    </div>
+                    <div class="form-group" style="grid-column: span 1;">
+                        <div class="label-with-mic">
+                            <label>Gelişime Açık Alanlar</label>
+                            <button type="button" class="mic-btn" onclick="toggleSpeechRecognition('coachImprovements', this)">🎤 Sesli Yaz</button>
+                        </div>
+                        <textarea id="coachImprovements" placeholder="Üzerinde çalışılması gereken hususlar..."></textarea>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <div class="label-with-mic">
+                            <label>Mutabık Kalınan Aksiyon Planı (Yapılacaklar)</label>
+                            <button type="button" class="mic-btn" onclick="toggleSpeechRecognition('coachActions', this)">🎤 Sesli Yaz</button>
+                        </div>
+                        <textarea id="coachActions" placeholder="Örn: Önümüzdeki hafta X ürününün endikasyonları üzerine çalışılacak..."></textarea>
+                    </div>
+                </div>
+
+                <button class="coaching-save-btn" onclick="saveCoachingSession()">💾 Koçluk Değerlendirmesini Kaydet</button>
+            </div>
+
+            <div class="history-list-card">
+                <h4>📜 Geçmiş Saha Koçluğu ve Değerlendirme Raporları</h4>
+                <div id="coachingHistoryContainer">
+                    <p style="color: #64748b; font-size: 12px;">Henüz kaydedilmiş bir koçluk değerlendirmesi bulunmuyor.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HESAPLAMA MANTIĞI GÖSTERGE MODALI -->
+    <div id="formulaModal" class="modal-overlay" onclick="closeFormulaModal(event)">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <h3 id="modalTitle">Hesaplama Mantığı & Formül</h3>
+            <p id="modalDesc">Açıklama yükleniyor...</p>
+            <div class="formula-box" id="modalFormula">Formül...</div>
+            <div class="modal-btn-group">
+                <button class="modal-close-btn" onclick="document.getElementById('formulaModal').style.display='none'">Kapat</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- KOÇLUK DERECELENDİRME REHBERİ MODALI -->
+    <div id="ratingGuideModal" class="modal-overlay" onclick="closeRatingModal(event)">
+        <div class="modal-card coaching-modal" onclick="event.stopPropagation()">
+            <h3>💡 Saha Koçluğu Derecelendirme Kriterleri Rehberi</h3>
+            <p>Yöneticilerin sahada objektif ve tutarlı puanlama yapabilmesi için 1 ile 5 arasındaki derecelerin tanımları:</p>
+            <ul class="rating-guide-list">
+                <li><strong>5 - Çok İyi (Rol Model):</strong> Beklentileri fazlasıyla karşılar; sahada kusursuz performans sergiler ve diğer personele örnek olur.</li>
+                <li><strong>4 - İyi (Beklentiyi Karşılıyor):</strong> İş gereksinimlerini eksiksiz yerine getirir, standartların üzerindedir.</li>
+                <li><strong>3 - Orta (Gelişime Açık):</strong> Temel düzeyde yeterlidir ancak belirli alanlarda pratik ve eğitime ihtiyaç duyar.</li>
+                <li><strong>2 - Zayıf (Destek Gerekli):</strong> Beklentilerin altındadır; yöneticinin yakın takibi ve koçluk desteği şarttır.</li>
+                <li><strong>1 - Yetersiz:</strong> Standartları karşılamaz, acil performans iyileştirme planı (PIP) gerektirir.</li>
+            </ul>
+            <div class="modal-btn-group">
+                <button class="modal-close-btn" onclick="document.getElementById('ratingGuideModal').style.display='none'">Anladım</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- KOÇLUK DÜZENLEME (KALEM) MODALI -->
+    <div id="editCoachingModal" class="modal-overlay" onclick="closeEditCoachingModal(event)">
+        <div class="modal-card coaching-modal" onclick="event.stopPropagation()">
+            <h3>✏️ Saha Koçluğu Değerlendirmesini Düzenle</h3>
+            <input type="hidden" id="editCoachId">
+            <div class="form-grid" style="margin-top: 15px;">
+                <div class="form-group">
+                    <label>Personel</label>
+                    <input type="text" id="editCoachPersonel" readonly style="background: #f1f5f9;">
+                </div>
+                <div class="form-group">
+                    <label>Tarih</label>
+                    <input type="date" id="editCoachDate">
+                </div>
+                <div class="form-group">
+                    <label>Bölge / Kurum</label>
+                    <input type="text" id="editCoachRegion">
+                </div>
+                <div class="form-group">
+                    <label>Eşlik Eden Yönetici</label>
+                    <input type="text" id="editCoachManager">
+                </div>
+            </div>
+
+            <table class="competency-table" style="margin-top: 10px;">
+                <thead>
+                    <tr>
+                        <th>Kriter</th>
+                        <th>Açıklama</th>
+                        <th>Puan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>1. Ürün Bilgisi</strong></td>
+                        <td>Portföy ve endikasyon hâkimiyeti</td>
+                        <td>
+                            <select id="editComp1">
+                                <option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>2. Müşteri İletişimi</strong></td>
+                        <td>Diyalog ve güven kurma</td>
+                        <td>
+                            <select id="editComp2">
+                                <option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>3. Ziyaret Kapanış</strong></td>
+                        <td>Zaman ve aksiyon yönetimi</td>
+                        <td>
+                            <select id="editComp3">
+                                <option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>4. Saha Disiplini</strong></td>
+                        <td>Rota, CRM ve IMS takibi</td>
+                        <td>
+                            <select id="editComp4">
+                                <option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option>
+                            </select>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="form-grid">
+                <div class="form-group" style="grid-column: span 1;">
+                    <label>Güçlü Yönler</label>
+                    <textarea id="editCoachStrengths"></textarea>
+                </div>
+                <div class="form-group" style="grid-column: span 1;">
+                    <label>Gelişime Açık Alanlar</label>
+                    <textarea id="editCoachImprovements"></textarea>
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                    <label>Aksiyon Planı</label>
+                    <textarea id="editCoachActions"></textarea>
+                </div>
+            </div>
+
+            <div class="modal-btn-group">
+                <button class="modal-close-btn" onclick="document.getElementById('editCoachingModal').style.display='none'">İptal</button>
+                <button class="modal-save-btn" onclick="updateCoachingSession()">Güncellemeyi Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let globalData = [];
+        let coachingData = [];
+        let selectedPersonelFilter = "";
+        const monthsQ1 = ['OCAK', 'ŞUBAT', 'MART', 'NİSAN'];
+        const monthsQ2 = ['MAYIS', 'HAZİRAN', 'TEMMUZ', 'AĞUSTOS'];
+        const monthsQ3 = ['EYLÜL', 'EKİM', 'KASIM', 'ARALIK'];
+
+        let activeRecognition = null;
+        let activeMicButton = null;
+
+        function formatInt(num) { return isNaN(num) ? "0" : Math.round(num).toLocaleString('tr-TR'); }
+        function formatPerc(num) { return isNaN(num) ? "%0,00" : "%" + num.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+        function parseExcelNum(val) {
+            if (val === undefined || val === null || val === '') return 0;
+            if (typeof val === 'number') return val;
+            let cleanVal = String(val).trim();
+            if (cleanVal.includes('.') && cleanVal.indexOf('.') === cleanVal.lastIndexOf('.') && cleanVal.length - cleanVal.indexOf('.') === 4) {
+                cleanVal = cleanVal.replace(/\./g, '');
+            } else {
+                cleanVal = cleanVal.replace(/\./g, '').replace(',', '.');
+            }
+            let parsed = parseFloat(cleanVal);
+            return isNaN(parsed) ? 0 : parsed;
+        }
+
+        // --- İYİLEŞTİRİLMİŞ SESLİ YAZMA FONKSİYONU ---
+        function toggleSpeechRecognition(elementId, btnElement) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            // Güvenlik protokolü (file:///) uyarısı kontrolü
+            if (window.location.protocol === 'file:') {
+                alert("Tarayıcı güvenlik politikaları gereği doğrudan yerel dosya (file://) üzerinden mikrofon kullanılamaz.\n\nLütfen sayfayı yerel bir sunucu (Live Server vb.) üzerinden veya HTTPS ortamında açın.");
+            }
+
+            if (!SpeechRecognition) {
+                alert("Tarayıcınız sesli komut özelliğini desteklemiyor. Lütfen güncel bir Google Chrome kullanın.");
+                return;
+            }
+
+            const targetElement = document.getElementById(elementId);
+
+            if (activeRecognition) {
+                activeRecognition.stop();
+                if (activeMicButton) {
+                    activeMicButton.classList.remove('recording');
+                    activeMicButton.innerHTML = "🎤 Sesli Yaz";
+                }
+                if (activeMicButton === btnElement) {
+                    activeRecognition = null;
+                    activeMicButton = null;
+                    return;
+                }
+            }
+
+            try {
+                const recognition = new SpeechRecognition();
+                recognition.lang = 'tr-TR';
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+
+                activeRecognition = recognition;
+                activeMicButton = btnElement;
+
+                btnElement.classList.add('recording');
+                btnElement.innerHTML = "🔴 Dinleniyor...";
+
+                recognition.onresult = function(event) {
+                    const speechToText = event.results[0][0].transcript;
+                    let existingVal = targetElement.value.trim();
+                    targetElement.value = existingVal ? existingVal + " " + speechToText : speechToText;
+                };
+
+                recognition.onerror = function(event) {
+                    console.warn("Ses tanıma uyarısı/hatası:", event.error);
+                    if(event.error === 'not-allowed') {
+                        alert("Mikrofon izni reddedildi. Lütfen tarayıcı ayarlarından mikrofon iznini aktif edin.");
+                    }
+                    btnElement.classList.remove('recording');
+                    btnElement.innerHTML = "🎤 Sesli Yaz";
+                    activeRecognition = null;
+                    activeMicButton = null;
+                };
+
+                recognition.onend = function() {
+                    btnElement.classList.remove('recording');
+                    btnElement.innerHTML = "🎤 Sesli Yaz";
+                    activeRecognition = null;
+                    activeMicButton = null;
+                };
+
+                recognition.start();
+            } catch(e) {
+                console.error("Mikrofon başlatılamadı:", e);
+                btnElement.classList.remove('recording');
+                btnElement.innerHTML = "🎤 Sesli Yaz";
+                activeRecognition = null;
+                activeMicButton = null;
+            }
+        }
+
+        function setButtonToSaveState() {
+            const btn = document.getElementById('storageBtn');
+            btn.className = "storage-action-btn save";
+            btn.innerHTML = "💾 Hafızaya Kaydet";
+        }
+
+        function setButtonToClearState() {
+            const btn = document.getElementById('storageBtn');
+            btn.className = "storage-action-btn clear";
+            btn.innerHTML = "🗑️ Hafızayı Temizle";
+        }
+
+        function handleStorageAction() {
+            const btn = document.getElementById('storageBtn');
+            if (btn.classList.contains('clear')) {
+                if (confirm("Hafızaya kaydedilen tüm veriler (Hedefler, Realizasyonlar ve Koçluk Notları) silinecektir. Emin misiniz?")) {
+                    localStorage.removeItem('panel_saved_full_data');
+                    localStorage.removeItem('panel_saved_coaching_data');
+                    globalData.forEach(item => {
+                        item.yuzde = 0;
+                        [...monthsQ1, ...monthsQ2, ...monthsQ3].forEach(m => {
+                            item.months[m + '_real'] = '';
+                        });
+                    });
+                    coachingData = [];
+                    renderTables();
+                    renderCoachingHistory();
+                    setButtonToSaveState();
+                    document.getElementById('fileStatus').innerText = "Dosya seçilmedi (Hafıza temizlendi).";
+                    alert("Hafıza başarıyla temizlendi!");
+                }
+            } else {
+                if (globalData.length === 0) {
+                    alert("Kaydedilecek veri bulunmuyor. Lütfen önce bir Excel dosyası yükleyin.");
+                    return;
+                }
+                saveToLocalStorage();
+                setButtonToClearState();
+                alert("Değişiklikler başarıyla hafızaya kaydedildi!");
+            }
+        }
+
+        function saveToLocalStorage() {
+            let statusText = document.getElementById('fileStatus').innerText;
+            if (statusText.includes("(Hafızadan Yüklendi)")) {
+                statusText = statusText.replace(/\s*\(Hafızadan Yüklendi\)/g, '').trim();
+            }
+
+            const dataToSave = {
+                fileName: statusText,
+                globalData: globalData
+            };
+            localStorage.setItem('panel_saved_full_data', JSON.stringify(dataToSave));
+            localStorage.setItem('panel_saved_coaching_data', JSON.stringify(coachingData));
+        }
+
+        function checkAndLoadInitialStorage() {
+            const saved = localStorage.getItem('panel_saved_full_data');
+            const savedCoach = localStorage.getItem('panel_saved_coaching_data');
+
+            if (savedCoach) {
+                try { coachingData = JSON.parse(savedCoach) || []; } catch(e) { coachingData = []; }
+            }
+
+            if (!saved) {
+                setButtonToSaveState();
+                renderCoachingHistory();
+                return;
+            }
+            try {
+                const parsed = JSON.parse(saved);
+                if (parsed && parsed.globalData && parsed.globalData.length > 0) {
+                    globalData = parsed.globalData;
+                    if (parsed.fileName) {
+                        let cleanName = parsed.fileName.replace(/\s*\(Hafızadan Yüklendi\)/g, '').trim();
+                        document.getElementById('fileStatus').innerText = cleanName + " (Hafızadan Yüklendi)";
+                    }
+                    populatePersonelDropdown();
+                    renderTables();
+                    renderCoachingHistory();
+                    setButtonToClearState(); 
+                }
+            } catch (e) {
+                console.error("Otomatik hafıza yükleme hatası:", e);
+                setButtonToSaveState();
+                renderCoachingHistory();
+            }
+        }
+
+        function switchTab(evt, tabId) {
+            document.querySelectorAll('.table-card').forEach(card => card.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            evt.currentTarget.classList.add('active');
+            if(tabId === 'tabCoaching') {
+                populateCoachingPersonelDropdown();
+                if(!document.getElementById('coachDate').value) {
+                    document.getElementById('coachDate').valueAsDate = new Date();
+                }
+            }
+        }
+
+        function updateDateTime() {
+            const now = new Date();
+            document.getElementById('liveDateTime').innerText = now.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+        setInterval(updateDateTime, 1000);
+        updateDateTime();
+
+        function handleExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            document.getElementById('fileStatus').innerText = "Yüklenen: " + file.name;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                processExcelData(rows);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processExcelData(rows) {
+            globalData = [];
+            let headerRowIndex = -1;
+            for (let i = 0; i < rows.length; i++) {
+                if (rows[i].includes('PERSONEL') || rows[i].includes('ÜRÜNLER')) {
+                    headerRowIndex = i;
+                    break;
+                }
+            }
+            if (headerRowIndex === -1) { alert("Excel yapısı uygun formatta bulunamadı!"); return; }
+
+            const headers = rows[headerRowIndex];
+            const pIdx = headers.indexOf('PERSONEL');
+            const pCodeIdx = headers.indexOf('PersonelIMSKOD');
+            const uCodeIdx = headers.indexOf('ÜRÜNLER IMS KOD');
+            const uNameIdx = headers.indexOf('ÜRÜNLER');
+            const unitIdx = headers.indexOf(2026) !== -1 ? headers.indexOf(2026) : 4;
+            const percIdx = headers.indexOf('%');
+
+            let currentPersonel = "";
+            let currentPersonelCode = "";
+
+            for (let i = headerRowIndex + 1; i < rows.length; i++) {
+                const row = rows[i];
+                if (!row || row.length === 0) continue;
+                if (row[pIdx] && row[pIdx] !== 'PERSONEL') {
+                    currentPersonel = row[pIdx];
+                    currentPersonelCode = row[pCodeIdx] || '-';
+                }
+                const uName = row[uNameIdx];
+                if (!uName) continue;
+
+                let weightVal = parseExcelNum(row[percIdx]);
+                let item = {
+                    personel: currentPersonel || "Bilinmiyor",
+                    personelCode: currentPersonelCode || "-",
+                    urunCode: row[uCodeIdx] || "-",
+                    urunName: uName,
+                    birim: row[unitIdx] || "Kutu",
+                    yuzde: weightVal,
+                    months: {}
+                };
+
+                [...monthsQ1, ...monthsQ2, ...monthsQ3].forEach(m => {
+                    let mIdx = headers.indexOf(m);
+                    item.months[m] = mIdx !== -1 && row[mIdx] !== undefined ? parseExcelNum(row[mIdx]) : 0;
+                    item.months[m + '_real'] = '';
+                });
+                globalData.push(item);
+            }
+
+            saveToLocalStorage();
+            setButtonToClearState();
+            populatePersonelDropdown();
+            renderTables();
+        }
+
+        function populatePersonelDropdown() {
+            const select = document.getElementById('personelFilter');
+            select.innerHTML = '<option value="">-- Tüm Personel (A-Z) --</option>';
+            const personels = [...new Set(globalData.map(d => d.personel))].sort((a, b) => a.localeCompare(b, 'tr'));
+            personels.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p;
+                opt.textContent = p;
+                select.appendChild(opt);
+            });
+        }
+
+        function populateCoachingPersonelDropdown() {
+            const select = document.getElementById('coachPersonelSelect');
+            select.innerHTML = '';
+            const personels = [...new Set(globalData.map(d => d.personel))].sort((a, b) => a.localeCompare(b, 'tr'));
+            if(personels.length === 0) {
+                select.innerHTML = '<option value="">Önce Hedef Dosyası Yükleyin</option>';
+                return;
+            }
+            personels.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p;
+                opt.textContent = p;
+                select.appendChild(opt);
+            });
+        }
+
+        function applyPersonelFilter() {
+            selectedPersonelFilter = document.getElementById('personelFilter').value;
+            renderTables();
+        }
+
+        function clearPersonelFilter() {
+            document.getElementById('personelFilter').value = "";
+            selectedPersonelFilter = "";
+            renderTables();
+        }
+
+        function renderTables() {
+            const tbody1 = document.getElementById('tbody1');
+            const tbody2 = document.getElementById('tbody2');
+            const tbody3 = document.getElementById('tbody3');
+            const tbody4 = document.getElementById('tbody4');
+
+            tbody1.innerHTML = ''; tbody2.innerHTML = ''; tbody3.innerHTML = ''; tbody4.innerHTML = '';
+
+            let filteredData = globalData;
+            if (selectedPersonelFilter) {
+                filteredData = globalData.filter(d => d.personel === selectedPersonelFilter);
+            }
+
+            filteredData.forEach((item) => {
+                let index = globalData.indexOf(item);
+
+                let tr1 = document.createElement('tr');
+                tr1.innerHTML = `
+                    <td class="text-left">${item.personel}</td>
+                    <td>${item.personelCode}</td>
+                    <td>${item.urunCode}</td>
+                    <td class="text-left">${item.urunName}</td>
+                    <td>${item.birim}</td>
+                    <td><input type="text" class="weight-input" data-index="${index}" value="${item.yuzde}" oninput="handleWeightInput(this)"></td>
+                    ${monthsQ1.map(m => `
+                        <td>${formatInt(item.months[m])}</td>
+                        <td><input type="text" class="realized-input" data-index="${index}" data-month="${m}" value="${item.months[m + '_real']}" oninput="handleRealizationInput(this)" onkeydown="handleKeyNavigation(event, this)"></td>
+                        <td class="d-raw" data-index="${index}" data-month="${m}">%0,00</td>
+                        <td class="d-weighted" data-index="${index}" data-month="${m}">%0,00</td>
+                    `).join('')}
+                    <td class="period-total-cell" id="q1-t-${index}">0</td>
+                    <td class="period-total-cell" id="q1-r-${index}">0</td>
+                    <td class="period-total-cell" id="q1-raw-${index}">%0,00</td>
+                    <td class="period-total-cell" id="q1-score-${index}">%0,00</td>
+                `;
+                tbody1.appendChild(tr1);
+
+                let tr2 = document.createElement('tr');
+                tr2.innerHTML = `
+                    <td class="text-left">${item.personel}</td>
+                    <td>${item.personelCode}</td>
+                    <td>${item.urunCode}</td>
+                    <td class="text-left">${item.urunName}</td>
+                    <td>${item.birim}</td>
+                    <td><input type="text" class="weight-input" data-index="${index}" value="${item.yuzde}" oninput="handleWeightInput(this)"></td>
+                    ${monthsQ2.map(m => `
+                        <td>${formatInt(item.months[m])}</td>
+                        <td><input type="text" class="realized-input" data-index="${index}" data-month="${m}" value="${item.months[m + '_real']}" oninput="handleRealizationInput(this)" onkeydown="handleKeyNavigation(event, this)"></td>
+                        <td class="d-raw" data-index="${index}" data-month="${m}">%0,00</td>
+                        <td class="d-weighted" data-index="${index}" data-month="${m}">%0,00</td>
+                    `).join('')}
+                    <td class="period-total-cell" id="q2-t-${index}">0</td>
+                    <td class="period-total-cell" id="q2-r-${index}">0</td>
+                    <td class="period-total-cell" id="q2-raw-${index}">%0,00</td>
+                    <td class="period-total-cell" id="q2-score-${index}">%0,00</td>
+                `;
+                tbody2.appendChild(tr2);
+
+                let tr3 = document.createElement('tr');
+                tr3.innerHTML = `
+                    <td class="text-left">${item.personel}</td>
+                    <td>${item.personelCode}</td>
+                    <td>${item.urunCode}</td>
+                    <td class="text-left">${item.urunName}</td>
+                    <td>${item.birim}</td>
+                    <td><input type="text" class="weight-input" data-index="${index}" value="${item.yuzde}" oninput="handleWeightInput(this)"></td>
+                    ${monthsQ3.map(m => `
+                        <td>${formatInt(item.months[m])}</td>
+                        <td><input type="text" class="realized-input" data-index="${index}" data-month="${m}" value="${item.months[m + '_real']}" oninput="handleRealizationInput(this)" onkeydown="handleKeyNavigation(event, this)"></td>
+                        <td class="d-raw" data-index="${index}" data-month="${m}">%0,00</td>
+                        <td class="d-weighted" data-index="${index}" data-month="${m}">%0,00</td>
+                    `).join('')}
+                    <td class="period-total-cell" id="q3-t-${index}">0</td>
+                    <td class="period-total-cell" id="q3-r-${index}">0</td>
+                    <td class="period-total-cell" id="q3-raw-${index}">%0,00</td>
+                    <td class="period-total-cell" id="q3-score-${index}">%0,00</td>
+                `;
+                tbody3.appendChild(tr3);
+
+                let totalTarget = [...monthsQ1, ...monthsQ2, ...monthsQ3].reduce((sum, m) => sum + item.months[m], 0);
+                let tr4 = document.createElement('tr');
+                tr4.innerHTML = `
+                    <td class="text-left">${item.personel}</td>
+                    <td>${item.personelCode}</td>
+                    <td>${item.urunCode}</td>
+                    <td class="text-left">${item.urunName}</td>
+                    <td>${item.birim}</td>
+                    <td><input type="text" class="weight-input" data-index="${index}" value="${item.yuzde}" oninput="handleWeightInput(this)"></td>
+                    <td>${formatInt(totalTarget)}</td>
+                    <td id="ann-r-${index}">0</td>
+                    <td id="ann-raw-${index}">%0,00</td>
+                    <td class="period-total-cell" id="ann-score-${index}">%0,00</td>
+                `;
+                tbody4.appendChild(tr4);
+            });
+
+            appendSummaryRows(tbody1, monthsQ1, '1. Dönem', filteredData);
+            appendSummaryRows(tbody2, monthsQ2, '2. Dönem', filteredData);
+            appendSummaryRows(tbody3, monthsQ3, '3. Dönem', filteredData);
+            appendSummaryRows(tbody4, [...monthsQ1, ...monthsQ2, ...monthsQ3], 'Yıllık', filteredData);
+
+            updateAllCalculations();
+        }
+
+        function appendSummaryRows(tbody, monthList, periodName, currentFilteredData) {
+            const personels = [...new Set(currentFilteredData.map(d => d.personel))].sort((a, b) => a.localeCompare(b, 'tr'));
+            personels.forEach(pName => {
+                let tr = document.createElement('tr');
+                tr.className = 'summary-row';
+                let html = `<td class="text-left">📌 ${pName} (${periodName} ÖZETİ)</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>`;
+                
+                if(monthList.length > 4) {
+                    html += `<td id="sum-ann-t-${pName}">0</td><td id="sum-ann-r-${pName}">0</td><td id="sum-ann-raw-${pName}" class="clickable-cell" onclick="showFormulaInfo('annual_raw', '${pName}')">%0,00</td><td id="sum-ann-score-${pName}" class="clickable-cell" onclick="showFormulaInfo('annual_score', '${pName}')">%0,00</td>`;
+                } else {
+                    monthList.forEach(m => {
+                        html += `<td id="sum-${pName}-${m}-t">0</td><td id="sum-${pName}-${m}-r">0</td><td id="sum-${pName}-${m}-raw" class="clickable-cell" onclick="showFormulaInfo('month_raw', '${pName}', '${m}')">%0,00</td><td id="sum-${pName}-${m}-w" class="d-weighted clickable-cell" onclick="showFormulaInfo('month_weighted', '${pName}', '${m}')">%0,00</td>`;
+                    });
+                    html += `<td id="sum-${pName}-pt">0</td><td id="sum-${pName}-pr">0</td><td id="sum-${pName}-praw" class="clickable-cell" onclick="showFormulaInfo('period_raw', '${pName}', '${periodName}')">%0,00</td><td id="sum-${pName}-pscore" class="clickable-cell" style="color:var(--success);" onclick="showFormulaInfo('period_score', '${pName}', '${periodName}')">%0,00</td>`;
+                }
+                tr.innerHTML = html;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function autoFillSWOT() {
+            const c1 = parseInt(document.getElementById('comp1').value);
+            const c2 = parseInt(document.getElementById('comp2').value);
+            const c3 = parseInt(document.getElementById('comp3').value);
+            const c4 = parseInt(document.getElementById('comp4').value);
+
+            const compNames = {
+                1: "Ürün Bilgisi ve Bilimsel Anlatım",
+                2: "Müşteri İletişimi & İlişki Yönetimi",
+                3: "Ziyaret Planlaması & Kapanış",
+                4: "Saha Disiplini & Raporlama"
+            };
+
+            const compsObj = { 1: c1, 2: c2, 3: c3, 4: c4 };
+            let strongList = [];
+            let improvList = [];
+
+            for (let id in compsObj) {
+                let val = compsObj[id];
+                if (val >= 4) {
+                    strongList.push(compNames[id] + " (Puan: " + val + ")");
+                } else {
+                    improvList.push(compNames[id] + " (Puan: " + val + ")");
+                }
+            }
+
+            let strengthsText = strongList.length > 0 ? "Personel şu alanlarda başarılı performans sergilemektedir: " + strongList.join(", ") + "." : "Genel saha duruşu gözlemlenmiştir.";
+            let improvementsText = improvList.length > 0 ? "Aşağıdaki yetkinlik alanlarında gelişim ve pratik desteği gereklidir: " + improvList.join(", ") + "." : "Tüm koçluk kriterlerinde beklentiler karşılanmıştır.";
+
+            let actionsText = "";
+            if (c1 <= 3) actionsText += "Ürün portföyü ve endikasyonlar üzerine vaka çalışmaları yapılacak. ";
+            if (c2 <= 3) actionsText += "Hekim diyaloglarında aktif dinleme pratikleri gerçekleştirilecek. ";
+            if (c3 <= 3) actionsText += "Ziyaret sonu net bir eylem/kapanış disiplini çalışılacak. ";
+            if (c4 <= 3) actionsText += "Günlük rota ve CRM takibi süreçleri yakından izlenecek. ";
+            if (actionsText === "") actionsText = "Mevcut başarı standartlarının korunması ve motivasyonun yüksek tutulması hedeflenmektedir.";
+
+            document.getElementById('coachStrengths').value = strengthsText;
+            document.getElementById('coachImprovements').value = improvementsText;
+            document.getElementById('coachActions').value = actionsText.trim();
+        }
+
+        function saveCoachingSession() {
+            const personel = document.getElementById('coachPersonelSelect').value;
+            const date = document.getElementById('coachDate').value;
+            const region = document.getElementById('coachRegion').value || 'Belirtilmedi';
+            const manager = document.getElementById('coachManager').value || 'Yönetici';
+            
+            if(!personel) { alert("Lütfen değerlendirilecek bir personel seçin."); return; }
+            if(!date) { alert("Lütfen bir tarih seçin."); return; }
+
+            const session = {
+                id: Date.now(),
+                personel,
+                date,
+                region,
+                manager,
+                comps: {
+                    c1: parseInt(document.getElementById('comp1').value),
+                    c2: parseInt(document.getElementById('comp2').value),
+                    c3: parseInt(document.getElementById('comp3').value),
+                    c4: parseInt(document.getElementById('comp4').value)
+                },
+                strengths: document.getElementById('coachStrengths').value || '-',
+                improvements: document.getElementById('coachImprovements').value || '-',
+                actions: document.getElementById('coachActions').value || '-'
+            };
+
+            coachingData.unshift(session);
+            saveToLocalStorage();
+            renderCoachingHistory();
+
+            document.getElementById('coachRegion').value = '';
+            document.getElementById('coachManager').value = '';
+            document.getElementById('coachStrengths').value = '';
+            document.getElementById('coachImprovements').value = '';
+            document.getElementById('coachActions').value = '';
+            
+            alert("Saha koçluğu değerlendirmesi başarıyla kaydedildi!");
+        }
+
+        function deleteCoachingSession(id) {
+            if(confirm("Bu koçluk kaydını silmek istediğinize emin misiniz?")) {
+                coachingData = coachingData.filter(item => item.id !== id);
+                saveToLocalStorage();
+                renderCoachingHistory();
+            }
+        }
+
+        function openEditCoachingModal(id) {
+            const item = coachingData.find(d => d.id === id);
+            if (!item) return;
+
+            document.getElementById('editCoachId').value = item.id;
+            document.getElementById('editCoachPersonel').value = item.personel;
+            document.getElementById('editCoachDate').value = item.date;
+            document.getElementById('editCoachRegion').value = item.region;
+            document.getElementById('editCoachManager').value = item.manager;
+
+            document.getElementById('editComp1').value = item.comps.c1;
+            document.getElementById('editComp2').value = item.comps.c2;
+            document.getElementById('editComp3').value = item.comps.c3;
+            document.getElementById('editComp4').value = item.comps.c4;
+
+            document.getElementById('editCoachStrengths').value = item.strengths;
+            document.getElementById('editCoachImprovements').value = item.improvements;
+            document.getElementById('editCoachActions').value = item.actions;
+
+            document.getElementById('editCoachingModal').style.display = 'flex';
+        }
+
+        function updateCoachingSession() {
+            const id = parseInt(document.getElementById('editCoachId').value);
+            const item = coachingData.find(d => d.id === id);
+            if (!item) return;
+
+            item.date = document.getElementById('editCoachDate').value;
+            item.region = document.getElementById('editCoachRegion').value || 'Belirtilmedi';
+            item.manager = document.getElementById('editCoachManager').value || 'Yönetici';
+            item.comps.c1 = parseInt(document.getElementById('editComp1').value);
+            item.comps.c2 = parseInt(document.getElementById('editComp2').value);
+            item.comps.c3 = parseInt(document.getElementById('editComp3').value);
+            item.comps.c4 = parseInt(document.getElementById('editComp4').value);
+            item.strengths = document.getElementById('editCoachStrengths').value || '-';
+            item.improvements = document.getElementById('editCoachImprovements').value || '-';
+            item.actions = document.getElementById('editCoachActions').value || '-';
+
+            saveToLocalStorage();
+            renderCoachingHistory();
+            document.getElementById('editCoachingModal').style.display = 'none';
+            alert("Koçluk kaydı başarıyla güncellendi!");
+        }
+
+        function closeEditCoachingModal(e) {
+            if (e.target.id === 'editCoachingModal') {
+                document.getElementById('editCoachingModal').style.display = 'none';
+            }
+        }
+
+        function renderCoachingHistory() {
+            const container = document.getElementById('coachingHistoryContainer');
+            if(!coachingData || coachingData.length === 0) {
+                container.innerHTML = '<p style="color: #64748b; font-size: 12px;">Henüz kaydedilmiş bir koçluk değerlendirmesi bulunmuyor.</p>';
+                return;
+            }
+
+            let html = '';
+            coachingData.forEach(item => {
+                let avgScore = ((item.comps.c1 + item.comps.c2 + item.comps.c3 + item.comps.c4) / 4).toFixed(1);
+                html += `
+                    <div class="coaching-history-item">
+                        <div>
+                            <p><strong>👤 Personel:</strong> ${item.personel} | <strong>📅 Tarih:</strong> ${item.date} | <strong>📍 Bölge:</strong> ${item.region} | <strong>👔 Yönetici:</strong> ${item.manager}</p>
+                            <p><strong>⭐ Ortalama Yetkinlik Puanı:</strong> ${avgScore} / 5.0 (Ürün: ${item.comps.c1}, İletişim: ${item.comps.c2}, Kapanış: ${item.comps.c3}, Disiplin: ${item.comps.c4})</p>
+                            <p><strong>💪 Güçlü:</strong> ${item.strengths} | <strong>📈 Gelişim:</strong> ${item.improvements}</p>
+                            <p><strong>🎯 Aksiyon:</strong> ${item.actions}</p>
+                        </div>
+                        <div class="coaching-item-actions">
+                            <button class="btn-action-coach btn-edit-coach" onclick="openEditCoachingModal(${item.id})">✏️ Düzenle</button>
+                            <button class="btn-action-coach btn-delete-coach" onclick="deleteCoachingSession(${item.id})">Sil</button>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function showRatingGuideModal() {
+            document.getElementById('ratingGuideModal').style.display = 'flex';
+        }
+
+        function closeRatingModal(e) {
+            if (e.target.id === 'ratingGuideModal') {
+                document.getElementById('ratingGuideModal').style.display = 'none';
+            }
+        }
+
+        function showFormulaInfo(type, pName, param) {
+            const modal = document.getElementById('formulaModal');
+            const titleEl = document.getElementById('modalTitle');
+            const descEl = document.getElementById('modalDesc');
+            const formulaEl = document.getElementById('modalFormula');
+
+            if (type === 'month_raw') {
+                titleEl.innerText = `${param} Ayı - Toplam Realizasyon %`;
+                descEl.innerText = `Seçilen personelin (${pName}) ${param} ayındaki toplam gerçekleşen miktarının, toplam hedef miktarına oranını gösterir.`;
+                formulaEl.innerText = `(${param} Ayı Toplam Gerçekleşen / ${param} Ayı Toplam Hedef) * 100`;
+            } else if (type === 'month_weighted') {
+                titleEl.innerText = `${param} Ayı - Ağırlıklı Puan`;
+                descEl.innerText = `Personelin (${pName}) ${param} ayında ürün realizasyonlarının ağırlık yüzdeleriyle çarpılıp toplanmasıyla elde edilen puandır.`;
+                formulaEl.innerText = `Σ [ (Ürün Realizasyon %) × (Ürün Ağırlığı % / 100) ]`;
+            } else if (type === 'period_raw') {
+                titleEl.innerText = `${param} - Dönem Toplam Realizasyon %`;
+                descEl.innerText = `Personelin (${pName}) ilgili dönem içerisindeki toplam Hedef ve Gerçekleşen değerlerinin genel başarı yüzdesidir.`;
+                formulaEl.innerText = `(Dönem Toplam Gerçekleşenler / Dönem Toplam Hedefler) * 100`;
+            } else if (type === 'period_score') {
+                titleEl.innerText = `${param} - Dönem Toplam Puan`;
+                descEl.innerText = `Personelin (${pName}) ilgili dönemdeki aylık ağırlıklı başarı puanlarının ortalamasının dönemsel katsayı ile çarpımıdır.`;
+                formulaEl.innerText = `(Aylık Ağırlıklı Puanlar Ortalaması) × Dönem Ay Sayısı (4)`;
+            } else if (type === 'annual_raw') {
+                titleEl.innerText = `Yıllık - Toplam Realizasyon %`;
+                descEl.innerText = `Personelin (${pName}) 12 ay boyunca elde ettiği toplam gerçekleşenlerin toplam hedeflere genel oranını gösterir.`;
+                formulaEl.innerText = `(12 Aylık Toplam Gerçekleşen / 12 Aylık Toplam Hedef) * 100`;
+            } else if (type === 'annual_score') {
+                titleEl.innerText = `Yıllık - Toplam Puan`;
+                descEl.innerText = `Personelin (${pName}) yıl boyunca aylık bazda biriktirdiği ağırlıklı puanların yıllık katsayı ile ifade edilmiş toplamıdır.`;
+                formulaEl.innerText = `(Aylık Ortalama Ağırlıklı Puan) × 12`;
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        function closeFormulaModal(e) {
+            if (e.target.id === 'formulaModal') {
+                document.getElementById('formulaModal').style.display = 'none';
+            }
+        }
+
+        function handleWeightInput(input) {
+            const index = input.getAttribute('data-index');
+            const val = parseExcelNum(input.value);
+            globalData[index].yuzde = val;
+            document.querySelectorAll(`input.weight-input[data-index="${index}"]`).forEach(inp => { if (inp !== input) inp.value = input.value; });
+            
+            setButtonToSaveState();
+            updateAllCalculations();
+        }
+
+        function handleRealizationInput(input) {
+            const index = input.getAttribute('data-index');
+            const month = input.getAttribute('data-month');
+            globalData[index].months[month + '_real'] = input.value;
+            document.querySelectorAll(`input.realized-input[data-index="${index}"][data-month="${month}"]`).forEach(inp => { if (inp !== input) inp.value = input.value; });
+            
+            setButtonToSaveState();
+            updateAllCalculations();
+        }
+
+        function handleKeyNavigation(event, currentInput) {
+            const inputs = Array.from(document.querySelectorAll('.table-card.active input.realized-input'));
+            const idx = inputs.indexOf(currentInput);
+            const rowItemCount = 4; 
+            let targetIdx = idx;
+            let shouldMove = false;
+            const cursorPosition = currentInput.selectionStart;
+            const textLength = currentInput.value.length;
+
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                targetIdx = idx + rowItemCount;
+                if (targetIdx >= inputs.length) targetIdx = idx + 1;
+                shouldMove = true;
+            } else if (event.key === 'ArrowRight' && cursorPosition === textLength) {
+                event.preventDefault();
+                targetIdx = idx + 1;
+                shouldMove = true;
+            } else if (event.key === 'ArrowLeft' && cursorPosition === 0) {
+                event.preventDefault();
+                targetIdx = idx - 1;
+                shouldMove = true;
+            } else if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                targetIdx = idx + rowItemCount;
+                if (targetIdx >= inputs.length) targetIdx = idx + 1;
+                shouldMove = true;
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                targetIdx = idx - rowItemCount;
+                if (targetIdx < 0) targetIdx = idx - 1;
+                shouldMove = true;
+            }
+
+            if (shouldMove && targetIdx >= 0 && targetIdx < inputs.length) {
+                inputs[targetIdx].focus();
+                inputs[targetIdx].select();
+            }
+        }
+
+        function updateAllCalculations() {
+            globalData.forEach((item, index) => {
+                [...monthsQ1, ...monthsQ2, ...monthsQ3].forEach(m => {
+                    const target = item.months[m];
+                    const real = parseExcelNum(item.months[m + '_real']);
+                    const raw = target > 0 ? (real / target) * 100 : 0;
+                    const weighted = raw * (item.yuzde / 100);
+                    const cssClass = raw >= 100 ? 'realized-high' : (raw >= 90 ? 'realized-mid' : 'realized-low');
+
+                    document.querySelectorAll(`.d-raw[data-index="${index}"][data-month="${m}"]`).forEach(el => { el.innerText = formatPerc(raw); el.className = 'd-raw ' + cssClass; });
+                    document.querySelectorAll(`.d-weighted[data-index="${index}"][data-month="${m}"]`).forEach(el => { el.innerText = formatPerc(weighted); el.className = 'd-weighted'; });
+                });
+
+                ['q1', 'q2', 'q3'].forEach((q, qIdx) => {
+                    const mList = qIdx === 0 ? monthsQ1 : (qIdx === 1 ? monthsQ2 : monthsQ3);
+                    const tSum = mList.reduce((s, m) => s + item.months[m], 0);
+                    const rSum = mList.reduce((s, m) => s + parseExcelNum(item.months[m + '_real']), 0);
+                    const raw = tSum > 0 ? (rSum / tSum) * 100 : 0;
+                    const weighted = raw * (item.yuzde / 100);
+                    const cssClass = raw >= 100 ? 'realized-high' : (raw >= 90 ? 'realized-mid' : 'realized-low');
+
+                    const tEl = document.getElementById(`${q}-t-${index}`);
+                    const rEl = document.getElementById(`${q}-r-${index}`);
+                    const rawEl = document.getElementById(`${q}-raw-${index}`);
+                    const scEl = document.getElementById(`${q}-score-${index}`);
+
+                    if(tEl) tEl.innerText = formatInt(tSum);
+                    if(rEl) rEl.innerText = formatInt(rSum);
+                    if(rawEl) { rawEl.innerText = formatPerc(raw); rawEl.className = 'period-total-cell ' + cssClass; }
+                    if(scEl) { scEl.innerText = formatPerc(weighted); scEl.className = 'period-total-cell'; }
+                });
+
+                const allM = [...monthsQ1, ...monthsQ2, ...monthsQ3];
+                const annR = allM.reduce((s, m) => s + parseExcelNum(item.months[m + '_real']), 0);
+                const annT = allM.reduce((s, m) => s + item.months[m], 0);
+                const annRaw = annT > 0 ? (annR / annT) * 100 : 0;
+                const annWeighted = allM.reduce((acc, m) => acc + ((item.months[m] > 0 ? (parseExcelNum(item.months[m + '_real']) / item.months[m]) * 100 : 0) * (item.yuzde / 100)), 0);
+                const cssAnn = annRaw >= 100 ? 'realized-high' : (annRaw >= 90 ? 'realized-mid' : 'realized-low');
+
+                const arEl = document.getElementById(`ann-r-${index}`);
+                const arawEl = document.getElementById(`ann-raw-${index}`);
+                const anscEl = document.getElementById(`ann-score-${index}`);
+
+                if(arEl) arEl.innerText = formatInt(annR);
+                if(arawEl) { arawEl.innerText = formatPerc(annRaw); arawEl.className = cssAnn; }
+                if(anscEl) { anscEl.innerText = formatPerc(annWeighted); anscEl.className = 'period-total-cell'; }
+            });
+
+            const currentFilteredList = selectedPersonelFilter ? globalData.filter(d => d.personel === selectedPersonelFilter) : globalData;
+            const personels = [...new Set(currentFilteredList.map(d => d.personel))];
+
+            personels.forEach(pName => {
+                const pItems = globalData.filter(d => d.personel === pName);
+
+                let q1tSum = 0, q1rSum = 0, q1WeightedTotal = 0;
+                monthsQ1.forEach(m => {
+                    let mt = pItems.reduce((s, item) => s + item.months[m], 0);
+                    let mr = pItems.reduce((s, item) => s + parseExcelNum(item.months[m + '_real']), 0);
+                    let mRaw = mt > 0 ? (mr / mt) * 100 : 0;
+                    q1tSum += mt; q1rSum += mr;
+                    let mWeightedSum = pItems.reduce((s, item) => s + ((item.months[m] > 0 ? (parseExcelNum(item.months[m + '_real']) / item.months[m]) * 100 : 0) * (item.yuzde / 100)), 0);
+                    q1WeightedTotal += (mWeightedSum / monthsQ1.length);
+
+                    let tEl = document.getElementById(`sum-${pName}-${m}-t`);
+                    let rEl = document.getElementById(`sum-${pName}-${m}-r`);
+                    let rawEl = document.getElementById(`sum-${pName}-${m}-raw`);
+                    let wEl = document.getElementById(`sum-${pName}-${m}-w`);
+
+                    if(tEl) tEl.innerText = formatInt(mt);
+                    if(rEl) rEl.innerText = formatInt(mr);
+                    if(rawEl) rawEl.innerText = formatPerc(mRaw);
+                    if(wEl) {
+                        wEl.innerText = formatPerc(pItems.reduce((s, item) => s + ((item.months[m] > 0 ? (parseExcelNum(item.months[m + '_real']) / item.months[m]) * 100 : 0) * (item.yuzde / 100)), 0));
+                        wEl.className = 'd-weighted clickable-cell';
+                    }
+                });
+
+                let q1TotalRaw = q1tSum > 0 ? (q1rSum / q1tSum) * 100 : 0;
+                if(document.getElementById(`sum-${pName}-pt`)) document.getElementById(`sum-${pName}-pt`).innerText = formatInt(q1tSum);
+                if(document.getElementById(`sum-${pName}-pr`)) document.getElementById(`sum-${pName}-pr`).innerText = formatInt(q1rSum);
+                if(document.getElementById(`sum-${pName}-praw`)) document.getElementById(`sum-${pName}-praw`).innerText = formatPerc(q1TotalRaw);
+                if(document.getElementById(`sum-${pName}-pscore`)) document.getElementById(`sum-${pName}-pscore`).innerText = formatPerc(q1WeightedTotal * 4);
+
+                let q2tSum = 0, q2rSum = 0, q2WeightedTotal = 0;
+                monthsQ2.forEach(m => {
+                    let mt = pItems.reduce((s, item) => s + item.months[m], 0);
+                    let mr = pItems.reduce((s, item) => s + parseExcelNum(item.months[m + '_real']), 0);
+                    let mRaw = mt > 0 ? (mr / mt) * 100 : 0;
+                    q2tSum += mt; q2rSum += mr;
+                    let mWeightedSum = pItems.reduce((s, item) => s + ((item.months[m] > 0 ? (parseExcelNum(item.months[m + '_real']) / item.months[m]) * 100 : 0) * (item.yuzde / 100)), 0);
+                    q2WeightedTotal += (mWeightedSum / monthsQ2.length);
+
+                    let tEl = document.getElementById(`sum-${pName}-${m}-t`);
+                    let rEl = document.getElementById(`sum-${pName}-${m}-r`);
+                    let rawEl = document.getElementById(`sum-${pName}-${m}-raw`);
+                    let wEl = document.getElementById(`sum-${pName}-${m}-w`);
+
+                    if(tEl) tEl.innerText = formatInt(mt);
+                    if(rEl) rEl.innerText = formatInt(mr);
+                    if(rawEl) rawEl.innerText = formatPerc(mRaw);
+                    if(wEl) {
+                        wEl.innerText = formatPerc(pItems.reduce((s, item) => s + ((item.months[m] > 0 ? (parseExcelNum(item.months[m + '_real']) / item.months[m]) * 100 : 0) * (item.yuzde / 100)), 0));
+                        wEl.className = 'd-weighted clickable-cell';
+                    }
+                });
+                let q2TotalRaw = q2tSum > 0 ? (q2rSum / q2tSum) * 100 : 0;
+                if(document.getElementById(`sum-${pName}-pt`)) document.getElementById(`sum-${pName}-pt`).innerText = formatInt(q2tSum);
+                if(document.getElementById(`sum-${pName}-pr`)) document.getElementById(`sum-${pName}-pr`).innerText = formatInt(q2rSum);
+                if(document.getElementById(`sum-${pName}-praw`)) document.getElementById(`sum-${pName}-praw`).innerText = formatPerc(q2TotalRaw);
+                if(document.getElementById(`sum-${pName}-pscore`)) document.getElementById(`sum-${pName}-pscore`).innerText = formatPerc(q2WeightedTotal * 4);
+
+                let q3tSum = 0, q3rSum = 0, q3WeightedTotal = 0;
+                monthsQ3.forEach(m => {
+                    let mt = pItems.reduce((s, item) => s + item.months[m], 0);
+                    let mr = pItems.reduce((s, item) => s + parseExcelNum(item.months[m + '_real']), 0);
+                    let mRaw = mt > 0 ? (mr / mt) * 100 : 0;
+                    q3tSum += mt; q3rSum += mr;
+                    let mWeightedSum = pItems.reduce((s, item) => s + ((item.months[m] > 0 ? (parseExcelNum(item.months[m + '_real']) / item.months[m]) * 100 : 0) * (item.yuzde / 100)), 0);
+                    q3WeightedTotal += (mWeightedSum / monthsQ3.length);
+
+                    let tEl = document.getElementById(`sum-${pName}-${m}-t`);
+                    let rEl = document.getElementById(`sum-${pName}-${m}-r`);
+                    let rawEl = document.getElementById(`sum-${pName}-${m}-raw`);
+                    let wEl = document.getElementById(`sum-${pName}-${m}-w`);
+
+                    if(tEl) tEl.innerText = formatInt(mt);
+                    if(rEl) rEl.innerText = formatInt(mr);
+                    if(rawEl) rawEl.innerText = formatPerc(mRaw);
+                    if(wEl) {
+                        wEl.innerText = formatPerc(pItems.reduce((s, item) => s + ((item.months[m] > 0 ? (parseExcelNum(item.months[m + '_real']) / item.months[m]) * 100 : 0) * (item.yuzde / 100)), 0));
+                        wEl.className = 'd-weighted clickable-cell';
+                    }
+                });
+                let q3TotalRaw = q3tSum > 0 ? (q3rSum / q3tSum) * 100 : 0;
+                if(document.getElementById(`sum-${pName}-pt`)) document.getElementById(`sum-${pName}-pt`).innerText = formatInt(q3tSum);
+                if(document.getElementById(`sum-${pName}-pr`)) document.getElementById(`sum-${pName}-pr`).innerText = formatInt(q3rSum);
+                if(document.getElementById(`sum-${pName}-praw`)) document.getElementById(`sum-${pName}-praw`).innerText = formatPerc(q3TotalRaw);
+                if(document.getElementById(`sum-${pName}-pscore`)) document.getElementById(`sum-${pName}-pscore`).innerText = formatPerc(q3WeightedTotal * 4);
+
+                let annTsum = pItems.reduce((s, item) => s + [...monthsQ1, ...monthsQ2, ...monthsQ3].reduce((ms, m) => ms + item.months[m], 0), 0);
+                let annRsum = pItems.reduce((s, item) => s + [...monthsQ1, ...monthsQ2, ...monthsQ3].reduce((ms, m) => ms + parseExcelNum(item.months[m + '_real']), 0), 0);
+                let annRawTot = annTsum > 0 ? (annRsum / annTsum) * 100 : 0;
+                let annWeightedTot = [...monthsQ1, ...monthsQ2, ...monthsQ3].reduce((acc, m) => {
+                    let mWSec = pItems.reduce((s, item) => s + ((item.months[m] > 0 ? (parseExcelNum(item.months[m + '_real']) / item.months[m]) * 100 : 0) * (item.yuzde / 100)), 0);
+                    return acc + (mWSec / 12);
+                }, 0);
+
+                if(document.getElementById(`sum-ann-t-${pName}`)) document.getElementById(`sum-ann-t-${pName}`).innerText = formatInt(annTsum);
+                if(document.getElementById(`sum-ann-r-${pName}`)) document.getElementById(`sum-ann-r-${pName}`).innerText = formatInt(annRsum);
+                if(document.getElementById(`sum-ann-raw-${pName}`)) document.getElementById(`sum-ann-raw-${pName}`).innerText = formatPerc(annRawTot);
+                if(document.getElementById(`sum-ann-score-${pName}`)) document.getElementById(`sum-ann-score-${pName}`).innerText = formatPerc(annWeightedTot * 12);
+            });
+        }
+
+        function exportStyledExcel(tableId, filename) {
+            const table = document.getElementById(tableId);
+            if (!table) { alert("Aktarılacak tablo bulunamadı!"); return; }
+
+            const cloneTable = table.cloneNode(true);
+            const originalInputs = table.querySelectorAll('input');
+            const cloneInputs = cloneTable.querySelectorAll('input');
+
+            originalInputs.forEach((input, index) => {
+                if (cloneInputs[index]) { cloneInputs[index].outerHTML = input.value || "0"; }
+            });
+
+            if (selectedPersonelFilter) {
+                const cloneTbody = cloneTable.querySelector('tbody');
+                const rows = Array.from(cloneTbody.querySelectorAll('tr'));
+                rows.forEach(row => {
+                    const personelCellText = row.cells[0] ? row.cells[0].innerText : "";
+                    const isSummary = row.classList.contains('summary-row') || personelCellText.includes('ÖZETİ');
+                    const matchesPersonel = personelCellText.includes(selectedPersonelFilter);
+                    if (!matchesPersonel && !isSummary) { row.remove(); }
+                });
+            }
+
+            const cloneCells = cloneTable.querySelectorAll('td, th');
+            cloneCells.forEach((cloneCell) => {
+                let inlineStyle = "";
+                if (cloneCell.classList.contains('realized-high')) inlineStyle += "color: #059669; font-weight: bold;";
+                else if (cloneCell.classList.contains('realized-mid')) inlineStyle += "color: #d97706; font-weight: bold;";
+                else if (cloneCell.classList.contains('realized-low')) inlineStyle += "color: #e11d48; font-weight: bold;";
+
+                if (cloneCell.classList.contains('d-weighted') || cloneCell.classList.contains('period-total-cell')) {
+                    inlineStyle += "background-color: #f0f9ff; color: #0369a1; font-weight: bold;";
+                } else if (cloneCell.classList.contains('summary-row') || cloneCell.parentElement.classList.contains('summary-row')) {
+                    inlineStyle += "background-color: #e2e8f0; color: #0f172a; font-weight: bold;";
+                } else if (cloneCell.tagName === 'TH') {
+                    if (cloneCell.classList.contains('period-summary-header')) {
+                        inlineStyle += "background-color: #0369a1; color: #ffffff; font-weight: bold;";
+                    } else {
+                        inlineStyle += "background-color: #1e1b4b; color: #ffffff; font-weight: bold;";
+                    }
+                }
+                if (inlineStyle) cloneCell.setAttribute('style', inlineStyle);
+            });
+
+            const excelTemplate = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                <head>
+                    <meta charset="UTF-8">
+                    <!--[if gte mso 9]>
+                    <xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Rapor</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml>
+                    <![endif]-->
+                    <style>
+                        table { border-collapse: collapse; font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 11px; }
+                        th, td { border: 0.5px solid #cbd5e1; padding: 6px; text-align: center; vertical-align: middle; }
+                        .text-left { text-align: left; }
+                    </style>
+                </head>
+                <body><table>${cloneTable.innerHTML}</table></body>
+                </html>
+            `;
+
+            const blob = new Blob(['\ufeff' + excelTemplate], { type: 'application/vnd.ms-excel;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function exportPureTableToExcel(tableId, filename) {
+            const table = document.getElementById(tableId);
+            if (!table) { alert("Aktarılacak tablo bulunamadı!"); return; }
+
+            const cloneTable = table.cloneNode(true);
+            const inputs = table.querySelectorAll('input');
+            const cloneInputs = cloneTable.querySelectorAll('input');
+
+            inputs.forEach((input, index) => {
+                if (cloneInputs[index]) cloneInputs[index].outerHTML = input.value || "0";
+            });
+
+            if (selectedPersonelFilter) {
+                const cloneTbody = cloneTable.querySelector('tbody');
+                const rows = Array.from(cloneTbody.querySelectorAll('tr'));
+                rows.forEach(row => {
+                    const personelCellText = row.cells[0] ? row.cells[0].innerText : "";
+                    const isSummary = row.classList.contains('summary-row') || personelCellText.includes('ÖZETİ');
+                    const matchesPersonel = personelCellText.includes(selectedPersonelFilter);
+                    if (!matchesPersonel && !isSummary) row.remove();
+                });
+            }
+
+            const wb = XLSX.utils.table_to_book(cloneTable, { raw: true });
+            XLSX.writeFile(wb, filename);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            checkAndLoadInitialStorage();
+            autoFillSWOT();
+        });
+    </script>
+</body>
+</html>

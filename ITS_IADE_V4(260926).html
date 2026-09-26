@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEN İTS ve İade Yönetim Merkezi</title>
+    
+    <!-- Gerekli Kütüphaneler (FontAwesome, SheetJS, jsPDF, AutoTable) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #f0f2f5;
+            --primary: #0056b3;
+            --primary-hover: #004085;
+            --text-color: #333;
+            --card-bg: #ffffff;
+            --shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg); padding: 20px; color: var(--text-color); }
+        .main-container { max-width: 1400px; margin: 0 auto; }
+
+        /* Üst Sekme (Tab) Menü Tasarımı */
+        .tab-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 25px;
+            gap: 2px;
+        }
+        .tab-btn {
+            background-color: #e4e6eb;
+            border: none;
+            padding: 12px 30px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #4b4f56;
+        }
+        .tab-btn:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+        .tab-btn:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+        .tab-btn.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        /* Sekme İçerik Alanları */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* 1. Sayfa: Kart ve İTS Tasarımı */
+        .card-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 65vh;
+        }
+        .card {
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            width: 440px;
+        }
+        .card h2 { color: var(--primary); margin-bottom: 10px; }
+        .card p { color: #666; font-size: 14px; margin-bottom: 25px; }
+        .btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s;
+            font-weight: bold;
+        }
+        .btn:hover { background-color: var(--primary-hover); }
+        
+        .status-badge {
+            margin-top: 22px;
+            font-size: 13px;
+            color: #555;
+            background-color: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px dashed #cbd5e1;
+            display: inline-block;
+            width: 90%;
+            font-weight: 500;
+        }
+
+        /* Modal Pencere */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-box {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 380px;
+            text-align: center;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.3);
+        }
+        .modal-box h3 { color: #d9534f; margin-top: 0; }
+        .modal-input {
+            width: 90%;
+            padding: 10px;
+            margin: 15px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+            text-align: center;
+        }
+        .modal-btn-group { display: flex; gap: 10px; justify-content: center; }
+        .modal-btn-onay { background-color: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .modal-btn-iptal { background-color: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+
+        /* Panel ve Buton Yapıları */
+        .data-panel {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        .excel-btn { background-color: #28a745; color: white; border: none; padding: 10px 18px; font-size: 14px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.3s; }
+        .excel-btn:hover { background-color: #218838; }
+        .clear-btn { background-color: #dc3545; color: white; border: none; padding: 10px 18px; font-size: 14px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.3s; }
+        .clear-btn:hover { background-color: #c82333; }
+
+        /* Fiyat Listesi Excel Yükleme Alanı */
+        .price-upload-box {
+            background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+            border: 2px dashed #34d399;
+            padding: 16px 22px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);
+            transition: all 0.3s ease;
+        }
+        .price-upload-box:hover {
+            border-color: #059669;
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.15);
+        }
+        .price-upload-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .price-upload-icon {
+            background: #d1fae5;
+            color: #059669;
+            width: 45px;
+            height: 45px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.04);
+        }
+        .price-upload-box label { font-size: 14px; font-weight: 700; color: #065f46; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+        .price-upload-box input[type="file"] {
+            font-size: 13px;
+            color: #047857;
+            background: #ffffff;
+            padding: 8px 12px;
+            border: 1px solid #a7f3d0;
+            border-radius: 8px;
+            outline: none;
+            cursor: pointer;
+        }
+        .price-upload-box input[type="file"]::file-selector-button {
+            background-color: #059669;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-right: 10px;
+            transition: background 0.2s;
+        }
+        .price-upload-box input[type="file"]::file-selector-button:hover {
+            background-color: #047857;
+        }
+
+        /* Ürün İade Formu Özel Tasarımı */
+        #sayfa2 .data-panel {
+            background: linear-gradient(to bottom, #ffffff, #fcfdfe);
+            border-top: 5px solid #0284c7;
+        }
+        .grid-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .input-group { display: flex; flex-direction: column; gap: 6px; }
+        .input-group label { font-size: 11px; font-weight: bold; color: #0369a1; margin-left: 2px; }
+        .input-group input { background: #ffffff; border: 1px solid #bae6fd; padding: 10px; border-radius: 8px; font-size: 14px; color: #1e293b; outline: none; }
+        .input-group input:focus { border-color: #0284c7; box-shadow: 0 0 0 3px rgba(2,132,199,0.15); }
+        .btn-primary-iade { 
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); 
+            color: white; 
+            width: 100%; 
+            padding: 14px; 
+            border: none; 
+            border-radius: 8px; 
+            font-size: 15px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            box-shadow: 0 4px 12px rgba(2,132,199,0.25);
+            transition: all 0.2s ease;
+        }
+        .btn-primary-iade:hover { 
+            background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+            box-shadow: 0 6px 16px rgba(2,132,199,0.35);
+            transform: translateY(-1px);
+        }
+        .iade-table-container { background: white; border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; padding: 15px; }
+        .iade-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+        .iade-table th { background: #f0f9ff; color: #0369a1; padding: 12px; border: none; font-weight: 700; text-align: center; }
+        .iade-table td { background: #ffffff; padding: 12px; border-top: 1px solid #e0f2fe; border-bottom: 1px solid #e0f2fe; text-align: center; vertical-align: middle; }
+        .total-badge { color: #059669; font-weight: 800; }
+        .btn-pdf { background: #ef4444; color: white; font-size: 11px; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-edit { background: #f59e0b; color: white; font-size: 11px; padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 4px; transition: background 0.2s; }
+        .btn-edit:hover { background: #d97706; }
+    </style>
+</head>
+<body>
+
+<div class="main-container">
+    <!-- Üst Sekme Geçiş Butonları (2 Sekmeye Düşürüldü) -->
+    <div class="tab-container">
+        <button class="tab-btn active" onclick="sekmeDegis(event, 'sayfa1')">1. İTS Hızlı Giriş</button>
+        <button class="tab-btn" onclick="sekmeDegis(event, 'sayfa2')" style="background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); color: #0369a1; border: 1px solid #7dd3fc;">2. Ürün İade & Fiyat Hesaplama ✨</button>
+    </div>
+
+    <!-- 1. SAYFA: İTS Giriş Modülü -->
+    <div id="sayfa1" class="tab-content active">
+        <div class="card-wrapper">
+            <div class="card">
+                <h2>İTS Otomatik Giriş</h2>
+                <p>GLN: <b id="maskelenmisGln">869***********000</b></p>
+                <button class="btn" onclick="yetkiKontrolPenceresiAc()">İTS Web Sayfasını Aç</button>
+                <div class="status-badge" id="mesaj">📌 GLN Hafızaya Alınmaya Hazır</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GÜVENLİK DUVARI MODAL PENCERESİ -->
+    <div class="modal-overlay" id="guvenlikModal">
+        <div class="modal-box">
+            <h3>🔒 Bilgisayar / Kullanıcı Doğrulama</h3>
+            <p style="font-size: 13px; color: #555;">Bu bilgisayarı kullanan yetkili adını giriniz (Bu işlem bir defaya mahsus hafızaya alınacaktır):</p>
+            <input type="text" id="yetkiliAdiInput" class="modal-input" placeholder="Örn: Adınız Soyadınız">
+            <div class="modal-btn-group">
+                <button class="modal-btn-onay" onclick="yetkiyiDogrulaVeKaydet()">Kaydet & Devam Et</button>
+                <button class="modal-btn-iptal" onclick="guvenlikModaliniKapat()">İptal</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. SAYFA: Ürün İade & Fiyat Hesaplama Modülü -->
+    <div id="sayfa2" class="tab-content">
+        <div class="data-panel">
+            <div class="panel-header">
+                <h2 style="margin:0; color:#0369a1; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-file-invoice-dollar" style="color: #0284c7;"></i> Ürün İade & Fiyat Hesaplama Otomasyonu
+                </h2>
+                <div class="btn-group">
+                    <button class="excel-btn" onclick="iadeApp.exportExcel()"><i class="fas fa-file-excel"></i> EXCEL'e AKTAR</button>
+                    <button class="clear-btn" onclick="iadeApp.clearList()"><i class="fas fa-trash-can"></i> SIFIRLA</button>
+                </div>
+            </div>
+
+            <!-- FİYAT LİSTESİ EXCEL YÜKLEME ALANI -->
+            <div class="price-upload-box">
+                <div class="price-upload-left">
+                    <div class="price-upload-icon">
+                        <i class="fas fa-cloud-arrow-up"></i>
+                    </div>
+                    <label for="fiyatExcelInput">
+                        <span>Güncel Fiyat Listesi Excel Yükle (İ.S.F. & K.K.İ.):</span>
+                        <span id="fiyatYuklemeBilgi" style="font-size: 11px; color: #047857; font-weight: normal; font-style: italic;">(Varsayılan fiyat listesi aktif)</span>
+                    </label>
+                </div>
+                <input type="file" id="fiyatExcelInput" accept=".xlsx, .xls" onchange="iadeApp.loadPricesFromExcel(event)">
+            </div>
+
+            <div class="grid-form" id="iadeFormGrid">
+                <input type="hidden" id="edit_index" value="">
+                <div class="input-group"><label>İADE TARİHİ</label><input type="date" id="iade_tarih" class="iade-nav-input"></div>
+                <div class="input-group">
+                    <label>ÜRÜN ADI</label>
+                    <input list="uL" id="iade_urun" class="iade-nav-input" oninput="iadeApp.onUrunSecildi()" onchange="iadeApp.onUrunSecildi()" onblur="iadeApp.fix(this)" placeholder="Ürün adı seçin veya yazın...">
+                    <datalist id="uL"></datalist>
+                </div>
+                <div class="input-group"><label>PARTİ NO</label><input type="text" id="iade_batch" class="iade-nav-input" onblur="iadeApp.fix(this)"></div>
+                <div class="input-group"><label>S.K.T. (MİAD)</label><input type="text" id="iade_skt" class="iade-nav-input" onblur="iadeApp.fix(this)" placeholder="Örn: Kasım.2027"></div>
+                
+                <!-- Stok modülünden harmanlanan ek alanlar -->
+                <div class="input-group"><label>BARKOD (Stok Detay)</label><input type="text" id="iade_barkod" class="iade-nav-input" placeholder="Barkod..."></div>
+                <div class="input-group"><label>SERİ NO (Stok Detay)</label><input type="text" id="iade_serino" class="iade-nav-input" placeholder="Seri No..."></div>
+                <div class="input-group"><label>DEPO ALIŞ TARİHİ</label><input type="date" id="iade_depoalis" class="iade-nav-input"></div>
+                <div class="input-group"><label>BİZDEN ÇIKIŞ TARİHİ</label><input type="date" id="iade_ciskis" class="iade-nav-input"></div>
+
+                <div class="input-group"><label>İADE EDEN KURUM</label><input list="dL" id="iade_depo" class="iade-nav-input" onblur="iadeApp.fix(this)" placeholder="Kurum..."><datalist id="dL"><option value="Nevzat Ecza Deposu Tıcaret Ve San. A.S."></option><option value="Selcuk Ecza Deposu A.S."></option><option value="Cencora Ecza Deposu"></option></datalist></div>
+                <div class="input-group"><label>ŞUBE ADI</label><input type="text" id="iade_sube" class="iade-nav-input" onblur="iadeApp.fix(this)" placeholder="Şube Adı..."></div>
+                <div class="input-group"><label>İADE GEREKÇESİ</label><input type="text" id="iade_gerekce" class="iade-nav-input" onblur="iadeApp.fix(this)"></div>
+                
+                <div class="input-group"><label>İ.S.F. (BİRİM) / (DEPO ALIŞ FİYATI)</label><input type="number" id="iade_isf" class="iade-nav-input" oninput="iadeApp.calc()" step="0.01"></div>
+                
+                <div class="input-group"><label>İSKONTO (%) [K.K.İ.]</label><input type="number" id="iade_isk" class="iade-nav-input" oninput="iadeApp.calc()" value="0" step="0.01"></div>
+                <div class="input-group"><label>KDV ORANI (%)</label><input type="number" id="iade_kdv" class="iade-nav-input" oninput="iadeApp.calc()" value="10"></div>
+                <div class="input-group">
+                    <label>ANA MAL / M.F.</label>
+                    <div style="display:flex; gap:5px;">
+                        <input type="number" id="iade_amal" class="iade-nav-input" oninput="iadeApp.calc()" value="1" style="width:50%">
+                        <input type="number" id="iade_mf" class="iade-nav-input" oninput="iadeApp.calc()" value="0" style="width:50%">
+                    </div>
+                </div>
+                <div class="input-group"><label>MİKTAR (ADET)</label><input type="number" id="iade_adet" class="iade-nav-input" oninput="iadeApp.calc()" value="1"></div>
+                <div class="input-group"><label>BİRİM NET (KDV'SİZ)</label><input type="text" id="res_birim" readonly style="background:#f0f9ff; color:#0369a1; font-weight:bold;"></div>
+                <div class="input-group"><label>GENEL TOPLAM (KDV DAHİL)</label><input type="text" id="res_toplam" readonly style="background:#f0f9ff; color:#059669; font-weight:bold;"></div>
+            </div>
+            <button class="btn-primary-iade" id="iadeKaydetBtn" onclick="iadeApp.save()"><i class="fas fa-check-circle"></i> HESAPLA VE LİSTEYE KAYDET</button>
+        </div>
+
+        <div class="iade-table-container">
+            <table class="iade-table">
+                <thead>
+                    <tr><th>Tarih</th><th>Ürün / Parti / Detay</th><th>Kurum</th><th>Adet</th><th>Tutar</th><th style="text-align:center">PDF Form</th><th>İşlem</th></tr>
+                </thead>
+                <tbody id="iade_list"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    /* GENEL SEKME GEÇİŞ FONKSİYONU */
+    function sekmeDegis(evt, sayfaId) {
+        let contents = document.getElementsByClassName("tab-content");
+        for (let i = 0; i < contents.length; i++) { contents[i].classList.remove("active"); }
+        let buttons = document.getElementsByClassName("tab-btn");
+        for (let i = 0; i < buttons.length; i++) { buttons[i].classList.remove("active"); }
+        document.getElementById(sayfaId).classList.add("active");
+        evt.currentTarget.classList.add("active");
+    }
+
+    /* 1. SAYFA SCRIPTLERI (İTS Giriş) */
+    const yetkiliListesi = ["H.Demir", "h.demir", "Admin", "Ahmet", "Mehmet"];
+
+    function yetkiKontrolPenceresiAc() {
+        let kayitliKullanici = localStorage.getItem("its_yetkili_kullanici");
+        if (kayitliKullanici && yetkiliListesi.includes(kayitliKullanici)) {
+            itsGirisYapProseduru(kayitliKullanici);
+        } else {
+            document.getElementById("guvenlikModal").style.display = "flex";
+            document.getElementById("yetkiliAdiInput").value = "";
+            document.getElementById("yetkiliAdiInput").focus();
+        }
+    }
+
+    function guvenlikModaliniKapat() { document.getElementById("guvenlikModal").style.display = "none"; }
+
+    function yetkiyiDogrulaVeKaydet() {
+        let girilenDeger = document.getElementById("yetkiliAdiInput").value.trim();
+        if (yetkiliListesi.includes(girilenDeger)) {
+            localStorage.setItem("its_yetkili_kullanici", girilenDeger);
+            guvenlikModaliniKapat();
+            itsGirisYapProseduru(girilenDeger);
+        } else {
+            alert("❌ Yetkisiz Erişim! Bu bilgisayarda tanımlı olmayan kullanıcı.");
+            document.getElementById("yetkiliAdiInput").focus();
+        }
+    }
+
+    function itsGirisYapProseduru(kullaniciAdi) {
+        const tamGlnKodu = "86997830000110000"; 
+        alert(`Hoş geldiniz ${kullaniciAdi}! İTS sayfası açılınca bir kez 'TAB' tuşuna basın ve ardından 'Ctrl + V' ile GLN'yi yapıştırın.`);
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(tamGlnKodu).then(function() {
+                guncelleBasariMesaji(kullaniciAdi);
+            }).catch(function(err) {
+                fallbackKopyala(tamGlnKodu, kullaniciAdi);
+            });
+        } else {
+            fallbackKopyala(tamGlnKodu, kullaniciAdi);
+        }
+        window.open("https://paydas.its.gov.tr/hesap_yonetimi/giris", "_blank");
+    }
+
+    function guncelleBasariMesaji(kullaniciAdi) {
+        let mesajDiv = document.getElementById("mesaj");
+        mesajDiv.innerHTML = `✔ ${kullaniciAdi} için GLN Kopyalandı & İTS Açıldı!`;
+        mesajDiv.style.backgroundColor = "#e6f4ea";
+        mesajDiv.style.color = "#137333";
+        mesajDiv.style.borderColor = "#ceead6";
+    }
+
+    function fallbackKopyala(metin, kullaniciAdi) {
+        let textArea = document.createElement("textarea");
+        textArea.value = metin;
+        textArea.style.position = "fixed"; textArea.style.top = "0"; textArea.style.left = "0"; textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.focus(); textArea.select();
+        try {
+            document.execCommand('copy');
+            guncelleBasariMesaji(kullaniciAdi);
+        } catch (err) {
+            document.getElementById("mesaj").innerText = "⚠ Kopyalama hatası!";
+        }
+        document.body.removeChild(textArea);
+    }
+
+    /* 2. SAYFA SCRIPTLERI (Ürün İade, Fiyat Excel Yükleme & PDF Modülü) */
+    const iadeApp = {
+        data: JSON.parse(localStorage.getItem('gen_ultimate_v13')) || [],
+        urunFiyatSozlugu: JSON.parse(localStorage.getItem('gen_fiyat_sozlugu_v1')) || {
+            "B-Sync Now": { isf: 412.25, kki: 0.0 },
+            "B-Sync On": { isf: 278.52, kki: 0.0 },
+            "Cabometyx 20 Mg Film Kapli Tablet": { isf: 156274.58, kki: 50.0 },
+            "Cabometyx 40 Mg Film Kapli Tablet": { isf: 156274.58, kki: 50.0 },
+            "Cabometyx 60 Mg Film Kapli Tablet": { isf: 156274.58, kki: 50.0 },
+            "Carbaglu 200 Mg Dagilabilir Tablet(60 Tablet)": { isf: 73108.69, kki: 45.0 },
+            "Epamor 20 Mg/2 Ml Enjeksiyonluk Cozelti Iceren Ampul (5 Ampul)": { isf: 494.04, kki: 28.0 },
+            "Epamor 30 Mg/3Ml Enjeksiyonluk Cozelti (5 Kartus)": { isf: 2512.0, kki: 28.0 },
+            "Epamor 50 Mg/5 Ml Enjeksiyonluk Cozelti Iceren Ampul (5 Ampul)": { isf: 1889.07, kki: 28.0 },
+            "Genbutrol 15 Mmol/15 Ml Enjeksiyonluk Cozelti": { isf: 2295.41, kki: 28.0 },
+            "Genbutrol 30 Mmol/30 Ml Enjeksiyonluk Cozelti": { isf: 4453.0, kki: 28.0 },
+            "Genbutrol 7,5 Mmol/7,5 Ml Enjeksiyonluk Cozelti": { isf: 1150.83, kki: 28.0 },
+            "Genkort 10 Mg 60 Tablet": { isf: 464.68, kki: 28.0 },
+            "Ilopera 10 Mcg/Ml Nebulazyon Icin Cozelti Iceren 30 Ampul": { isf: 7542.17, kki: 28.0 },
+            "Ilopera 20 Mcg/Ml Iv Inf. Icin Coz. Iceren 5 Ampul": { isf: 3884.99, kki: 28.0 },
+            "Kuvan 100 Mg Cozunebilir 30 Tablet": { isf: 11351.27, kki: 41.0 },
+            "Novils Sert Kapsul 250 Mg Kapsul 100 Kapsul": { isf: 85543.18, kki: 89.18 },
+            "Pleksor 24 Mg/12 Ml S.C. Enjeksiyonluk Cozelti": { isf: 96343.15, kki: 28.0 },
+            "Regen-D 150 Mcg Jel": { isf: 1308.0, kki: 11.0 },
+            "Somatuline Autogel 120 Mg Uzatilmis Salimli Enjeksiyonluk Cozelti Iceren Kullanim Hazir Siringa": { isf: 15600.95, kki: 32.5 },
+            "Somatuline Autogel 60 Mg Uzatilmis Salimli Enjeksiyonluk Cozelti Iceren Kullanim Hazir Siringa": { isf: 9364.18, kki: 32.5 },
+            "Somatuline Autogel 90 Mg Uzatilmis Salimli Enjeksiyonluk Cozelti Iceren Kullanim Hazir Siringa": { isf: 12503.97, kki: 32.5 },
+            "Tysabri 300 Mg I.V. Infuyon Icin Konsantre Cozelti Iceren 1 Flakon": { isf: 62062.84, kki: 55.0 }
+        },
+        
+        init() { 
+            this.render(); 
+            this.populateDatalist();
+            document.getElementById('iade_tarih').valueAsDate = new Date(); 
+        },
+
+        populateDatalist() {
+            const dl = document.getElementById('uL');
+            dl.innerHTML = Object.keys(this.urunFiyatSozlugu).map(urun => `<option value="${urun}"></option>`).join('');
+        },
+
+        loadPricesFromExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    let yeniSozluk = {};
+                    let headers = jsonRows[0].map(h => h ? h.toString().trim().toUpperCase() : "");
+                    let ilacIdx = headers.findIndex(h => h.includes("ILAC") || h.includes("ÜRÜN"));
+                    let kkiIdx = headers.findIndex(h => h.includes("K.K.İ") || h.includes("ISKONTO") || h.includes("KKİ"));
+                    let isfIdx = headers.findIndex(h => h.includes("İ.S.F") || h.includes("ISF") || h.includes("BİRİM"));
+
+                    if (ilacIdx === -1) ilacIdx = 0;
+                    if (kkiIdx === -1) kkiIdx = 1;
+                    if (isfIdx === -1) isfIdx = 2;
+
+                    for (let i = 1; i < jsonRows.length; i++) {
+                        let row = jsonRows[i];
+                        if (row && row[ilacIdx]) {
+                            let ilacAdi = row[ilacIdx].toString().trim();
+                            let kki = parseFloat(row[kkiIdx]) || 0;
+                            let isf = parseFloat(row[isfIdx]) || 0;
+                            if (ilacAdi) {
+                                yeniSozluk[ilacAdi] = { isf: isf, kki: kki };
+                            }
+                        }
+                    }
+
+                    if (Object.keys(yeniSozluk).length > 0) {
+                        this.urunFiyatSozlugu = yeniSozluk;
+                        localStorage.setItem('gen_fiyat_sozlugu_v1', JSON.stringify(yeniSozluk));
+                        this.populateDatalist();
+                        document.getElementById('fiyatYuklemeBilgi').innerText = `✔ ${Object.keys(yeniSozluk).length} ürünün fiyatı başarıyla yüklendi!`;
+                        document.getElementById('fiyatYuklemeBilgi').style.color = "#059669";
+                        alert(`✔ Başarılı! Excel'den ${Object.keys(yeniSozluk).length} adet ürün fiyatı ve iskontosu yüklendi.`);
+                    } else {
+                        alert("⚠ Uyarı: Excel dosyasından uygun formatta veri okunamadı.");
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert("❌ Excel dosyası okunurken hata oluştu!");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        },
+
+        onUrunSecildi() {
+            const val = document.getElementById('iade_urun').value.trim();
+            if (this.urunFiyatSozlugu[val]) {
+                const info = this.urunFiyatSozlugu[val];
+                document.getElementById('iade_isf').value = info.isf;
+                document.getElementById('iade_isk').value = info.kki;
+                this.calc();
+            }
+        },
+
+        fix(el) { 
+            if(!el.value) return;
+            let val = el.value.trim();
+            
+            if (el.id === 'iade_batch' || el.id === 'iade_serino' || el.id === 'iade_barkod') {
+                el.value = val.toLocaleUpperCase('tr-TR');
+            } else if (['iade_urun', 'iade_depo', 'iade_sube', 'iade_gerekce'].includes(el.id)) {
+                el.value = val.replace(/(^|\s)\S/g, l => l.toLocaleUpperCase('tr-TR'));
+            }
+
+            if (el.id === 'iade_urun') {
+                this.onUrunSecildi();
+            }
+        },
+
+        trFix(text) {
+            if(!text) return "";
+            return text.toString()
+                .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+                .replace(/Ü/g, 'U').replace(/ü/g, 'u')
+                .replace(/Ş/g, 'S').replace(/ş/g, 's')
+                .replace(/İ/g, 'I').replace(/ı/g, 'i')
+                .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+                .replace(/Ç/g, 'C').replace(/ç/g, 'c');
+        },
+
+        calc() {
+            const isf = parseFloat(document.getElementById('iade_isf').value) || 0;
+            const isk = parseFloat(document.getElementById('iade_isk').value) || 0;
+            const amal = parseFloat(document.getElementById('iade_amal').value) || 1;
+            const mf = parseFloat(document.getElementById('iade_mf').value) || 0;
+            const adet = parseFloat(document.getElementById('iade_adet').value) || 1;
+            const kdv_oran = parseFloat(document.getElementById('iade_kdv').value) || 0;
+
+            const netIskonto = isf - (isf * isk / 100);
+            const birimNet = (netIskonto * amal) / (amal + mf);
+            const kdvCarpan = (kdv_oran / 100) + 1;
+            const toplamKdvli = (birimNet * kdvCarpan) * adet;
+
+            document.getElementById('res_birim').value = birimNet.toFixed(4);
+            document.getElementById('res_toplam').value = toplamKdvli.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        },
+
+        save() {
+            const editIdx = document.getElementById('edit_index').value;
+            const entry = {
+                tarih: document.getElementById('iade_tarih').value, 
+                urun: document.getElementById('iade_urun').value,
+                batch: document.getElementById('iade_batch').value, 
+                skt: document.getElementById('iade_skt').value,
+                barkod: document.getElementById('iade_barkod').value,
+                serino: document.getElementById('iade_serino').value,
+                depoalis: document.getElementById('iade_depoalis').value,
+                ciskis: document.getElementById('iade_ciskis').value,
+                depo: document.getElementById('iade_depo').value, 
+                sube: document.getElementById('iade_sube').value,
+                gerekce: document.getElementById('iade_gerekce').value,
+                isf: document.getElementById('iade_isf').value,
+                isk: document.getElementById('iade_isk').value,
+                kdv: document.getElementById('iade_kdv').value,
+                amal: document.getElementById('iade_amal').value,
+                mf: document.getElementById('iade_mf').value,
+                adet: document.getElementById('iade_adet').value, 
+                birimKdvsiz: document.getElementById('res_birim').value,
+                toplam: document.getElementById('res_toplam').value
+            };
+            if(!entry.urun || !entry.batch) return alert("Ürün ve Parti No alanları boş bırakılamaz!");
+            
+            if (editIdx !== "") {
+                this.data[parseInt(editIdx)] = entry;
+                document.getElementById('edit_index').value = "";
+                const btn = document.getElementById('iadeKaydetBtn');
+                btn.innerHTML = `<i class="fas fa-check-circle"></i> HESAPLA VE LİSTEYE KAYDET`;
+                btn.style.background = ""; 
+            } else {
+                this.data.push(entry);
+            }
+
+            localStorage.setItem('gen_ultimate_v13', JSON.stringify(this.data));
+            this.render();
+            alert("İşlem Başarılı! ✔️🧿");
+        },
+
+        edit(i) {
+            const r = this.data[i];
+            document.getElementById('edit_index').value = i;
+            document.getElementById('iade_tarih').value = r.tarih || '';
+            document.getElementById('iade_urun').value = r.urun || '';
+            document.getElementById('iade_batch').value = r.batch || '';
+            document.getElementById('iade_skt').value = r.skt || '';
+            document.getElementById('iade_barkod').value = r.barkod || '';
+            document.getElementById('iade_serino').value = r.serino || '';
+            document.getElementById('iade_depoalis').value = r.depoalis || '';
+            document.getElementById('iade_ciskis').value = r.ciskis || '';
+            document.getElementById('iade_depo').value = r.depo || '';
+            document.getElementById('iade_sube').value = r.sube || '';
+            document.getElementById('iade_gerekce').value = r.gerekce || '';
+            document.getElementById('iade_isf').value = r.isf || '';
+            document.getElementById('iade_isk').value = r.isk || '0';
+            document.getElementById('iade_kdv').value = r.kdv || '10';
+            document.getElementById('iade_amal').value = r.amal || '1';
+            document.getElementById('iade_mf').value = r.mf || '0';
+            document.getElementById('iade_adet').value = r.adet || '1';
+            
+            this.calc();
+            
+            const btn = document.getElementById('iadeKaydetBtn');
+            btn.innerHTML = `<i class="fas fa-save"></i> DEĞİŞİKLİKLERİ GÜNCELLE`;
+            btn.style.background = "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)";
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+
+        render() {
+            document.getElementById('iade_list').innerHTML = this.data.map((r, i) => `
+                <tr>
+                    <td>${r.tarih}</td>
+                    <td><b>${r.urun}</b><br><small>Parti: ${r.batch} | Barkod: ${r.barkod || '-'} | Seri: ${r.serino || '-'}</small></td>
+                    <td>${r.depo} ${r.sube ? '/ ' + r.sube : ''}</td>
+                    <td>${r.adet}</td>
+                    <td class="total-badge">₺${r.toplam}</td>
+                    <td style="text-align:center"><button class="btn-pdf" onclick="iadeApp.pdf(${i})">PDF</button></td>
+                    <td>
+                        <button class="btn-edit" title="Düzenle" onclick="iadeApp.edit(${i})"><i class="fas fa-pen"></i></button>
+                        <i class="fas fa-trash" style="color:#ef4444; cursor:pointer" title="Sil" onclick="iadeApp.remove(${i})"></i>
+                    </td>
+                </tr>
+            `).join('');
+        },
+
+        pdf(i) {
+            const r = this.data[i];
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const dynamicFontSize = r.urun.length > 60 ? 8 : 10;
+            const tamKurumAdi = r.sube ? `${r.depo} / ${r.sube}` : r.depo;
+
+            doc.setFont("helvetica", "bold");
+            doc.text(this.trFix("Ek 2. Iade Urun Teslim Formu"), 14, 15);
+            doc.autoTable({
+                startY: 25,
+                theme: 'grid',
+                styles: { font: 'helvetica', fontSize: 10, cellPadding: 4, lineColor: [0, 0, 0], lineWidth: 0.1, valign: 'middle' },
+                columnStyles: { 0: { cellWidth: 50, fontStyle: 'bold' }, 1: { cellWidth: 40, fontStyle: 'bold' }, 2: { cellWidth: 'auto' } },
+                body: [
+                    [{content: this.trFix('Iade Urun Teslim Formu / Returned Product Delivery Form'), colSpan: 3, styles: {halign:'center', fillColor: [240, 240, 240]}}],
+                    [this.trFix('Iade Tarihi / Return Date'), {content: r.tarih, colSpan: 2}],
+                    [{content: this.trFix("Urunun\nProduct's"), rowSpan: 4, styles: {halign: 'center', fontStyle: 'bold'}}, this.trFix('Adi / Name'), {content: this.trFix(r.urun), styles: {fontSize: dynamicFontSize}}],
+                    [this.trFix('Parti No / Batch No'), this.trFix(r.batch)],
+                    [this.trFix('SKT / Expiry Date'), this.trFix(r.skt)],
+                    [this.trFix('Miktar / Amount'), this.trFix(r.adet) + " ADET"],
+                    [this.trFix('Iade Eden Kurum / Returned by'), {content: this.trFix(tamKurumAdi), colSpan: 2}], 
+                    [this.trFix('Iade Gerekcesi / Return Reason'), {content: this.trFix(r.gerekce), colSpan: 2}]
+                ]
+            });
+
+            doc.autoTable({
+                startY: doc.lastAutoTable.finalY, 
+                theme: 'grid',
+                styles: { font: 'helvetica', fontSize: 10, cellPadding: 2, lineColor: [0, 0, 0], lineWidth: 0.1, valign: 'middle', overflow: 'linebreak' },
+                columnStyles: { 0: { cellWidth: 50 }, 1: { cellWidth: 51 }, 2: { cellWidth: 81 } },
+                body: [
+                    [
+                        { content: this.trFix('TESLIM EDEN / Delivered by\n(Isim-Imza-Tarih)'), colSpan: 2, styles: { minCellHeight: 25, halign: 'center', fontStyle: 'normal' } },
+                        { content: this.trFix('TESLIM ALAN / Receipt by\n(Isim-Imza-Tarih)'), styles: { minCellHeight: 25, halign: 'center', fontStyle: 'normal' } }
+                    ],
+                    [
+                        { content: this.trFix('Depoya Donus Tarihi /\nReturn Date To Warehouse'), styles: { fontStyle: 'bold', halign: 'left', fontSize: 10, cellPadding: 2 } },
+                        { content: '', colSpan: 2, styles: { halign: 'left' } }
+                    ]
+                ]
+            });
+            doc.save(`Iade_Formu_${r.batch}.pdf`);
+        },
+
+        exportExcel() {
+            if (this.data.length === 0) {
+                alert("⚠ Dışa aktarılacak veri bulunamadı.");
+                return;
+            }
+
+            // HTML tabanlı stilize Excel (.xls) şablonu oluşturuluyor
+            let html = `
+            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    table { border-collapse: collapse; font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 10pt; }
+                    th {
+                        background-color: #0056B3 !important;
+                        color: #FFFFFF !important;
+                        font-weight: bold;
+                        text-align: center;
+                        vertical-align: middle;
+                        padding: 10px;
+                        border: 0.5pt solid #003D82;
+                    }
+                    td {
+                        padding: 8px;
+                        border: 0.5pt solid #E2E8F0;
+                        vertical-align: middle;
+                        background-color: #FFFFFF;
+                    }
+                </style>
+            </head>
+            <body>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="background-color: #0056B3; color: #FFFFFF;">İade Tarihi</th>
+                            <th style="background-color: #0056B3; color: #FFFFFF;">Barkod</th>
+                            <th style="background-color: #0056B3; color: #FFFFFF;">Seri No</th>
+                            <th style="background-color: #0056B3; color: #FFFFFF;">Ürün Adı</th>
+                            <th style="background-color: #0056B3; color: #FFFFFF;">Parti No</th>
+                            <th style="background-color: #0056B3; color: #FFFFFF;">S.K.T. (Miad)</th>
+                            <th style="background-color: #0056B3; color: #FFFFFF;">Depo Alış Tarihi</th>
+                            <th style="background-color: #0056B3; color: #FFFFFF;">Bizden Çıkış Tarihi</th>
+                            <th style="background-color: #0056B3; color: #FFFFFF;">İade Eden Kurum</th>
+                            <th style="background-color: #0056B3; color: #FFFFFF;">Şube Adı</th>
+                            <th style="background-color: #0056B3; color: #FFFFFF;">İade Gerekçesi</th>
+                            <th style="background-color: #0056B3; color: #FFFFFF;">İ.S.F. / Depo Alış Fiyatı</th>
+                            <th style="background-color: #0056B3; color: #FFFFFF;">İskonto (%)</th>
+                            <th style="background-color: #0056B3; color: #FFFFFF;">KDV Oranı (%)</th>
+                            <th style="background-color: #0056B3; color: #FFFFFF;">Ana Mal</th>
+                            <th style="background-color: #0056B3; color: #FFFFFF;">M.F.</th>
+                            <th style="background-color: #0056B3; color: #FFFFFF;">Adet</th>
+                            <th style="background-color: #0056B3; color: #FFFFFF;">Birim Net (KDV'siz)</th>
+                            <th style="background-color: #0056B3; color: #FFFFFF;">Genel Toplam (KDV Dahil)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            this.data.forEach((r) => {
+                const isfVal = r.isf !== "" && !isNaN(r.isf) ? parseFloat(r.isf) : "";
+                const iskVal = r.isk !== "" && !isNaN(r.isk) ? parseFloat(r.isk) : "";
+                const kdvVal = r.kdv !== "" && !isNaN(r.kdv) ? parseInt(r.kdv) : "";
+                const amalVal = r.amal !== "" && !isNaN(r.amal) ? parseInt(r.amal) : "";
+                const mfVal = r.mf !== "" && !isNaN(r.mf) ? parseInt(r.mf) : "";
+                const adetVal = r.adet !== "" && !isNaN(r.adet) ? parseInt(r.adet) : "";
+                const birimVal = r.birimKdvsiz !== "" && !isNaN(r.birimKdvsiz) ? parseFloat(r.birimKdvsiz) : "";
+                
+                let toplamNum = 0;
+                if (r.toplam) {
+                    toplamNum = parseFloat(r.toplam.toString().replace(/\./g, '').replace(',', '.')) || 0;
+                }
+
+                html += `
+                    <tr>
+                        <td style="text-align: left; mso-number-format: '\\@';">${r.tarih || ""}</td>
+                        <td style="text-align: left; mso-number-format: '\\@';">${r.barkod || ""}</td>
+                        <td style="text-align: left; mso-number-format: '\\@';">${r.serino || ""}</td>
+                        <td style="text-align: left; mso-number-format: '\\@';">${r.urun || ""}</td>
+                        <td style="text-align: left; mso-number-format: '\\@';">${r.batch || ""}</td>
+                        <td style="text-align: left; mso-number-format: '\\@';">${r.skt || ""}</td>
+                        <td style="text-align: left; mso-number-format: '\\@';">${r.depoalis || ""}</td>
+                        <td style="text-align: left; mso-number-format: '\\@';">${r.ciskis || ""}</td>
+                        <td style="text-align: left; mso-number-format: '\\@';">${r.depo || ""}</td>
+                        <td style="text-align: left; mso-number-format: '\\@';">${r.sube || ""}</td>
+                        <td style="text-align: left; mso-number-format: '\\@';">${r.gerekce || ""}</td>
+                        <td style="text-align: right; mso-number-format: '#\\,\\#\\#0\\.00';">${isfVal !== "" ? isfVal.toFixed(2).replace('.', ',') : ""}</td>
+                        <td style="text-align: right; mso-number-format: 'Standard';">${iskVal !== "" ? iskVal.toFixed(2).replace('.', ',') : ""}</td>
+                        <td style="text-align: right; mso-number-format: '0';">${kdvVal !== "" ? kdvVal : ""}</td>
+                        <td style="text-align: right; mso-number-format: '0';">${amalVal !== "" ? amalVal : ""}</td>
+                        <td style="text-align: right; mso-number-format: '0';">${mfVal !== "" ? mfVal : ""}</td>
+                        <td style="text-align: right; mso-number-format: '0';">${adetVal !== "" ? adetVal : ""}</td>
+                        <td style="text-align: right; mso-number-format: '#\\,\\#\\#0\\.0000';">${birimVal !== "" ? birimVal.toFixed(4).replace('.', ',') : ""}</td>
+                        <td style="text-align: right; mso-number-format: '#\\,\\#\\#0\\.00';">${toplamNum !== 0 ? toplamNum.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : ""}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            </body>
+            </html>
+            `;
+
+            // .xls uzantısı ve application/vnd.ms-excel MIME tipi ile dosya tetikleniyor
+            const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = "Gen_Harmanlanmis_Iade_Stok_Raporu.xls";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        },
+
+        clearList() { 
+            if(confirm("Dikkat! Tüm liste silinecek. Onaylıyor musunuz?")) { 
+                this.data = []; 
+                localStorage.removeItem('gen_ultimate_v13'); 
+                this.render(); 
+            } 
+        },
+
+        remove(i) { 
+            if(confirm("Bu satırı silmek istiyor musunuz?")) { 
+                this.data.splice(i,1); 
+                localStorage.setItem('gen_ultimate_v13', JSON.stringify(this.data)); 
+                this.render(); 
+            } 
+        }
+    };
+
+    /* Form Alanları İçin Enter ve Ok Tuşları İle Hızlı İlerleme Desteği */
+    document.addEventListener('keydown', function(e) {
+        const sayfa2 = document.getElementById('sayfa2');
+        if (!sayfa2.classList.contains('active')) return;
+
+        const activeEl = document.activeElement;
+        if (!activeEl || !activeEl.classList.contains('iade-nav-input')) return;
+
+        const inputs = Array.from(document.querySelectorAll('#sayfa2 .iade-nav-input'));
+        let idx = inputs.indexOf(activeEl);
+        if (idx === -1) return;
+
+        let nextIdx = idx;
+
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (e.shiftKey) {
+                nextIdx = idx > 0 ? idx - 1 : idx;
+            } else {
+                if (idx < inputs.length - 1) {
+                    nextIdx = idx + 1;
+                } else {
+                    document.getElementById('iadeKaydetBtn').focus();
+                    return;
+                }
+            }
+        } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+            if (idx < inputs.length - 1) {
+                e.preventDefault();
+                nextIdx = idx + 1;
+            }
+        } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+            if (idx > 0) {
+                e.preventDefault();
+                nextIdx = idx - 1;
+            }
+        }
+
+        if (nextIdx !== idx) {
+            inputs[nextIdx].focus();
+            if (inputs[nextIdx].type === 'text' || inputs[nextIdx].type === 'number') {
+                inputs[nextIdx].select();
+            }
+        }
+    });
+
+    iadeApp.init();
+</script>
+</body>
+</html>

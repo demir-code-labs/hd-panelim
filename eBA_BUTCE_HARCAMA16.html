@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>BÜTÇE OPERASYON MERKEZİ</title>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { 
+            --p: #008291;        
+            --bg: #0B0E14;       
+            --card: #151921;     
+            --success: #00FF7F;  
+            --danger: #FF3131;   
+            --warning: #FFD700;  
+            --text: #e5e7eb;     
+            --border: #2d3748;   
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; transition: background 0.3s ease; }
+        
+        .nav { background: var(--card); padding: 12px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--p); box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .logo h1 { font-size: 18px; font-weight: 900; letter-spacing: 2px; color: var(--text); }
+        .logo span { color: var(--p); }
+        
+        .dashboard { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 15px; }
+        .d-card { background: var(--card); padding: 18px; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .d-label { font-size: 11px; font-weight: 800; color: #9ca3af; margin-bottom: 8px; text-transform: uppercase; }
+        .d-val { font-size: 24px; font-weight: 900; font-family: 'Consolas', monospace; color: var(--text); }
+
+        .main-layout { display: grid; grid-template-columns: 360px 1fr; gap: 15px; padding: 0 15px 15px; flex: 1; overflow: hidden; }
+        .sidebar { background: var(--card); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; border: 1px solid var(--border); }
+        
+        .section-title { font-size: 12px; font-weight: 900; color: #fff; background: var(--p); padding: 10px 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        
+        input, select { width: 100%; background: #1f2937; border: 1px solid var(--border); padding: 10px; color: #fff; border-radius: 6px; font-size: 13.5px; outline: none; transition: 0.2s; }
+        input:focus { border-color: var(--p); box-shadow: 0 0 0 3px rgba(0, 130, 145, 0.2); }
+        
+        .btn { width: 100%; padding: 12px; border-radius: 6px; border: none; font-weight: 800; cursor: pointer; text-transform: uppercase; font-size: 11px; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-add { background: var(--p); color: #fff; }
+        .btn-excel { background: transparent; color: var(--success); border: 2px solid var(--success); }
+        .btn-backup { background: rgba(0, 255, 127, 0.05); color: var(--success); border: 1px dashed var(--success); margin-top: 5px; }
+
+        .table-container { background: var(--card); border-radius: 10px; border: 1px solid var(--border); overflow: hidden; display: flex; flex-direction: column; }
+        .scroll-area { flex: 1; overflow: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th { position: sticky; top: 0; background: #1a1f26; padding: 15px; text-align: left; color: #9ca3af; font-size: 11px; z-index: 10; border-bottom: 2px solid var(--border); font-weight: 800; }
+        td { padding: 14px; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text); }
+        
+        /* Sidebar aylık özet için akordeon düzeni */
+.month-group { border: 1px solid var(--border); margin-bottom: 8px; border-radius: 6px; overflow: hidden; }
+.month-header { cursor: pointer; display: flex; justify-content: space-between; padding: 10px; font-weight: 900; background: rgba(255,255,255,0.03); }
+.month-header:hover { background: rgba(255,255,255,0.08); }
+.month-details { display: none; padding: 5px; border-top: 1px solid var(--border); }        .cat-row { display: flex; justify-content: space-between; padding: 6px 10px 6px 20px; font-size: 11px; color: #9ca3af; border-left: 2px solid var(--p); margin: 4px 0 4px 5px; transition: 0.2s; }
+        .cat-row:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+        .cat-row span:last-child { font-family: 'Consolas', monospace; font-weight: bold; color: var(--text); }
+
+        #themePanel {
+            display:none; position: fixed; top: 75px; right: 20px; 
+            background: var(--card); border: 2px solid var(--p); 
+            padding: 18px; border-radius: 12px; z-index: 1000; 
+            box-shadow: 0 15px 50px rgba(0,0,0,0.7); min-width: 250px;
+        }
+        .theme-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+        .theme-row label { font-size: 10px; font-weight: 900; color: #9ca3af; display: flex; justify-content: space-between; }
+        .theme-row input[type="color"] { height: 30px; padding: 2px; cursor: pointer; border: none; background: transparent; width: 100%; }
+
+        .prog-bg { height: 8px; background: #2d3748; border-radius: 10px; margin: 4px 0; overflow: hidden; }
+        .prog-fill { height: 100%; transition: 0.5s; }
+        .bar-info { display: flex; justify-content: flex-end; font-size: 11px; font-weight: bold; color: #9ca3af; font-family: 'Consolas', monospace; margin-bottom: 10px; }
+        .action-btn { cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .action-btn:hover { transform: scale(1.2); }
+    
+		/* %90 Uyarısı İçin Yanıp Sönme Animasyonu */
+		@keyframes neon-pulse {
+		0% { opacity: 1; box-shadow: 0 0 5px var(--danger); }
+		50% { opacity: 0.5; box-shadow: 0 0 20px var(--danger); }
+		100% { opacity: 1; box-shadow: 0 0 5px var(--danger); }
+	}
+
+		.critical-alert {
+		animation: neon-pulse 1.5s infinite;
+		border: 1px solid var(--danger) !important;
+	}
+		#barCont > div {
+		background: var(--card);
+		border: 1px solid var(--border);
+		padding: 15px;
+		border-radius: 10px;
+	}
+		/* Kurumsal Rapor Yazdırma Düzeni */
+		@media print {
+		body { background: white !important; color: black !important; overflow: visible !important; }
+		.nav, .sidebar, .action-btn, #themeToggle, #themePanel, .btn { display: none !important; }
+		.main-layout { display: block !important; padding: 0 !important; }
+		.table-container { border: 1px solid #000 !important; width: 100% !important; }
+		th { background: #f2f2f2 !important; color: black !important; border-bottom: 2px solid #000 !important; }
+		td { color: black !important; border-bottom: 1px solid #ddd !important; }
+		.dashboard { grid-template-columns: repeat(3, 1fr) !important; margin-bottom: 30px !important; }
+		.d-card { border: 1px solid #ccc !important; color: black !important; }
+		.d-val { color: black !important; }
+	}
+	</style>
+</head>
+<body>
+
+<div class="nav">
+    <div class="logo"><h1>GEN <span>/ FİNANS OPERASYON MERKEZİ</span></h1></div>
+    <div style="display: flex; align-items: center; gap: 20px;">
+        <div id="themeToggle" onclick="toggleThemePanel()" style="cursor:pointer; color: var(--p); font-size: 22px; transition: 0.3s;" onmouseover="this.style.transform='rotate(45deg)'" onmouseout="this.style.transform='rotate(0deg)'">
+            <i class="fa-solid fa-palette"></i>
+        </div>
+        <div style="text-align: right">
+            <div id="topDate" style="font-weight: 900; font-size: 15px; color: var(--p);"></div>
+            <div style="font-size: 10px; color: var(--success); font-weight: bold;">Gen_Finans_V001 🧿</div>
+        </div>
+    </div>
+</div>
+
+<div id="themePanel">
+    <h4 style="font-size: 13px; margin-bottom: 15px; color: var(--p); text-align: center; border-bottom: 1px solid var(--border); padding-bottom: 10px;">🎨 TEMA EDİTÖRÜ</h4>
+    
+    <div class="theme-row">
+        <label>SAYFA ARKA PLANI</label>
+        <input type="color" id="cp_bg" onchange="updateLiveColor('background', this.value)">
+    </div>
+    <div class="theme-row">
+        <label>PANEL / KART RENGİ</label>
+        <input type="color" id="cp_card" onchange="updateLiveColor('card', this.value)">
+    </div>
+    <div class="theme-row">
+        <label>YAZI GENEL RENGİ</label>
+        <input type="color" id="cp_text" onchange="updateLiveColor('text', this.value)">
+    </div>
+    <hr style="border: 0; border-top: 1px solid var(--border); margin: 10px 0;">
+    <div class="theme-row">
+        <label>ANA VURGU RENGİ</label>
+        <input type="color" id="cp_primary" onchange="updateLiveColor('primary', this.value)">
+    </div>
+    <div class="theme-row">
+        <label id="lbl_success">POZİTİF (YEŞİL)</label>
+        <input type="color" id="cp_success" onchange="updateLiveColor('success', this.value)">
+    </div>
+    <div class="theme-row">
+        <label id="lbl_danger">NEGATİF (KIRMIZI)</label>
+        <input type="color" id="cp_danger" onchange="updateLiveColor('danger', this.value)">
+    </div>
+    <button onclick="toggleThemePanel()" style="margin-top:10px; width:100%; font-size:11px; padding:10px; cursor:pointer; background: var(--p); color:white; border:none; border-radius:6px; font-weight:bold;">AYARLARI KAYDET</button>
+</div>
+
+<div class="dashboard">
+    <div class="d-card" style="border-left: 5px solid #9ca3af;"><div class="d-label">ANA BÜTÇE PLANI</div><div class="d-val" id="totalB">0,00 TL</div></div>
+    <div class="d-card" style="border-left: 5px solid var(--danger);"><div class="d-label">TOPLAM HARCAMA</div><div class="d-val" id="spentB" style="color:var(--danger);">0,00 TL</div></div>
+    <div class="d-card" style="border-left: 5px solid var(--success);"><div class="d-label">KALAN REZERV</div><div class="d-val" id="remB" style="color:var(--success);">0,00 TL</div></div>
+</div>
+
+		<div id="barCont" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; padding: 0 15px 15px;"></div>
+
+<div class="main-layout">
+    <div class="sidebar">
+        <div class="section-title"><span>BÜTÇE LİMİTLERİ</span><i class="fa-solid fa-sliders"></i></div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <div><label style="font-size:10px; color:#9ca3af; font-weight:bold;">SEYAHAT</label><input type="number" id="limit_SEYAHAT" value="1420000" oninput="saveLimits()" placeholder="0"></div>
+            <div><label style="font-size:10px; color:#9ca3af; font-weight:bold;">TANITIM</label><input type="number" id="limit_TANITIM" value="410000" oninput="saveLimits()" placeholder="0"></div>
+            <div><label style="font-size:10px; color:#9ca3af; font-weight:bold;">YEMEK</label><input type="number" id="limit_YEMEK" value="130000" oninput="saveLimits()" placeholder="0"></div>
+            <div><label style="font-size:10px; color:#9ca3af; font-weight:bold;">DİĞER</label><input type="number" id="limit_DIGER" value="40000" oninput="saveLimits()" placeholder="0"></div>
+        </div>
+
+        <div class="section-title"><span>AYLIK HARCAMA ÖZETİ</span><i class="fa-solid fa-calendar-days"></i></div>
+        <button class="btn" style="background:#2d3748; color: white; margin-bottom:10px; width: 100%; text-align: center; font-weight: bold; border: none; padding: 10px; cursor: pointer; border-radius: 5px;" onclick="setFilter('ALL')">
+    <i class="fa-solid fa-list"></i> TÜM DÖNEMLERİ GÖSTER / SIFIRLA</button>
+<div id="monthCont"></div>
+		<div id="monthCont"></div>
+
+        <div class="section-title"><span>İŞLEM GİRİŞİ</span><i class="fa-solid fa-pen-nib"></i></div>
+        <input type="date" id="m_date">
+        <input type="text" id="m_sno" placeholder="Süreç No (Örn: SUREC-001)">
+        <select id="m_cat">
+            <option value="SEYAHAT (Yurt İçi Seyahat)">SEYAHAT</option>
+            <option value="TANITIM (Temsili Ağırlama)">TANITIM</option>
+            <option value="YEMEK (Yemek Ücreti)">YEMEK</option>
+            <option value="DİĞER (Araç Bak./Onr. Yakıt)">DİĞER</option>
+        </select>
+        <input type="text" id="m_desc" placeholder="Açıklama...">
+        <input type="number" id="m_amount" placeholder="Tutar (TL)">
+        <button class="btn btn-add" onclick="addManual()"><i class="fa-solid fa-plus"></i> SİSTEME İŞLE</button>
+        
+        <div style="margin-top: 5px;">
+            <button class="btn btn-excel" onclick="document.getElementById('fileInp').click()">
+                <i class="fa-solid fa-file-import"></i> MASRAF YÜKLE
+            </button>
+            <input type="file" id="fileInp" style="display:none;" onchange="loadExcel(this)">
+        </div>
+        <button class="btn btn-backup" onclick="exportToExcel()">
+            <i class="fa-solid fa-download"></i> YEDEK AL
+        </button>
+		
+		
+		<div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+			<label style="font-size: 11px; color: var(--p); font-weight: bold; display: block; margin-bottom: 5px;">RAPOR DÖNEMİ SEÇİN:</label>
+			<select id="reportMonthSelect" class="btn" style="background: var(--card); color: var(--text); border: 1px solid var(--border); width: 100%; margin-bottom: 10px; cursor: pointer;">
+			<option value="ALL">TÜM DÖNEMLER</option>
+			</select>
+    
+		<button class="btn" style="background: var(--p); color: white; width: 100%;" onclick="generateMonthlyReport()">
+        <i class="fa-solid fa-file-invoice"></i> SEÇİLİ AYI RAPORLA
+		</button>
+		</div>
+		
+		
+		<button class="btn" style="background: var(--p); color: white; margin-top: 10px;" onclick="window.print()">
+			<i class="fa-solid fa-file-invoice"></i> KURUMSAL RAPOR AL
+		</button>
+        
+
+        <button class="btn" style="background:rgba(239, 68, 68, 0.1); color:var(--danger); border: 1px solid var(--danger); margin-top:auto;" onclick="clearMemory()"><i class="fa-solid fa-sync"></i> SIFIRLA</button>
+    </div>
+
+    <div class="table-container">
+        <div class="scroll-area">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:100px;">TARİH</th>
+                        <th style="width:120px;">SÜREÇ NO</th>
+                        <th style="width:180px;">KATEGORİ</th>
+                        <th>AÇIKLAMA</th>
+                        <th style="text-align:right; width:140px;">TUTAR (TL)</th>
+                        <th style="width:90px; text-align:center;">İŞLEM</th>
+                    </tr>
+                </thead>
+                <tbody id="logTable"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const UI_THEME = JSON.parse(localStorage.getItem('h_demir_theme_v17')) || {
+        primary: "#008291", success: "#00FF7F", danger: "#FF3131", warning: "#FFD700",
+        background: "#0B0E14", card: "#151921", border: "#2d3748", text: "#e5e7eb"
+    };
+
+    function getColorName(hex) {
+        const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+        if (r > 160 && g < 100 && b < 100) return "KIRMIZI";
+        if (g > 160 && r < 100 && b < 100) return "YEŞİL";
+        if (r > 160 && g > 160 && b < 100) return "SARI";
+        return "ÖZEL RENK";
+    }
+
+    // applyTheme fonksiyonunu bu şekilde güncelleyin:
+	function applyTheme() {
+    const root = document.documentElement;
+    // CSS'deki değişken isimleriyle eşleştiriyoruz
+    root.style.setProperty('--p', UI_THEME.primary);
+    root.style.setProperty('--bg', UI_THEME.background); // background -> bg
+    root.style.setProperty('--card', UI_THEME.card);
+    root.style.setProperty('--text', UI_THEME.text);
+    root.style.setProperty('--success', UI_THEME.success);
+    root.style.setProperty('--danger', UI_THEME.danger);
+    root.style.setProperty('--warning', UI_THEME.warning);
+    root.style.setProperty('--border', UI_THEME.card); // Border rengini kart rengiyle senkronize eder
+
+    document.getElementById('lbl_success').innerText = `POZİTİF (${getColorName(UI_THEME.success)})`;
+    document.getElementById('lbl_danger').innerText = `NEGATİF (${getColorName(UI_THEME.danger)})`;
+}
+
+    function toggleThemePanel() {
+        const panel = document.getElementById('themePanel');
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        ['primary','success','danger','background','card','text'].forEach(k => document.getElementById('cp_'+k).value = UI_THEME[k]);
+    }
+
+    // updateLiveColor fonksiyonunda küçük bir düzeltme:
+	function updateLiveColor(key, val) {
+    UI_THEME[key] = val;
+    localStorage.setItem('h_demir_theme_v17', JSON.stringify(UI_THEME));
+    applyTheme(); // Değişikliği anında yansıtır
+}
+
+    const CAT_MAP = {
+        "SEYAHAT": "SEYAHAT (Yurt İçi Seyahat)",
+        "TANITIM": "TANITIM (Temsili Ağırlama)",
+        "YEMEK": "YEMEK (Yemek Ücreti)",
+        "DIGER": "DİĞER (Araç Bak./Onr. Yakıt)"
+    };
+
+    const MONTHS = ["OCAK", "ŞUBAT", "MART", "NİSAN", "MAYIS", "HAZİRAN", "TEMMUZ", "AĞUSTOS", "EYLÜL", "EKİM", "KASIM", "ARALIK"];
+    let allExpenses = JSON.parse(localStorage.getItem('h_demir_data_v16')) || [];
+    let currentFilter = "ALL";
+	const fmt = (v) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2 }).format(v || 0);
+
+    // Yeni: Tarih sıralama için yardımcı fonksiyon
+    function parseDate(dateStr) {
+        const p = dateStr.split('.');
+        if(p.length !== 3) return new Date(0);
+        return new Date(p[2], p[1] - 1, p[0]);
+    }
+
+    function getFullCat(catName) {
+        if (!catName) return CAT_MAP.DIGER;
+        let s = catName.toString().toUpperCase();
+        if (s.includes("SEYAHAT")) return CAT_MAP.SEYAHAT;
+        if (s.includes("TANITIM")) return CAT_MAP.TANITIM;
+        if (s.includes("YEMEK")) return CAT_MAP.YEMEK;
+        return CAT_MAP.DIGER;
+    }
+
+function saveLimits() {
+    const limits = { 
+        SEYAHAT: document.getElementById('limit_SEYAHAT').value || 0, 
+        TANITIM: document.getElementById('limit_TANITIM').value || 0, 
+        YEMEK: document.getElementById('limit_YEMEK').value || 0, 
+        DIGER: document.getElementById('limit_DIGER').value || 0 
+    };
+    // Hafızaya kaydet
+    localStorage.setItem('h_demir_limits_v13', JSON.stringify(limits));
+    
+    // YUKARIDAKİ KARTLARI (2.000.000 TL yazan yerleri) ANINDA GÜNCELLE
+    updateUI(); 
+}
+
+    function init() {
+    applyTheme();
+    
+    // --- TARİH GÜNCELLEME MODÜLÜ ---
+    const simdi = new Date();
+    // Sağ üstteki panel tarihi için (GG.AA.YYYY formatı)
+    const gun = String(simdi.getDate()).padStart(2, '0');
+    const ay = String(simdi.getUTCMonth() + 1).padStart(2, '0');
+    const yil = simdi.getFullYear();
+    document.getElementById('topDate').innerText = `${gun}.${ay}.${yil}`;
+    
+    // İşlem girişindeki takvim varsayılanı (Bugün)
+    document.getElementById('m_date').valueAsDate = simdi;
+    // -------------------------------
+
+    const savedLimits = JSON.parse(localStorage.getItem('h_demir_limits_v13'));
+    if(savedLimits) {
+        ['SEYAHAT','TANITIM','YEMEK','DIGER'].forEach(k => { 
+            if(document.getElementById('limit_'+k)) document.getElementById('limit_'+k).value = savedLimits[k]; 
+        });
+    }
+    updateUI();
+}
+
+    function loadExcel(input) {
+    if (!input.files || !input.files[0]) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array', cellDates: true});
+            const sheetName = workbook.SheetNames[0];
+            const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+            
+            if (json.length === 0) {
+                alert("Excel dosyası boş görünüyor!");
+                return;
+            }
+
+            const newEntries = json.map(row => {
+                // Sütun isimlerini büyük/küçük harf duyarsız hale getiriyoruz
+                const findVal = (names) => {
+                    const foundKey = Object.keys(row).find(k => names.includes(k.trim().toUpperCase()));
+                    return foundKey ? row[foundKey] : null;
+                };
+
+                // Excel'den gelen veriyi yakala
+                let rawDate = findVal(["TARİH", "DATE", "TARIH"]);
+                let rawSNo  = findVal(["SÜREÇ NO", "SUREC NO", "SNO", "BARKOD"]); // BARKOD sütununu SNo olarak kullanıyoruz
+                let rawCat  = findVal(["KATEGORİ", "KATEGORI", "CAT"]);
+                let rawDesc = findVal(["AÇIKLAMA", "ACIKLAMA", "DESC", "URUN ADI", "ÜRÜN ADI"]);
+                let rawAmt  = findVal(["TUTAR", "AMT", "TUTAR (TL)", "FIYAT", "FİYAT"]);
+
+                // Tarih Formatlama
+                let formattedDate = "16.03.2026";
+                if (rawDate instanceof Date) {
+                    formattedDate = rawDate.toLocaleDateString('tr-TR');
+                } else if (rawDate) {
+                    formattedDate = rawDate.toString();
+                }
+
+                // Tutar Temizleme (Metin olarak gelirse sayıya çevir)
+                let cleanAmt = 0;
+                if (rawAmt) {
+                    cleanAmt = parseFloat(rawAmt.toString().replace(/\./g, '').replace(',', '.'));
+                }
+
+                return {
+                    date: formattedDate,
+                    sNo: (rawSNo || "-").toString().toUpperCase(),
+                    cat: getFullCat(rawCat || ""),
+                    desc: (rawDesc || "EXCEL KAYDI").toString().toUpperCase(),
+                    amt: isNaN(cleanAmt) ? 0 : cleanAmt
+                };
+            }).filter(i => i.amt > 0);
+
+            if (newEntries.length > 0) {
+                allExpenses = [...newEntries, ...allExpenses];
+                saveAndRender();
+                alert(newEntries.length + " adet masraf başarıyla yüklendi! 🧿");
+            } else {
+                alert("Uygun formatta veri bulunamadı. Lütfen Excel sütun başlıklarını kontrol edin (Tarih, Barkod, Tutar vb.)");
+            }
+            input.value = ""; 
+        } catch (err) {
+            console.error("Yükleme hatası:", err);
+            alert("Excel okunurken bir hata oluştu: " + err.message);
+        }
+    };
+    reader.readAsArrayBuffer(input.files[0]);
+}
+
+	function exportToExcel() {
+    try {
+        // 1. Kütüphane kontrolü
+        if (typeof XLSX === 'undefined') {
+            alert("Excel kütüphanesi henüz yüklenmedi veya internet yok! Lütfen sayfayı yenileyip tekrar deneyin.");
+            return;
+        }
+
+        // 2. Veri kontrolü
+        if (!allExpenses || allExpenses.length === 0) {
+            alert("Sistemde yedeklenecek kayıtlı bir veri bulunamadı!");
+            return;
+        }
+
+        // 3. Veriyi Excel'de daha şık görünecek şekilde başlıklandırıyoruz
+        const dataToExport = allExpenses.map(item => ({
+            "TARİH": item.date,
+            "SÜREÇ NO": item.sNo,
+            "KATEGORİ": item.cat,
+            "AÇIKLAMA": item.desc,
+            "TUTAR (TL)": item.amt
+        }));
+
+        // 4. Excel dosyasını oluşturma
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+
+        // 5. Sütun genişliklerini otomatik ayarla (yazılar birbirine girmesin)
+        ws['!cols'] = [
+            {wch: 15}, // Tarih sütunu genişliği
+            {wch: 15}, // Süreç No genişliği
+            {wch: 25}, // Kategori genişliği
+            {wch: 45}, // Açıklama genişliği
+            {wch: 15}  // Tutar genişliği
+        ];
+
+        // 6. Sayfayı kitaba ekle ve indir
+        XLSX.utils.book_append_sheet(wb, ws, "Bütçe Yedek");
+        XLSX.writeFile(wb, "GEN_Finans_Yedek_" + new Date().toLocaleDateString('tr-TR') + ".xlsx");
+        
+    } catch (err) {
+        console.error("Yedekleme Hatası:", err);
+        alert("Yedek alınırken bir sorun oluştu: " + err.message);
+    }
+}
+
+    function addManual() {
+        const amt = parseFloat(document.getElementById('m_amount').value);
+        if(!amt) return;
+        allExpenses.push({
+            date: document.getElementById('m_date').value.split('-').reverse().join('.'),
+            sNo: document.getElementById('m_sno').value.toUpperCase() || "-",
+            cat: getFullCat(document.getElementById('m_cat').value),
+            desc: document.getElementById('m_desc').value.toUpperCase(),
+            amt: amt
+        });
+        saveAndRender();
+        ['m_amount','m_desc','m_sno'].forEach(id => document.getElementById(id).value = "");
+    }
+
+    function editRow(i) {
+        const item = allExpenses[i];
+        const nDate = prompt("TARİH:", item.date); if(!nDate) return;
+        const nSNo = prompt("SÜREÇ NO:", item.sNo);
+        const nCatNum = prompt("KATEGORİ (1:Seyahat, 2:Tanitim, 3:Yemek, 4:Diger):", "1");
+        let fCat = item.cat;
+        if(nCatNum==="1") fCat=CAT_MAP.SEYAHAT; else if(nCatNum==="2") fCat=CAT_MAP.TANITIM; else if(nCatNum==="3") fCat=CAT_MAP.YEMEK; else if(nCatNum==="4") fCat=CAT_MAP.DIGER;
+        const nDesc = prompt("AÇIKLAMA:", item.desc); if(!nDesc) return;
+        const nAmt = prompt("TUTAR:", item.amt); if(!nAmt) return;
+        allExpenses[i] = { date: nDate, sNo: nSNo.toUpperCase(), cat: fCat, desc: nDesc.toUpperCase(), amt: parseFloat(nAmt.toString().replace(',','.')) };
+        saveAndRender();
+    }
+
+    function deleteRow(i) { if(confirm("Silinsin mi?")) { allExpenses.splice(i, 1); saveAndRender(); } }
+    function clearMemory() { if(confirm("TÜM VERİLER SIFIRLANACAK!")) { localStorage.clear(); location.reload(); } }
+    
+    // Güncellendi: Verileri kaydetmeden önce tarihe göre sıralar
+    function saveAndRender() { 
+        allExpenses.sort((a, b) => parseDate(b.date) - parseDate(a.date));
+        localStorage.setItem('h_demir_data_v16', JSON.stringify(allExpenses)); 
+        updateUI(); 
+    }
+
+    function updateUI() {
+    const lims = { 
+        [CAT_MAP.SEYAHAT]: parseFloat(document.getElementById('limit_SEYAHAT').value)||0, 
+        [CAT_MAP.TANITIM]: parseFloat(document.getElementById('limit_TANITIM').value)||0, 
+        [CAT_MAP.YEMEK]: parseFloat(document.getElementById('limit_YEMEK').value)||0, 
+        [CAT_MAP.DIGER]: parseFloat(document.getElementById('limit_DIGER').value)||0 
+    };
+    let spent = {}; Object.values(CAT_MAP).forEach(k => spent[k] = 0);
+    let monthlyData = {}, html = "";
+    
+allExpenses.forEach((ex, i) => {
+        const parts = ex.date.split('.');
+        const monthKey = MONTHS[parseInt(parts[1]) - 1] + " " + parts[2];
+        
+        // FİLTRELEME MANTIĞI: Eğer currentFilter 'ALL' değilse ve satırın ayı eşleşmiyorsa atla
+        if (currentFilter !== "ALL" && monthKey !== currentFilter) return;
+
+        let vCat = getFullCat(ex.cat);
+        spent[vCat] += ex.amt;
+        
+        if(parts.length === 3) {
+            if(!monthlyData[monthKey]) monthlyData[monthKey] = {};
+            monthlyData[monthKey][vCat] = (monthlyData[monthKey][vCat] || 0) + ex.amt;
+        }
+
+        html += `<tr>
+            <td style="font-family:monospace;">${ex.date}</td>
+            <td style="font-weight:bold; color:var(--p); font-size:11px;">${ex.sNo || "-"}</td>
+            <td><span class="tag" style="white-space:nowrap;">${vCat}</span></td>
+            <td>${ex.desc}</td>
+            <td style="text-align:right; font-weight:bold; color:var(--text); font-family:monospace;">${fmt(ex.amt)} TL</td>
+            <td style="text-align:center;">
+                <i class="fa-solid fa-edit action-btn" onclick="editRow(${i})" style="color:var(--warning); margin-right:12px;"></i>
+                <i class="fa-solid fa-trash action-btn" onclick="deleteRow(${i})" style="color:var(--danger);"></i>
+            </td>
+        </tr>`;
+    });
+
+    document.getElementById('logTable').innerHTML = html;
+    const totalL = Object.values(lims).reduce((a,b)=>a+b,0), totalS = Object.values(spent).reduce((a,b)=>a+b,0);
+    document.getElementById('totalB').innerText = fmt(totalL) + " TL";
+    document.getElementById('spentB').innerText = fmt(totalS) + " TL";
+    document.getElementById('remB').innerText = fmt(totalL - totalS) + " TL";
+
+    let mHtml = "";
+    const sortedMonths = Object.keys(monthlyData).sort((a,b) => {
+        const mArr = ["OCAK", "ŞUBAT", "MART", "NİSAN", "MAYIS", "HAZİRAN", "TEMMUZ", "AĞUSTOS", "EYLÜL", "EKİM", "KASIM", "ARALIK"];
+        const pA = a.split(' '), pB = b.split(' ');
+        if(pA[1] !== pB[1]) return pB[1] - pA[1];
+        return mArr.indexOf(pB[0]) - mArr.indexOf(pA[0]);
+    });
+
+sortedMonths.forEach(month => {
+        let mSum = Object.values(monthlyData[month]).reduce((a, b) => a + b, 0);
+        
+        // Eğer bu ay seçiliyse 'display: block' yap, değilse 'none' kalsın
+        let isExpanded = (currentFilter === month) ? 'block' : 'none';
+        
+        mHtml += `
+            <div class="month-group">
+                <div class="month-header" onclick="toggleMonthDetails(this); setFilter('${month}')">
+                    <span>${month}</span>
+                    <span style="color:var(--success); font-family:monospace;">${fmt(mSum)} TL</span>
+                </div>
+                <div class="month-details" style="display: ${isExpanded};">
+                    ${Object.keys(monthlyData[month]).map(cat => 
+                        `<div class="cat-row" style="margin-left:10px;">
+                            <span>${cat.split(' ')[0]}</span>
+                            <span>${fmt(monthlyData[month][cat])} TL</span>
+                        </div>`
+                    ).join('')}
+                </div>
+            </div>`;
+    });
+    document.getElementById('monthCont').innerHTML = mHtml;
+	
+    let bars = "";
+    Object.keys(lims).forEach(k => {
+        const p = Math.min((spent[k]/lims[k])*100, 100) || 0;
+        const isCritical = p >= 90 ? 'critical-alert' : '';
+        // Her bir bar için daha kompakt bir yapı:
+        bars += `
+            <div class="${isCritical}">
+                <div style="display:flex; justify-content:space-between; font-size:10px; font-weight:800; color:#9ca3af; margin-bottom:5px;">
+                    <span>${k}</span>
+                    <span style="color:${p>=90?'var(--danger)':'var(--success)'}">%${Math.round(p)}</span>
+                </div>
+                <div class="prog-bg" style="margin-bottom:8px;">
+                    <div class="prog-fill" style="width:${p}%; background:${p>=90?'var(--danger)':'var(--p)'};"></div>
+                </div>
+                <div style="font-family:'Consolas', monospace; font-size:11px; text-align:right; font-weight:bold;">${fmt(spent[k])} <span style="color:#4b5563;">/ ${fmt(lims[k])}</span></div>
+            </div>`;
+    });
+    document.getElementById('barCont').innerHTML = bars;
+
+    // --- RAPOR SEÇİCİSİ GÜNCELLEME ---
+    const monthSelect = document.getElementById('reportMonthSelect');
+    if (monthSelect) {
+        const currentVal = monthSelect.value;
+        let optionsHtml = '<option value="ALL">TÜM DÖNEMLER</option>';
+        sortedMonths.forEach(m => {
+            optionsHtml += `<option value="${m}">${m}</option>`;
+        });
+        monthSelect.innerHTML = optionsHtml;
+        if (currentVal && Array.from(monthSelect.options).some(opt => opt.value === currentVal)) {
+            monthSelect.value = currentVal;
+        }
+    }
+}
+	
+	init();
+
+function generateMonthlyReport() {
+    const selectedMonth = document.getElementById('reportMonthSelect').value;
+    const rows = document.querySelectorAll('#logTable tr');
+    
+    // Tüm satırları gez ve seçili ay dışındakilere "no-print" sınıfı ekle
+    rows.forEach(row => {
+        const dateCell = row.cells[0].innerText; // Tarih sütunu
+        const parts = dateCell.split('.');
+        if(parts.length === 3) {
+            const rowMonth = MONTHS[parseInt(parts[1]) - 1] + " " + parts[2];
+            if(selectedMonth === "ALL" || rowMonth === selectedMonth) {
+                row.classList.remove('no-print-row');
+            } else {
+                row.classList.add('no-print-row');
+            }
+        }
+    });
+
+    // CSS'e yazdırma sırasında gizleme kuralı ekle (Eğer yoksa)
+    if(!document.getElementById('reportStyles')) {
+        const style = document.createElement('style');
+        style.id = 'reportStyles';
+        style.innerHTML = `@media print { .no-print-row { display: none !important; } }`;
+        document.head.appendChild(style);
+    }
+
+    // Yazdırma ekranını aç
+    window.print();
+}
+function toggleMonthDetails(el) {
+    const details = el.nextElementSibling;
+    details.style.display = (details.style.display === 'block') ? 'none' : 'block';
+}
+
+function setFilter(month) {
+    currentFilter = month;
+    updateUI(); // Tabloyu ve sidebar'ı yeni filtreyle günceller
+}
+</script>
+</body>
+</html>

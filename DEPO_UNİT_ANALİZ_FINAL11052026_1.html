@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Satıs_Analiz_Raporu</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root { --primary: #0f172a; --accent: #10b981; --warning: #f43f5e; --bg: #f1f5f9; --basket: #f59e0b; --blue: #3b82f6; --purple: #8b5cf6; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: var(--bg); padding: 20px; color: var(--primary); overflow-x: hidden; }
+        .container { max-width: 1800px; margin: 0 auto; background: white; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.05); overflow: hidden; min-height: 92vh; border: 1px solid #e2e8f0; position: relative; }
+        
+        /* NAVBAR */
+        .nav-bar { display: flex; justify-content: space-between; align-items: center; background: #ffffff; padding: 20px 40px; border-bottom: 1px solid #f1f5f9; }
+        .logo { color: var(--primary); font-weight: 800; font-size: 22px; }
+        .logo span { color: var(--accent); }
+        .tabs { display: flex; gap: 8px; background: #f8fafc; padding: 6px; border-radius: 14px; }
+        .tab-btn { padding: 10px 24px; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; color: #64748b; background: transparent; transition: 0.3s; }
+        .tab-btn.active { background: white; color: var(--primary); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+
+        .page-container { display: flex; width: 400%; transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .page { width: 25%; padding: 35px; height: calc(100vh - 120px); overflow-y: auto; }
+
+        /* FİLTRELEME ALANI */
+        .filter-section { background: #f8fafc; padding: 25px; border-radius: 20px; margin-bottom: 30px; border: 1px solid #e2e8f0; width: 100%; }
+        .filter-grid { display: grid; grid-template-columns: 2.5fr 1fr 1fr 0.8fr 0.8fr 0.6fr auto auto auto; gap: 15px; align-items: end; }
+        .f-label { font-size: 11px; font-weight: 800; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; display: block; }
+        .f-input { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid #cbd5e1; font-weight: 600; font-size: 13px; outline: none; transition: 0.2s; }
+        .f-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+
+        /* DASHBOARD KARTLARI */
+        .db-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 35px; }
+        .db-card { background: white; border-radius: 20px; padding: 25px; border: 1px solid #e2e8f0; position: relative; transition: 0.3s; display: flex; flex-direction: column; justify-content: space-between; min-height: 160px; }
+        .db-card:hover { transform: translateY(-5px); border-color: #cbd5e1; }
+        .db-card .title { font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; }
+        .db-card .val { font-size: 28px; font-weight: 800; margin: 10px 0; }
+        .db-card i { position: absolute; right: 20px; top: 20px; font-size: 24px; opacity: 0.15; }
+        .btn-detail { background: #f1f5f9; border: none; padding: 8px 12px; border-radius: 8px; font-size: 11px; font-weight: 800; color: #64748b; cursor: pointer; display: flex; align-items: center; gap: 5px; width: fit-content; transition: 0.2s; }
+        .btn-detail:hover { background: var(--primary); color: white; }
+
+        /* SEPET & TABLO */
+        #basketOverlay { position: fixed; right: -450px; top: 0; width: 450px; height: 100%; background: white; box-shadow: -10px 0 30px rgba(0,0,0,0.1); z-index: 1000; transition: 0.4s; display: flex; flex-direction: column; }
+        #basketOverlay.open { right: 0; }
+        .b-header { padding: 30px; background: var(--primary); color: white; display: flex; justify-content: space-between; align-items: center; }
+        .b-list { flex: 1; overflow-y: auto; padding: 20px; }
+        .b-item { padding: 15px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
+
+        .table-wrap { border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8fafc; padding: 15px; text-align: left; font-size: 11px; color: #94a3b8; font-weight: 800; border-bottom: 1px solid #e2e8f0; }
+        td { padding: 15px; border-bottom: 1px solid #f1f5f9; font-size: 13px; font-weight: 600; }
+        .row-mf { background: #fff1f2; }
+        .chk-custom { scale: 1.3; cursor: pointer; accent-color: var(--accent); }
+
+        /* KARNE MODÜLÜ */
+        .karne-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 25px; }
+        .k-box { background: white; border-radius: 20px; border: 1px solid #e2e8f0; height: 600px; display: flex; flex-direction: column; overflow: hidden; }
+        .k-header { padding: 15px; font-weight: 800; text-align: center; color: white; font-size: 12px; }
+        .k-blue { background: var(--blue); } .k-green { background: var(--accent); } .k-purple { background: var(--purple); }
+        
+        /* Şık Karne Arama Motoru */
+        .k-search-wrap { padding: 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; position: relative; }
+        .k-search-input { width: 100%; padding: 10px 15px 10px 35px; border-radius: 30px; border: 1px solid #cbd5e1; font-size: 12px; font-weight: 600; outline: none; transition: 0.3s; }
+        .k-search-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); background: white; }
+        .k-search-wrap i { position: absolute; left: 25px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px; }
+
+        .k-list { overflow-y: auto; flex: 1; }
+        .k-item { padding: 12px 20px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; cursor: pointer; font-size: 12px; font-weight: 700; transition: 0.2s; }
+        .k-item:hover { background: #f8fafc; color: var(--blue); padding-left: 25px; }
+
+        .btn-action { padding: 12px; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; display: flex; align-items: center; gap: 8px; justify-content: center; transition: 0.2s; }
+        .btn-accent { background: var(--accent); color: white; }
+        .btn-ghost { background: #f1f5f9; color: #64748b; }
+        .btn-basket { background: var(--basket); color: white; }
+        .btn-danger { background: var(--warning); color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+        .btn-action:hover { opacity: 0.9; transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+
+<div id="basketOverlay">
+    <div class="b-header"><h2><i class="fas fa-shopping-basket"></i> Sepet</h2><i class="fas fa-times" onclick="toggleBasketUI()" style="cursor:pointer"></i></div>
+    <div class="b-list" id="bListArea"></div>
+    <div style="padding:25px; background:#f8fafc; display:flex; flex-direction:column; gap:10px;">
+        <button onclick="downloadBasketNow()" class="btn-action btn-accent"><i class="fas fa-file-excel"></i> EXCEL İNDİR</button>
+        <button onclick="clearBasket()" class="btn-action btn-ghost" style="color:var(--warning)"><i class="fas fa-trash-alt"></i> SEPETİ BOŞALT</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="nav-bar">
+        <div class="logo">GEN |<span> OZEL HASTANE SATIŞ RAPORU</span></div>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="changePage(0)">VERİ YÜKLE</button>
+            <button class="tab-btn" onclick="changePage(1)">ANALİZ MOTORU</button>
+            <button class="tab-btn" onclick="changePage(2)">DASHBOARD</button>
+            <button class="tab-btn" onclick="changePage(3)">SAHA KARNESİ</button>
+        </div>
+    </div>
+
+    <div class="page-container" id="pageSlider">
+        <div class="page">
+            <textarea id="excelInput" style="width:100%; height:420px; padding:25px; border-radius:20px; border:2px dashed #cbd5e1; outline:none; font-weight: 600;" placeholder="Excelden kopyala-yapıştır yap hocam..."></textarea>
+            <div style="display: flex; gap: 15px; margin-top: 25px;">
+                <button onclick="processData()" class="btn-action btn-accent" style="flex:1; padding:20px; font-size:16px;">VERİLERİ İŞLE</button>
+                <button onclick="clearStorage()" class="btn-action btn-ghost" style="width:70px;"><i class="fas fa-trash-alt"></i></button>
+            </div>
+        </div>
+
+        <div class="page">
+            <div class="filter-section">
+                <div class="filter-grid">
+                    <div><span class="f-label">Hızlı Arama</span><input type="text" id="tSearch" class="f-input" oninput="applyFilters()" placeholder="Eczane, İlaç, İl..."></div>
+                    <div><span class="f-label">Başlangıç</span><input type="date" id="dS" class="f-input" onchange="applyFilters()"></div>
+                    <div><span class="f-label">Bitiş</span><input type="date" id="dE" class="f-input" onchange="applyFilters()"></div>
+                    <div><span class="f-label">Min Adet</span><input type="number" id="aMin" class="f-input" oninput="applyFilters()"></div>
+                    <div><span class="f-label">Min MF</span><input type="number" id="mMin" class="f-input" oninput="applyFilters()"></div>
+                    <div style="text-align: center;"><span class="f-label">MF</span><input type="checkbox" id="mfOnly" onchange="applyFilters()" class="chk-custom"></div>
+                    <button onclick="resetFilters()" class="btn-action btn-ghost" style="width: 50px;"><i class="fas fa-sync"></i></button>
+                    <button onclick="bulkTableAction()" class="btn-action btn-ghost" id="bulkBtn" style="color:var(--blue); min-width:140px;"><i class="fas fa-check-double"></i> TÜMÜNÜ SEÇ</button>
+                    <button onclick="toggleBasketUI()" class="btn-action btn-basket">SEPET (<span id="bCount">0</span>)</button>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>SEÇ</th><th>DEPO</th><th>İLAÇ ADI</th><th>ECZANE</th><th>İL</th><th>TARİH</th><th>ADET</th><th>MF</th></tr></thead>
+                    <tbody id="mBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="page">
+            <div class="db-row" id="dbStats"></div>
+            <div class="filter-section">
+                <h3 style="font-size:13px; font-weight:800; color:#94a3b8; margin-bottom:20px;">EN ÇOK SATAN İLK 10 ÜRÜN (TIKLA VE ANALİZE GİT)</h3>
+                <div id="productBars"></div>
+            </div>
+        </div>
+
+        <div class="page">
+            <div class="karne-grid" id="karneArea"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let rawData = []; let fData = []; let basket = [];
+
+    function cleanTr(str) { 
+        if (!str) return "";
+        return str.toString().trim().toUpperCase().replace(/i/g, 'İ').replace(/ı/g, 'I').replace(/ğ/g, 'Ğ').replace(/ü/g, 'Ü').replace(/ş/g, 'Ş').replace(/ö/g, 'Ö').replace(/ç/g, 'Ç'); 
+    }
+
+    function parseTurkishDate(dateStr) {
+        if(!dateStr) return null;
+        const parts = dateStr.split('.');
+        return parts.length === 3 ? new Date(`${parts[2]}-${parts[1]}-${parts[0]}`) : null;
+    }
+
+    window.onload = () => {
+        const s = localStorage.getItem('halilV15');
+        if(s) { rawData = JSON.parse(s); fData = rawData; renderAll(); }
+    };
+
+    function processData() {
+        const val = document.getElementById('excelInput').value.trim();
+        if(!val) return;
+        const rows = val.split('\n').map((r, idx) => {
+            const c = r.split('\t');
+            return { id: Date.now() + idx, d:cleanTr(c[0]), i:cleanTr(c[1]), e:cleanTr(c[2]), il:cleanTr(c[4]), t:c[5]||"", adet:parseFloat(c[6])||0, mf:parseFloat(c[7])||0 };
+        });
+        rawData = [...rawData, ...rows];
+        localStorage.setItem('halilV15', JSON.stringify(rawData));
+        fData = rawData; renderAll(); changePage(2);
+    }
+
+    function applyFilters() {
+        const txt = cleanTr(document.getElementById('tSearch').value);
+        const mfOnly = document.getElementById('mfOnly').checked;
+        const minA = parseFloat(document.getElementById('aMin').value) || 0;
+        const minM = parseFloat(document.getElementById('mMin').value) || 0;
+        const dateS = document.getElementById('dS').value ? new Date(document.getElementById('dS').value) : null;
+        const dateE = document.getElementById('dE').value ? new Date(document.getElementById('dE').value) : null;
+
+        fData = rawData.filter(r => {
+            const matchSearch = r.d.includes(txt) || r.i.includes(txt) || r.e.includes(txt) || r.il.includes(txt);
+            const matchMf = mfOnly ? r.mf > 0 : true;
+            const rDate = parseTurkishDate(r.t);
+            let matchDate = (r.adet >= minA && r.mf >= minM);
+            if(dateS && rDate) matchDate = matchDate && (rDate >= dateS);
+            if(dateE && rDate) matchDate = matchDate && (rDate <= dateE);
+            return matchSearch && matchMf && matchDate;
+        });
+        renderAll();
+    }
+
+    // TOPLU SEÇİM FONKSİYONU
+    function bulkTableAction() {
+        const visibleIds = fData.map(r => r.id);
+        const allSelected = visibleIds.length > 0 && visibleIds.every(id => basket.some(b => b.id === id));
+
+        if (allSelected) {
+            basket = basket.filter(b => !visibleIds.includes(b.id));
+        } else {
+            visibleIds.forEach(id => {
+                if (!basket.some(b => b.id === id)) {
+                    basket.push(rawData.find(r => r.id === id));
+                }
+            });
+        }
+        document.getElementById('bCount').innerText = basket.length;
+        renderAll();
+    }
+
+    // KARNE İÇİ ARAMA
+    function filterKarne(key, inputId) {
+        const val = cleanTr(document.getElementById(inputId).value);
+        const listItems = document.querySelectorAll(`[data-ktype="${key}"]`);
+        listItems.forEach(item => {
+            const text = cleanTr(item.getAttribute('data-val'));
+            item.style.display = text.includes(val) ? 'flex' : 'none';
+        });
+    }
+
+    function dashGo(type) {
+        resetFilters();
+        if(type === 'mf') document.getElementById('mfOnly').checked = true;
+        applyFilters();
+        changePage(1);
+    }
+
+    function magicFilter(val) {
+        resetFilters();
+        document.getElementById('tSearch').value = val;
+        applyFilters();
+        changePage(1);
+    }
+
+    function renderStats() {
+        const tA = fData.reduce((s, r) => s + r.adet, 0);
+        const tM = fData.reduce((s, r) => s + r.mf, 0);
+        const cards = [
+            { t: "Toplam Satış", v: tA.toLocaleString(), c: "var(--blue)", i: "fa-chart-line", act: "all" },
+            { t: "Toplam MF", v: tM.toLocaleString(), c: "var(--warning)", i: "fa-gift", act: "mf" },
+            { t: "Aktif Nokta", v: new Set(fData.map(r => r.e)).size, c: "var(--accent)", i: "fa-store", act: "all" },
+            { t: "MF Oranı", v: "%" + (tA > 0 ? ((tM/tA)*100).toFixed(1) : 0), c: "var(--purple)", i: "fa-percentage", act: "mf" }
+        ];
+        document.getElementById('dbStats').innerHTML = cards.map(s => `
+            <div class="db-card" style="border-left: 6px solid ${s.c}">
+                <i class="fas ${s.i}" style="color:${s.c}"></i>
+                <div class="title">${s.t}</div>
+                <div class="val" style="color:${s.c}">${s.v}</div>
+                <button class="btn-detail" onclick="dashGo('${s.act}')">Detayı Gör <i class="fas fa-arrow-right"></i></button>
+            </div>`).join('');
+    }
+
+    function renderBars() {
+        const pT = fData.reduce((acc, r) => { acc[r.i] = (acc[r.i] || 0) + r.adet; return acc; }, {});
+        const sorted = Object.entries(pT).sort((a,b) => b[1] - a[1]).slice(0,10);
+        const max = sorted[0]?.[1] || 1;
+        document.getElementById('productBars').innerHTML = sorted.map(([n, v]) => `
+            <div style="margin-bottom:15px; cursor:pointer;" onclick="magicFilter('${n}')">
+                <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700;"><span>${n}</span><span>${v}</span></div>
+                <div style="background:#eee; height:10px; border-radius:5px; margin-top:5px; overflow:hidden;"><div style="width:${(v/max)*100}%; background:var(--accent); height:100%;"></div></div>
+            </div>`).join('');
+    }
+
+    function renderKarne() {
+        const build = (title, key, color, inputId) => {
+            const counts = fData.reduce((acc, r) => { acc[r[key]] = (acc[r[key]] || 0) + 1; return acc; }, {});
+            const sorted = Object.entries(counts).sort((a, b) => a[0].localeCompare(b[0], 'tr'));
+            
+            return `
+                <div class="k-box">
+                    <div class="k-header ${color}">${title}</div>
+                    <div class="k-search-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="${inputId}" class="k-search-input" 
+                               placeholder="${title} içinde ara..." oninput="filterKarne('${key}', '${inputId}')">
+                    </div>
+                    <div class="k-list">
+                        ${sorted.map(([n,v]) => `
+                            <div class="k-item" data-ktype="${key}" data-val="${n}" onclick="magicFilter('${n}')">
+                                ${n} <span>${v}</span>
+                            </div>`).join('')}
+                    </div>
+                </div>`;
+        };
+        document.getElementById('karneArea').innerHTML = 
+            build("ECZANELER", "e", "k-blue", "searchE") + 
+            build("ÜRÜNLER", "i", "k-green", "searchI") + 
+            build("ŞEHİRLER", "il", "k-purple", "searchIl");
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('mBody');
+        tbody.innerHTML = fData.map(r => {
+            const isB = basket.some(b => b.id === r.id);
+            return `<tr class="${r.mf > 0 ? 'row-mf' : ''}">
+                <td><input type="checkbox" class="chk-custom" ${isB ? 'checked' : ''} onchange="toggleBasket(${r.id})"></td>
+                <td>${r.d}</td><td>${r.i}</td><td>${r.e}</td><td>${r.il}</td><td>${r.t}</td><td>${r.adet}</td><td>${r.mf}</td>
+            </tr>`;
+        }).join('');
+
+        // Toplu seçim butonu yazısını güncelle
+        const bulkBtn = document.getElementById('bulkBtn');
+        if(bulkBtn) {
+            const allSelected = fData.length > 0 && fData.every(r => basket.some(b => b.id === r.id));
+            bulkBtn.innerHTML = allSelected ? '<i class="fas fa-minus-circle"></i> SEÇİMİ KALDIR' : '<i class="fas fa-check-double"></i> TÜMÜNÜ SEÇ';
+        }
+    }
+
+    function toggleBasketUI() { document.getElementById('basketOverlay').classList.toggle('open'); renderBasketList(); }
+    function toggleBasket(id) {
+        const idx = basket.findIndex(b => b.id === id);
+        if(idx > -1) basket.splice(idx, 1);
+        else basket.push(rawData.find(r => r.id === id));
+        document.getElementById('bCount').innerText = basket.length;
+        renderAll();
+    }
+    function clearBasket() { if(confirm("Sepet boşaltılsın mı?")) { basket = []; document.getElementById('bCount').innerText = 0; renderAll(); } }
+    function renderBasketList() {
+        document.getElementById('bListArea').innerHTML = basket.map(b => `<div class="b-item"><div><strong>${b.i}</strong><br><small>${b.e}</small></div><button class="btn-danger" onclick="removeFromBasket(${b.id})"><i class="fas fa-trash"></i></button></div>`).join('') || '<p style="text-align:center; padding:50px;">Sepet Boş</p>';
+    }
+    function removeFromBasket(id) { basket = basket.filter(b => b.id !== id); renderAll(); }
+    function downloadBasketNow() { if(!basket.length) return; const ws = XLSX.utils.json_to_sheet(basket); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Sepet"); XLSX.writeFile(wb, "Siparis_Listesi.xlsx"); }
+    function renderAll() { renderTable(); renderStats(); renderBars(); renderKarne(); }
+    function changePage(i) { document.getElementById('pageSlider').style.transform = `translateX(-${i * 25}%)`; document.querySelectorAll('.tab-btn').forEach((b, idx) => b.classList.toggle('active', idx === i)); }
+    function clearStorage() { if(confirm("Tüm veriler silinsin mi hocam?")) { localStorage.clear(); location.reload(); } }
+    function resetFilters() { document.querySelectorAll('.f-input').forEach(i => i.value=""); document.getElementById('mfOnly').checked=false; applyFilters(); }
+</script>
+</body>
+</html>

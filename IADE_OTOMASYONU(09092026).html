@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>MATRIX | RETURNS PRO V7.3</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --primary: #1e293b; --accent: #ef4444; --success: #10b981; --warning: #f59e0b; --bg: #f1f5f9; --indigo: #4f46e5; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #1e293b; }
+        .container { max-width: 1550px; margin: auto; position: relative; }
+        .header-panel { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        #live-clock { font-weight: 800; color: var(--primary); font-size: 14px; background: white; padding: 10px 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+        .tabs { display: flex; gap: 8px; background: #e2e8f0; padding: 5px; border-radius: 12px; }
+        .tab-btn { padding: 10px 22px; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 13px; color: #64748b; transition: 0.3s; }
+        .tab-btn.active { background: white; color: var(--indigo); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+        .card { background: white; border-radius: 16px; padding: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); border: 2px solid #e2e8f0; margin-bottom: 20px; transition: all 0.3s ease; }
+        .card.edit-mode { border-color: var(--warning); background: #fffbf0; box-shadow: 0 10px 30px rgba(245, 158, 11, 0.1); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+        .input-group { display: flex; flex-direction: column; }
+        label { font-size: 10px; font-weight: 800; color: #64748b; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        input, textarea { padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-weight: 600; outline: none; font-size: 13px; transition: 0.2s; background: white; }
+        input:focus { border-color: var(--indigo); background: #fcfdff; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+        .btn-container { display: flex; justify-content: center; gap: 15px; margin-top: 20px; }
+        .btn { padding: 14px 30px; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; display: flex; align-items: center; gap: 10px; transition: 0.3s; font-size: 14px; }
+        .btn-add { background: var(--success); color: white; }
+        .btn-export { background: var(--primary); color: white; }
+        .btn-update { background: var(--warning) !important; color: white; transform: scale(1.05); box-shadow: 0 10px 20px rgba(245, 158, 11, 0.3); }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background: #f8fafc; padding: 14px; text-align: left; font-size: 9px; color: #64748b; border-bottom: 2px solid #f1f5f9; text-transform: uppercase; white-space: nowrap; }
+        td { padding: 14px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; vertical-align: middle; }
+        .detail-sub { display: block; font-size: 10px; color: #94a3b8; font-weight: 400; margin-top: 2px; }
+        .val-box { display: inline-block; padding: 4px 8px; border-radius: 6px; background: #f1f5f9; font-size: 11px; }
+        .minus-val { color: var(--accent); font-size: 9px; font-weight: 700; }
+        .action-btn { border: none; background: none; cursor: pointer; font-size: 16px; transition: 0.2s; padding: 5px; }
+        .btn-edit { color: var(--indigo); }
+        .btn-delete { color: var(--accent); }
+        #calculator-modal { display: none; position: fixed; bottom: 100px; right: 30px; width: 320px; background: white; border-radius: 28px; box-shadow: 0 25px 70px rgba(0,0,0,0.2); border: 1px solid #eee; padding: 20px; z-index: 999; }
+        .calc-screen { width: 100%; height: 80px; background: #f8fafc; border-radius: 20px; margin-bottom: 20px; text-align: right; padding: 20px; box-sizing: border-box; font-size: 28px; font-weight: 800; border: 2px solid #e2e8f0; color: var(--primary); outline: none; }
+        .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .calc-btn { padding: 18px; border-radius: 16px; border: none; font-weight: 700; cursor: pointer; transition: 0.2s; font-size: 18px; background: #fff; border: 1px solid #f1f5f9; }
+        .btn-c { background: #fee2e2 !important; color: #ef4444 !important; }
+        .btn-op { background: #eff6ff !important; color: var(--indigo) !important; }
+        .btn-eq { background: var(--indigo) !important; color: white !important; grid-row: span 2; font-size: 24px; }
+        .btn-calc-toggle { background: var(--primary); color: white; position: fixed; bottom: 30px; right: 30px; width: 65px; height: 65px; border-radius: 50%; z-index: 1000; font-size: 26px; border: none; cursor: pointer; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header-panel">
+        <h2 style="margin:0; font-weight:800;"><i class="fa-solid fa-calculator" style="color:var(--primary)"></i> Ürün İade | Otomasyonu </h2>
+        <div class="tabs">
+            <button class="tab-btn active" id="tab-calc" onclick="openTab(event, 'calc_page')">HESAPLAMA EKRANI</button>
+            <button class="tab-btn" id="tab-source" onclick="openTab(event, 'source_page')">ÜRÜN KAYNAĞI <span id="sourceCountBadge" style="background:var(--indigo); color:white; padding:2px 6px; border-radius:10px; font-size:10px; margin-left:5px;">0</span></button>
+        </div>
+        <div id="live-clock">00:00:00</div>
+    </div>
+
+    <div id="calc_page" class="tab-content active">
+        <div class="card" id="inputCard">
+            <div class="grid">
+                <input type="hidden" id="editIndex" value="-1">
+                <div class="input-group"><label>İşlem ID</label><input type="text" id="p_id" readonly></div>
+                <div class="input-group"><label>İade Tarihi</label><input type="date" id="p_date"></div>
+                <div class="input-group" style="grid-column: span 2"><label>Ürün Adı</label><input type="text" id="p_name" oninput="toProperCase(this)"></div>
+                <div class="input-group"><label>Depo Adı</label><input type="text" id="p_depo" oninput="toProperCase(this); updateID(this.value)"></div>
+                <div class="input-group"><label>Şube / İl</label><input type="text" id="p_city" oninput="toProperCase(this)" placeholder="Örn: Ankara"></div>
+                <div class="input-group"><label>İ.S.F. (TL)</label><input type="number" id="p_isf" step="0.0001"></div>
+                <div class="input-group"><label>K.K.İ. (%)</label><input type="number" id="p_kki" step="0.01"></div>
+                <div class="input-group"><label>KDV (%)</label><input type="number" id="p_kdv" value="10"></div>
+                <div class="input-group"><label>Kmp (Ana)</label><input type="number" id="p_ana" value="1"></div>
+                <div class="input-group"><label>Kmp (MF)</label><input type="number" id="p_mf" value="0"></div>
+                <div class="input-group"><label>İade Adet</label><input type="number" id="p_qty" value="1"></div>
+            </div>
+            <div class="btn-container">
+                <button class="btn btn-add" id="mainBtn" onclick="saveToArchive()"><i class="fas fa-save"></i> KAYDET</button>
+                <button class="btn btn-export" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> EXCEL'E AKTAR</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID / TARİH</th>
+                            <th>ÜRÜN / DEPO / İL</th>
+                            <th>İSF / KKİ İSKONTO</th>
+                            <th>NET İSF (BİRİM)</th>
+                            <th>KMP / ADET</th>
+                            <th>KDV (%) / TUTARI</th>
+                            <th>TOPLAM TUTAR</th>
+                            <th>İŞLEM</th>
+                        </tr>
+                    </thead>
+                    <tbody id="archiveBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="source_page" class="tab-content">
+        <div class="card">
+            <label>TOPLU VERİ YAPIŞTIRMA (Ürün [Tab] İSF [Tab] KKİ)</label>
+            <textarea id="bulkInput" placeholder="Excel verilerini buraya yapıştırın..." style="width:100%; height:100px; margin-top:10px; border-radius:12px; padding:15px; border:2px solid #e2e8f0;"></textarea>
+            
+            <input type="file" id="fileInput" style="display:none" accept=".csv, .txt, .tsv, .xls, .xlsx" onchange="importFile(event)">
+            
+            <div class="btn-container">
+                <button class="btn" style="background:var(--accent); color:white" onclick="document.getElementById('fileInput').click()">
+                    <i class="fas fa-file-import"></i> DOSYADAN YÜKLE
+                </button>
+                <button class="btn" style="background:var(--primary); color:white" onclick="loadToSource()">
+                    <i class="fas fa-sync-alt"></i> KAYNAĞI GÜNCELLE (YENİLE)
+                </button>
+            </div>
+        </div>
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <input type="text" id="sourceSearch" placeholder="Kaynak içinde ara..." oninput="renderSource()" style="width:75%;">
+                <button class="btn" style="background:var(--accent); color:white; padding:10px 15px; font-size:12px;" onclick="clearSourceStorage()">
+                    <i class="fas fa-trash"></i> KAYNAĞI TEMİZLE
+                </button>
+            </div>
+            <div style="max-height:400px; overflow-y:auto;">
+                <table>
+                    <thead><tr><th>ÜRÜN ADI</th><th>İSF</th><th>KKİ</th><th>İŞLEM</th></tr></thead>
+                    <tbody id="sourceBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<button class="btn-calc-toggle" onclick="toggleCalc()"><i class="fas fa-calculator"></i></button>
+
+<div id="calculator-modal">
+    <input type="text" id="calc-display" class="calc-screen" value="0" readonly>
+    <div class="calc-grid">
+        <button class="calc-btn btn-c" onclick="clearCalc()">C</button>
+        <button class="calc-btn btn-op" onclick="calcInput('/')">/</button>
+        <button class="calc-btn btn-op" onclick="calcInput('*')">*</button>
+        <button class="calc-btn btn-op" onclick="calcBack()"><i class="fas fa-backspace"></i></button>
+        <button class="calc-btn" onclick="calcInput('7')">7</button>
+        <button class="calc-btn" onclick="calcInput('8')">8</button>
+        <button class="calc-btn" onclick="calcInput('9')">9</button>
+        <button class="calc-btn btn-op" onclick="calcInput('-')">-</button>
+        <button class="calc-btn" onclick="calcInput('4')">4</button>
+        <button class="calc-btn" onclick="calcInput('5')">5</button>
+        <button class="calc-btn" onclick="calcInput('6')">6</button>
+        <button class="calc-btn btn-op" onclick="calcInput('+')">+</button>
+        <button class="calc-btn" onclick="calcInput('1')">1</button>
+        <button class="calc-btn" onclick="calcInput('2')">2</button>
+        <button class="calc-btn" onclick="calcInput('3')">3</button>
+        <button class="calc-btn btn-eq" onclick="calculateResult()">=</button>
+        <button class="calc-btn" style="grid-column: span 2;" onclick="calcInput('0')">0</button>
+        <button class="calc-btn" onclick="calcInput('.')">.</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+    let archiveData = [];
+    let sourceData = [];
+
+    // Sayfa ilk açıldığında hafızadaki kaynak verilerini yükle
+    window.addEventListener('DOMContentLoaded', () => {
+        const savedSource = localStorage.getItem('matrix_source_data');
+        if (savedSource) {
+            try {
+                sourceData = JSON.parse(savedSource);
+                renderSource();
+            } catch(e) {
+                console.error("Hafıza yüklenirken hata oluştu:", e);
+            }
+        }
+    });
+
+    setInterval(() => { document.getElementById('live-clock').innerText = new Date().toLocaleTimeString('tr-TR'); }, 1000);
+
+    function toProperCase(el) { el.value = el.value.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '); }
+
+    function updateID(name) {
+        let pfx = name.split(' ').filter(n => n).map(n => n[0]).join('').toUpperCase().substring(0,3) || "RT";
+        let currentID = document.getElementById('p_id').value;
+        let suffix = currentID.includes('-') ? currentID.split('-')[1] : Math.floor(1000 + Math.random() * 9000);
+        document.getElementById('p_id').value = pfx + "-" + suffix;
+    }
+
+    function openTab(evt, name) {
+        document.querySelectorAll(".tab-content").forEach(c => c.style.display = "none");
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.getElementById(name).style.display = "block";
+        if(evt) evt.currentTarget.classList.add("active");
+    }
+
+    function importFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            const csv = XLSX.utils.sheet_to_csv(worksheet, {FS: "\t"}); 
+            
+            document.getElementById('bulkInput').value = csv;
+            loadToSource();
+            alert("Excel dosyası başarıyla okundu, eski hafıza temizlendi ve güncel veriler hafızaya kaydedildi!");
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function loadToSource() {
+        const input = document.getElementById('bulkInput').value.trim();
+        if(!input) return alert("Lütfen yüklenecek verileri yapıştırın veya dosya seçin!");
+        
+        // Yeni veri geldiğinde mevcut sourceData dizisini sıfırlayıp yenisini oluşturuyoruz
+        sourceData = input.split('\n').map(line => {
+            const cols = line.split('\t');
+            return { name: cols[0]?.trim(), isf: parseFloat(cols[1]?.replace(',','.')) || 0, kki: parseFloat(cols[2]?.replace(',','.')) || 0 };
+        }).filter(item => item.name);
+
+        // Tarayıcı hafızasına (localStorage) kalıcı olarak kaydet
+        localStorage.setItem('matrix_source_data', JSON.stringify(sourceData));
+
+        renderSource();
+        document.getElementById('bulkInput').value = '';
+        alert("Ürün kaynağı başarıyla güncellendi ve hafızaya kaydedildi!");
+    }
+
+    function clearSourceStorage() {
+        if(confirm("Hafızadaki tüm ürün kaynağı verilerini silmek istediğinize emin misiniz?")) {
+            sourceData = [];
+            localStorage.removeItem('matrix_source_data');
+            renderSource();
+            alert("Ürün kaynağı hafızası tamamen temizlendi.");
+        }
+    }
+
+    function renderSource() {
+        const q = document.getElementById('sourceSearch').value.toLowerCase();
+        const tbody = document.getElementById('sourceBody');
+        tbody.innerHTML = '';
+        
+        // Sayaç rozetini güncelle
+        document.getElementById('sourceCountBadge').innerText = sourceData.length;
+
+        sourceData.filter(i => i.name.toLowerCase().includes(q)).forEach(item => {
+            tbody.innerHTML += `<tr><td>${item.name}</td><td>${item.isf.toFixed(2)} TL</td><td>%${item.kki.toFixed(2)}</td><td><button class="btn" style="padding:5px 12px; font-size:11px; background:var(--indigo); color:white" onclick="transferToCalc('${item.name.replace(/'/g, "\\'")}', ${item.isf}, ${item.kki})">SEÇ</button></td></tr>`;
+        });
+    }
+
+    function transferToCalc(n, i, k) {
+        document.getElementById('p_name').value = n;
+        document.getElementById('p_isf').value = i;
+        document.getElementById('p_kki').value = k;
+        document.getElementById('tab-calc').click();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function saveToArchive() {
+        const idx = document.getElementById('editIndex').value;
+        const item = {
+            id: document.getElementById('p_id').value,
+            date: document.getElementById('p_date').value,
+            name: document.getElementById('p_name').value,
+            depo: document.getElementById('p_depo').value,
+            city: document.getElementById('p_city').value,
+            isf: parseFloat(document.getElementById('p_isf').value) || 0,
+            kki: parseFloat(document.getElementById('p_kki').value) || 0,
+            kdv: parseFloat(document.getElementById('p_kdv').value) || 0,
+            ana: parseFloat(document.getElementById('p_ana').value) || 1,
+            mf: parseFloat(document.getElementById('p_mf').value) || 0,
+            qty: parseFloat(document.getElementById('p_qty').value) || 1
+        };
+        if(!item.name || !item.depo) return alert("Ürün ve Depo adı zorunludur!");
+        if(idx === "-1") archiveData.unshift(item); else archiveData[idx] = item;
+        renderArchive();
+        clearForm();
+    }
+
+    function renderArchive() {
+        const tbody = document.getElementById('archiveBody');
+        tbody.innerHTML = '';
+        archiveData.forEach((item, index) => {
+            const kmpPayda = item.ana + item.mf;
+            const kmpCarpan = item.ana / kmpPayda;
+            const kkiOran = item.kki / 100;
+            const kkiIskontoTutari = item.isf * kkiOran;
+            const netIsfBirim = (item.isf * kmpCarpan) * (1 - kkiOran);
+            const netToplam = netIsfBirim * item.qty;
+            const kdvTutari = netToplam * (item.kdv / 100);
+            const genelToplam = netToplam + kdvTutari;
+
+            tbody.innerHTML += `<tr>
+                <td><span class="val-box">${item.id}</span><span class="detail-sub">${item.date.split('-').reverse().join('.')}</span></td>
+                <td><div style="max-width:180px; overflow:hidden; text-overflow:ellipsis;">${item.name}</div><span class="detail-sub">${item.depo} / ${item.city || '-'}</span></td>
+                <td>${item.isf.toLocaleString('tr-TR', {minimumFractionDigits:2})} TL <br> <span class="minus-val">(-${kkiIskontoTutari.toLocaleString('tr-TR', {minimumFractionDigits:2})} TL KKİ)</span></td>
+                <td style="color:var(--indigo)">${netIsfBirim.toLocaleString('tr-TR', {minimumFractionDigits:3})} TL</td>
+                <td>${item.ana}+${item.mf}<span class="detail-sub">${item.qty} Adet</span></td>
+                <td>%${item.kdv}<span class="detail-sub">${kdvTutari.toLocaleString('tr-TR', {minimumFractionDigits:2})} TL</span></td>
+                <td style="color:var(--accent); font-size:14px; font-weight:800;">${genelToplam.toLocaleString('tr-TR', {minimumFractionDigits:2})} TL</td>
+                <td>
+                    <button class="action-btn btn-edit" onclick="editItem(${index})"><i class="fas fa-edit"></i></button>
+                    <button class="action-btn btn-delete" onclick="deleteItem(${index})"><i class="fas fa-trash-alt"></i></button>
+                </td>
+            </tr>`;
+        });
+    }
+
+    function formatExcel(val) {
+        return typeof val === 'number' ? val.toFixed(2).replace('.', ',') : val;
+    }
+
+    function exportToExcel() {
+        if(archiveData.length === 0) return alert("Arşivde veri bulunamadı!");
+        let csvContent = "\uFEFF"; 
+        csvContent += "İşlem ID;Tarih;Ürün Adı;Depo Adı;Şube/İl;İSF (Ham);KKİ (%);KKİ İskonto Tutarı;Kampanya (Ana+MF);Net Birim Fiyat;Adet;KDV (%);KDV Tutarı;Genel Toplam\n";
+        
+        archiveData.forEach(item => {
+            const kmpPayda = item.ana + item.mf;
+            const kmpCarpan = item.ana / kmpPayda;
+            const kkiOran = item.kki / 100;
+            const kkiIskontoTL = item.isf * kkiOran;
+            const netIsfBirim = (item.isf * kmpCarpan) * (1 - kkiOran);
+            const netToplam = netIsfBirim * item.qty;
+            const kdvTutari = netToplam * (item.kdv / 100);
+            const genelToplam = netToplam + kdvTutari;
+            
+            const row = [
+                item.id, 
+                item.date, 
+                item.name, 
+                item.depo, 
+                item.city || '-', 
+                formatExcel(item.isf), 
+                formatExcel(item.kki), 
+                formatExcel(kkiIskontoTL),
+                `${item.ana}+${item.mf}`,
+                formatExcel(netIsfBirim), 
+                item.qty, 
+                item.kdv, 
+                formatExcel(kdvTutari),
+                formatExcel(genelToplam)
+            ].join(";");
+            csvContent += row + "\n";
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `Iade_Listesi_V7_3.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+    }
+
+    function editItem(i) {
+        const item = archiveData[i];
+        document.getElementById('p_id').value = item.id;
+        document.getElementById('p_date').value = item.date;
+        document.getElementById('p_name').value = item.name;
+        document.getElementById('p_depo').value = item.depo;
+        document.getElementById('p_city').value = item.city || '';
+        document.getElementById('p_isf').value = item.isf;
+        document.getElementById('p_kki').value = item.kki;
+        document.getElementById('p_kdv').value = item.kdv;
+        document.getElementById('p_ana').value = item.ana;
+        document.getElementById('p_mf').value = item.mf;
+        document.getElementById('p_qty').value = item.qty;
+        document.getElementById('editIndex').value = i;
+        document.getElementById('mainBtn').innerHTML = '<i class="fas fa-sync"></i> GÜNCELLEMEYİ KAYDET';
+        document.getElementById('mainBtn').classList.add('btn-update');
+        document.getElementById('inputCard').classList.add('edit-mode');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function clearForm() {
+        ['p_name','p_depo','p_city','p_isf','p_kki'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('p_kdv').value = 10;
+        document.getElementById('p_ana').value = 1; document.getElementById('p_mf').value = 0; document.getElementById('p_qty').value = 1;
+        document.getElementById('editIndex').value = "-1";
+        document.getElementById('mainBtn').innerHTML = '<i class="fas fa-save"></i> ARŞİVE KAYDET';
+        document.getElementById('mainBtn').classList.remove('btn-update');
+        document.getElementById('inputCard').classList.remove('edit-mode');
+        updateID("");
+    }
+
+    function deleteItem(i) { if(confirm('Sileyim mi?')) { archiveData.splice(i,1); renderArchive(); } }
+    function toggleCalc() { const m = document.getElementById('calculator-modal'); m.style.display = m.style.display === 'block' ? 'none' : 'block'; }
+    function calcInput(v) { const d = document.getElementById('calc-display'); if(d.value === "0" && v !== '.') d.value = v; else d.value += v; }
+    function clearCalc() { document.getElementById('calc-display').value = "0"; }
+    function calculateResult() { try { document.getElementById('calc-display').value = eval(document.getElementById('calc-display').value).toFixed(2); } catch { document.getElementById('calc-display').value = "Hata"; } }
+    document.getElementById('p_date').valueAsDate = new Date();
+    updateID("");
+</script>
+</body>
+</html>

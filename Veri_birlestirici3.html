@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Global Veri Birleştirici</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid #e2e8f0; }
+    </style>
+</head>
+<body class="p-8">
+
+<div class="glass-card p-6 rounded-2xl mb-8 border border-slate-200">
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end mb-4">
+        <div>
+            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Müşteri</label>
+            <input type="text" id="custSearch" oninput="applyFilters()" class="w-full border p-2 rounded-lg text-sm" placeholder="Müşteri ara...">
+        </div>
+        <div>
+            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Ürün</label>
+            <input type="text" id="prodSearch" oninput="applyFilters()" class="w-full border p-2 rounded-lg text-sm" placeholder="Ürün ara...">
+        </div>
+        <div>
+            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Kaynak (Depo)</label>
+            <input list="srcOptions" id="srcSearch" oninput="applyFilters()" class="w-full border p-2 rounded-lg text-sm" placeholder="Tümü">
+            <datalist id="srcOptions"></datalist>
+        </div>
+        <div>
+            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Tarih</label>
+            <input type="date" id="startDate" onchange="applyFilters()" class="w-full border p-2 rounded-lg text-sm">
+        </div>
+        <button onclick="resetFilters()" class="bg-rose-500 text-white p-2 h-[40px] rounded-lg text-sm font-bold hover:bg-rose-600 transition">TEMİZLE</button>
+    </div>
+</div>
+
+<div id="dropZone" class="border-2 border-dashed border-slate-300 p-8 rounded-2xl mb-8 text-center bg-white hover:border-blue-500 cursor-pointer transition" onclick="document.getElementById('fileInput').click()">
+    <p class="text-slate-500 font-semibold">Excel Raporlarını Buraya Sürükleyin veya Tıklayın</p>
+    <input type="file" id="fileInput" hidden multiple onchange="handleFiles(this.files)">
+</div>
+
+<div class="glass-card p-4 rounded-2xl mb-4 flex gap-4 items-center">
+    <button onclick="addToBasket()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-blue-700 transition">SEÇİLENLERİ SEPETE EKLE</button>
+    <button onclick="toggleModal(true)" class="flex items-center gap-2 bg-indigo-600 text-white px-6 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-indigo-700 transition">
+        <span>🛒 SEPETİM</span>
+        <span id="basketCount" class="bg-white text-indigo-600 px-2 py-0.5 rounded-full text-[10px]">0</span>
+    </button>
+</div>
+
+<div class="glass-card rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <table class="w-full text-sm text-left table-fixed">
+        <thead class="bg-slate-900 text-slate-100 uppercase text-[10px]">
+            <tr>
+                <th class="px-6 py-4 w-12"><input type="checkbox" id="selectAll" onchange="toggleAll(this)"></th>
+                <th class="px-6 py-4 w-1/4">MÜŞTERİ</th>
+                <th class="px-6 py-4 w-1/4">ÜRÜN</th>
+                <th class="px-6 py-4 w-1/8">ADET</th>
+                <th class="px-6 py-4 w-1/8">TARİH</th>
+                <th class="px-6 py-4 w-1/8">KAYNAK</th>
+            </tr>
+        </thead>
+        <tbody id="masterBody" class="divide-y divide-slate-100"></tbody>
+    </table>
+</div>
+
+<div id="basketModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="glass-card w-full max-w-3xl p-6 rounded-2xl shadow-2xl">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-slate-800">Sepetinizdeki Ürünler</h2>
+            <button onclick="toggleModal(false)" class="text-slate-400 hover:text-red-500 font-bold text-lg">✕</button>
+        </div>
+        <div id="basketBody" class="max-h-[60vh] overflow-y-auto mb-6 border-t border-b py-4"></div>
+        <div class="flex gap-4 justify-end">
+            <button onclick="clearBasket()" class="text-slate-500 font-bold hover:text-red-600">Sepeti Boşalt</button>
+            <button onclick="exportBasket()" class="bg-green-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-green-700">EXCEL'E AKTAR</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let rawMasterData = []; 
+    let basketData = [];
+    const mapConfig = {
+        "BENZOL": { M: "ECZANE ADI", U: "ILAC ADI", A: " MIKTARI", T: "FATURA TARIHI" },
+        "BOĞAZİÇİ": { M: "ECZANE ADI", U: "ILAC ADI", A: " MIKTARI", T: "FATURA TARIHI" },
+        "ÇAM": { M: "ECZANEADI", U: "ILACADI", A: "CMIKTAR", T: "TARİH" },
+        "İNCİ": { M: "Müşteri Adı", U: "Ürün Adı", A: "Adet", T: "İşlem Tarihi." },
+        "OTC": { M: "ECZANE ADI", U: "ILAC ADI", A: " MIKTARI", T: "FATURA TARIHI" },
+        "ÖZSEL": { M: "Müşteri", U: "İlaç Adı", A: "Miktar", T: "Fatura Tarihi" }
+    };
+
+    function formatExcelDate(val) {
+        if (!val) return "";
+        if (typeof val === 'number') {
+            const date = new Date((val - 25569) * 86400 * 1000);
+            return date.toISOString().split('T')[0];
+        }
+        if (typeof val === 'string' && val.includes('.')) {
+            const parts = val.split('.');
+            if(parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+        return val.toString();
+    }
+
+    async function handleFiles(files) {
+        rawMasterData = [];
+        for (let file of files) {
+            const data = await file.arrayBuffer();
+            const wb = XLSX.read(data, {type: 'array'});
+            const rawJson = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+            const key = Object.keys(mapConfig).find(k => file.name.toUpperCase().includes(k.toUpperCase()));
+            const config = mapConfig[key];
+            rawJson.forEach(row => {
+                const findVal = (targetKey) => {
+                    if (!config) return Object.values(row)[0] || "-";
+                    const foundKey = Object.keys(row).find(k => k.trim().toUpperCase() === config[targetKey].trim().toUpperCase());
+                    return row[foundKey] || "-";
+                };
+                rawMasterData.push({ M: findVal('M'), U: findVal('U'), A: findVal('A'), T: formatExcelDate(findVal('T')), src: file.name });
+            });
+        }
+        renderTable(rawMasterData);
+        updateSourceList();
+    }
+
+    function renderTable(data) {
+        const tbody = document.getElementById('masterBody');
+        tbody.innerHTML = data.map((i, index) => `
+            <tr class="hover:bg-slate-50 border-b text-[12px]">
+                <td class="px-6 py-3"><input type="checkbox" class="row-checkbox" data-index="${index}"></td>
+                <td class="px-6 py-3 truncate">${i.M}</td>
+                <td class="px-6 py-3 truncate">${i.U}</td>
+                <td class="px-6 py-3 font-bold">${i.A}</td>
+                <td class="px-6 py-3">${i.T}</td>
+                <td class="px-6 py-3 text-[10px] text-blue-600 font-bold uppercase">${i.src.split('.')[0]}</td>
+            </tr>
+        `).join('');
+    }
+
+    function applyFilters() {
+        const cust = document.getElementById('custSearch').value.toUpperCase().trim();
+        const prod = document.getElementById('prodSearch').value.toUpperCase().trim();
+        const src = document.getElementById('srcSearch').value.toUpperCase().trim();
+        const dateInput = document.getElementById('startDate').value;
+        const filtered = rawMasterData.filter(i => {
+            const m = (i.M || "").toString().toUpperCase();
+            const u = (i.U || "").toString().toUpperCase();
+            const s = (i.src || "").toString().toUpperCase();
+            return m.includes(cust) && u.includes(prod) && (src === "" || s.includes(src)) && (!dateInput || i.T === dateInput);
+        });
+        renderTable(filtered);
+    }
+
+    function resetFilters() {
+        document.querySelectorAll('input[type="text"], input[type="date"], input[list]').forEach(i => i.value = "");
+        renderTable(rawMasterData);
+    }
+
+    function updateSourceList() {
+        const unique = [...new Set(rawMasterData.map(i => i.src.split('.')[0].toUpperCase()))];
+        document.getElementById('srcOptions').innerHTML = unique.map(s => `<option value="${s}">`).join('');
+    }
+
+    function toggleAll(cb) {
+        document.querySelectorAll('.row-checkbox').forEach(i => i.checked = cb.checked);
+    }
+
+    function toggleModal(show) { 
+        if (show) renderBasket(); // Modal açılırken içeriği her zaman tazele
+        document.getElementById('basketModal').classList.toggle('hidden', !show); 
+    }
+
+    function addToBasket() {
+        document.querySelectorAll('.row-checkbox:checked').forEach(cb => {
+            const index = cb.getAttribute('data-index');
+            const item = rawMasterData[index];
+            // Burada basit bir kontrol ile mükerrer eklemeyi de engelliyoruz
+            if(!basketData.find(b => b === item)) basketData.push(item);
+        });
+        document.getElementById('basketCount').innerText = basketData.length;
+        
+        renderBasket(); // <-- İŞTE EKSİK OLAN KOD BURASI! Artık sepete ekleyince listeyi çizecek.
+        
+        alert("Seçilenler sepete eklendi!");
+    }
+
+    function renderBasket() {
+        const container = document.getElementById('basketBody');
+        if(basketData.length === 0) return container.innerHTML = "<p class='text-center py-10 text-slate-400'>Sepetiniz henüz boş.</p>";
+        
+        container.innerHTML = `<table class="w-full text-sm"><thead><tr class="text-slate-400 text-[10px] uppercase border-b"><th>Müşteri</th><th>Ürün</th><th>Adet</th><th>İşlem</th></tr></thead><tbody>` + 
+            basketData.map((item, idx) => `
+                <tr class="border-b">
+                    <td class="py-3">${item.M}</td>
+                    <td class="py-3">${item.U}</td>
+                    <td class="py-3 font-bold">${item.A}</td>
+                    <td class="py-3"><button onclick="removeItem(${idx})" class="text-rose-500 font-bold hover:underline">SİL</button></td>
+                </tr>`).join('') + `</tbody></table>`;
+    }
+
+    function removeItem(idx) { 
+        basketData.splice(idx, 1); 
+        document.getElementById('basketCount').innerText = basketData.length; 
+        renderBasket(); 
+    }
+    function clearBasket() {
+        if(confirm("Tüm sepeti boşaltmak istiyor musunuz?")) {
+            basketData = [];
+            document.getElementById('basketCount').innerText = 0;
+            renderBasket();
+        }
+    }
+
+    function exportBasket() {
+        if(basketData.length === 0) return alert("Sepet boş!");
+        const ws = XLSX.utils.json_to_sheet(basketData.map(i => ({ "MÜŞTERİ": i.M, "ÜRÜN": i.U, "ADET": i.A, "TARİH": i.T, "KAYNAK": i.src })));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Sepetim");
+        XLSX.writeFile(wb, "Sepet_Listesi.xlsx");
+    }
+</script>
+</body>
+</html>

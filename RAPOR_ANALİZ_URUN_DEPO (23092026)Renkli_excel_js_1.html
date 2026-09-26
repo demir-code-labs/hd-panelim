@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEN SAP | Operasyonel Rapor Analiz</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root { --primary: #0f172a; --accent: #4f46e5; --bg: #f8fafc; --border: #e2e8f0; --success: #22c55e; --danger: #ef4444; --mf-bg: #fff7ed; --mf-text: #9a3412; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: var(--bg); color: var(--primary); display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar */
+        .sidebar { 
+            width: 260px; background: #ffffff; border-right: 1px solid var(--border); 
+            padding: 25px; display: flex; flex-direction: column; 
+            flex-shrink: 0; 
+        }
+        .logo { font-size: 15px; font-weight: 800; color: var(--accent); margin-bottom: 30px; display: flex; align-items: center; gap: 8px; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 12px; cursor: pointer; color: #64748b; font-size: 13px; font-weight: 600; margin-bottom: 8px; transition: 0.3s; outline: none; }
+        .nav-item.active { background: var(--accent); color: white; }
+        .nav-item.konsolide-active { 
+            background: var(--accent) !important; 
+            color: white !important; 
+            border: none !important; 
+        }
+        
+        /* Content */
+        .content { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        .top-bar { 
+            height: 70px; 
+            background: white; 
+            border-bottom: 1px solid var(--border); 
+            display: flex; 
+            align-items: center; 
+            padding: 0 20px; 
+            justify-content: space-between; 
+            flex-shrink: 0; 
+        }
+        .status-group { display: flex; align-items: center; gap: 15px; }
+        .info-panel { 
+            display: flex; align-items: center; gap: 15px; background: #f1f5f9; padding: 8px 18px; border-radius: 12px; border: 1px solid var(--border); font-weight: 700; font-size: 13px; 
+        }
+        .page { display: none; padding: 20px; flex-grow: 1; overflow: hidden; flex-direction: column; }
+        .page.active { display: flex; }
+
+        /* Controls */
+        .controls { background: white; padding: 15px; border-radius: 15px; border: 1px solid var(--border); margin-bottom: 15px; display: flex; gap: 10px; flex-shrink: 0; position: relative; }
+        .search-box { position: relative; width: 400px; }
+        .search-box input { width: 100%; padding: 12px 15px; border-radius: 10px; border: 1px solid var(--border); outline: none; font-weight: 600; border-left: 4px solid var(--accent); font-size: 13px; }
+        
+        /* Toggle Switch */
+        .toggle-container { display: flex; background: #f1f5f9; padding: 4px; border-radius: 10px; border: 1px solid var(--border); gap: 4px; }
+        .toggle-btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 12px; font-weight: 700; cursor: pointer; background: transparent; color: #64748b; transition: 0.2s; }
+        .toggle-btn.active { background: white; color: var(--accent); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+        .drop-list { 
+            position: absolute; top: 55px; left: 0; width: 100%; background: white; 
+            border: 1px solid var(--border); border-radius: 12px; max-height: 350px; 
+            overflow-y: auto; z-index: 99999; box-shadow: 0 15px 40px rgba(0,0,0,0.2); display: none; 
+        }
+        .drop-item { padding: 12px 15px; display: flex; align-items: center; gap: 10px; cursor: pointer; border-bottom: 1px solid #f8fafc; font-size: 12px; font-weight: 600; }
+        .drop-item:hover, .drop-item:focus-within { background: #f1f5f9; }
+        .drop-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+
+        /* Tablo Tasarımı */
+        .table-wrap { background: white; border-radius: 15px; border: 1px solid var(--border); flex-grow: 1; overflow: auto; }
+        table { width: max-content; border-collapse: separate; border-spacing: 0; }
+        th { position: sticky; top: 0; background: #f8fafc; padding: 10px; font-size: 10px; font-weight: 800; border-bottom: 2px solid var(--border); border-right: 1px solid var(--border); z-index: 50; text-align: center; }
+        
+        .sticky-action { position: sticky; left: 0; background: #f8fafc; z-index: 60; width: 80px; border-right: 1px solid var(--border); }
+        .sticky-code { position: sticky; left: 80px; background: #f8fafc; z-index: 60; width: 100px; border-right: 1px solid var(--border); font-weight: 700; color: var(--accent); }
+        .sticky-name { position: sticky; left: 180px; background: white; z-index: 59; border-right: 2px solid var(--border); text-align: left; min-width: 300px; padding-left: 15px; font-weight: 700; }
+        
+        td { padding: 8px; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; font-size: 11px; text-align: center; transition: all 0.2s ease; }
+        
+        .clickable:hover { 
+            background: #ffffff !important; color: var(--accent) !important;
+            box-shadow: inset 0 0 0 2px var(--accent); z-index: 100; font-weight: 800;
+            cursor: pointer; border-radius: 4px;
+        }
+
+        .mf-cell { background-color: var(--mf-bg) !important; color: var(--mf-text) !important; font-weight: 700; }
+        .iade-cell { color: var(--danger) !important; font-weight: 700; background-color: #fef2f2 !important; }
+        .total-cell { background: #f0fdf4; font-weight: 800; color: #166534; }
+        .grand-total { background: var(--accent) !important; color: white !important; font-weight: 800; }
+
+        .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 700; font-size: 12px; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        /* Modal */
+        .modal { display: none; position: fixed; z-index: 100001; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(4px); align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 0; border-radius: 20px; width: 600px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
+        .modal-header { padding: 20px 25px; border-bottom: 1px solid #f1f5f9; flex-shrink: 0; background: #fafafa; }
+        .modal-body { padding: 10px 25px; overflow-y: auto; flex-grow: 1; }
+        .modal-footer { padding: 15px 25px; border-top: 1px solid #f1f5f9; flex-shrink: 0; background: #fafafa; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="logo">🧬 GEN SAP ANALİZ <span style="margin-left:auto;">🧿</span></div>
+    
+    <div class="nav-item active" onclick="nav('p1', this)"><i class="fas fa-upload"></i> VERİ YÜKLE</div>
+    <div class="nav-item" onclick="nav('p2', this)"><i class="fas fa-box-open"></i> ÜRÜN ANALİZİ</div>
+    <div class="nav-item" onclick="nav('p3', this)"><i class="fas fa-warehouse"></i> DEPO ANALİZİ</div>
+    <div class="nav-item" onclick="nav('p4', this); setTimeout(()=>initIadePage(),50);"><i class="fas fa-undo-alt"></i> İADE ANALİZİ</div>
+    <div class="nav-item" onclick="nav('p5', this); setTimeout(()=>initKonsolidePage(),50);"><i class="fas fa-chart-pie"></i> KONSOLİDE RAPOR</div>
+    
+    <div style="margin-top: auto; padding: 10px; background: #f8fafc; border-radius: 12px; border: 1px solid var(--border); font-size: 11px; color: #64748b; font-weight: 700; text-align: center;">
+        <div><i class="far fa-calendar-alt"></i> <span id="curDate"></span></div>
+        <div style="margin-top: 5px;"><i class="far fa-clock"></i> <span id="curTime"></span></div>
+    </div>
+</div>
+
+<div class="content">
+    <div class="top-bar">
+        <span id="topStatus" style="font-weight: 800; color: var(--accent); margin-left: 10px;">SİSTEM HAZIR 🧿</span>
+        
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <button onclick="sesliKontrolBaslat()" title="Sesli Komut" style="background:var(--accent); color:white; border:none; padding:10px 12px; border-radius:50%; cursor:pointer;">
+                <i class="fas fa-microphone"></i>
+            </button>
+            
+            <button onclick="sepetiGoster()" style="padding:10px 15px; background:var(--accent); color:white; border:none; border-radius:8px; cursor:pointer; font-weight: 700;">
+                <i class="fas fa-shopping-basket"></i> SEPETİM (<span id="sepetBadge">0</span>)
+            </button>
+            
+            <button onclick="sepetiBosalt()" title="Sepeti Boşalt" style="padding:10px 12px; background:var(--danger); color:white; border:none; border-radius:8px; cursor:pointer;">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="p1" class="page active">
+        <div style="border: 3px dashed var(--accent); padding: 100px; text-align: center; border-radius: 30px; background: white; cursor: pointer;" onclick="document.getElementById('excelInput').click()">
+            <i class="fas fa-cloud-upload-alt fa-5x" style="color:var(--accent); margin-bottom:20px;"></i>
+            <h2>Lütfen Veri Dosyanızı Yükleyin...</h2>
+            <input type="file" id="excelInput" hidden accept=".xlsx, .xls">
+        </div>
+    </div>
+
+    <div id="p2" class="page"><div id="uControls" class="controls"></div><div class="table-wrap"><table><thead id="uH"></thead><tbody id="uB"></tbody></table></div></div>
+    <div id="p3" class="page"><div id="dControls" class="controls"></div><div class="table-wrap"><table><thead id="dH"></thead><tbody id="dB"></tbody></table></div></div>
+    <div id="p4" class="page"><div id="iadeControls" class="controls"></div><div class="table-wrap"><table><thead id="iadeH"></thead><tbody id="iadeB"></tbody></table></div></div>
+    <div id="p5" class="page">
+        <div id="konsolideControls" class="controls"></div>
+        <div class="table-wrap"><table><thead id="konsolideH"></thead><tbody id="konsolideB"></tbody></table></div>
+    </div>
+</div>
+
+<div id="detayModal" class="modal"><div class="modal-content" id="modalContent"></div></div>
+
+<script>
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+    if(recognition) {
+        recognition.lang = 'tr-TR';
+        recognition.continuous = false;
+        recognition.onresult = function(event) {
+            const komut = event.results[0][0].transcript.toLowerCase();
+            document.getElementById('topStatus').innerText = "KOMUT: " + komut.toUpperCase();
+            if (komut.includes("ürün")) nav('p2', document.querySelectorAll('.nav-item')[1]);
+            else if (komut.includes("depo")) nav('p3', document.querySelectorAll('.nav-item')[2]);
+            else if (komut.includes("iade")) { nav('p4', document.querySelectorAll('.nav-item')[3]); initIadePage(); }
+            else if (komut.includes("konsolide")) { nav('p5', document.querySelectorAll('.nav-item')[4]); initKonsolidePage(); }
+            else if (komut.includes("kapat")) closeDetay();
+        };
+        recognition.onend = () => document.getElementById('topStatus').innerText = "SİSTEM HAZIR 🧿";
+    }
+
+    function sesliKontrolBaslat() {
+        if(!recognition) { alert("Tarayıcınız sesli komut özelliğini desteklemiyor."); return; }
+        recognition.start();
+        document.getElementById('topStatus').innerHTML = '<i class="fas fa-microphone" style="color:red;"></i> DİNLİYORUM...';
+    }
+
+    let raw = [], headers = [], uItems = [], dItems = [], selU = new Set(), selD = new Set();
+    let selIade = new Set(), selKonsolide = new Set(); 
+    let iadeType = 'u', konsolideType = 'd'; 
+    let currentFilteredItems = []; 
+    let currentModalRes = null; // Modal detaylarını saklamak için
+    const aylar = ["OCAK", "ŞUBAT", "MART", "NİSAN", "MAYIS", "HAZİRAN", "TEMMUZ", "AĞUSTOS", "EYLÜL", "EKİM", "KASIM", "ARALIK"];
+
+    setInterval(() => {
+        const d = new Date();
+        const curDateEl = document.getElementById('curDate');
+        const curTimeEl = document.getElementById('curTime');
+        if(curDateEl) curDateEl.innerText = d.toLocaleDateString('tr-TR');
+        if(curTimeEl) curTimeEl.innerText = d.toLocaleTimeString('tr-TR');
+    }, 1000);
+
+    function normalize(str) {
+        if (!str) return "";
+        return str.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/İ/g, "i").replace(/I/g, "i").replace(/ı/g, "i").replace(/Ğ/g, "g").replace(/ğ/g, "g")
+            .replace(/Ü/g, "u").replace(/ü/g, "u").replace(/Ş/g, "s").replace(/ş/g, "s")
+            .replace(/Ö/g, "o").replace(/ö/g, "o").replace(/Ç/g, "c").replace(/ç/g, "c")
+            .toLowerCase().trim();
+    }
+
+    document.getElementById('excelInput').addEventListener('change', function(e) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const data = new Uint8Array(event.target.result);
+            const wb = XLSX.read(data, {type: 'array', cellDates: true});
+            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1, defval: ""});
+            if(json.length > 0) {
+                headers = json[0].map(h => h ? h.toString().trim() : "");
+                raw = json.slice(1).map(row => {
+                    let obj = {};
+                    headers.forEach((h, i) => {
+                        obj[h] = row[i];
+                        if (row[i] instanceof Date) obj["_realDate"] = row[i];
+                        else if (h.toLowerCase().includes("tarih") && row[i] && !isNaN(Date.parse(row[i]))) obj["_realDate"] = new Date(row[i]);
+                    });
+                    if(obj["_realDate"]) obj["_ayIdx"] = obj["_realDate"].getMonth();
+                    return obj;
+                });
+                const uK = headers.find(h => h.toLowerCase().includes("ürün adı") || h.toLowerCase().includes("malzeme kısa")) || headers[0];
+                const dK = headers.find(h => h.toLowerCase().includes("müşeri") || h.toLowerCase().includes("müşteri") || h.toLowerCase().includes("ad")) || headers[0];
+                uItems = [...new Set(raw.map(r => r[uK]))].filter(x => x).sort((a,b) => a.localeCompare(b, 'tr'));
+                dItems = [...new Set(raw.map(r => r[dK]))].filter(x => x).sort((a,b) => a.localeCompare(b, 'tr'));
+                
+                initControls('u', 'Ürün Ara (Örn: İlaç 400)...');
+                initControls('d', 'Depo Ara (Örn: Selçuk Ankara)...');
+                nav('p2', document.querySelectorAll('.nav-item')[1]);
+                document.getElementById('topStatus').innerText = "DATA AKTİF: " + raw.length + " 🧿";
+            }
+        };
+        reader.readAsArrayBuffer(e.target.files[0]);
+    });
+
+    function initControls(type, ph) {
+        const div = document.getElementById(type+'Controls');
+        if(!div) return;
+        div.innerHTML = `
+            <div class="search-box" style="flex:0 0 400px;">
+                <input type="text" id="${type}Inp" placeholder="${ph}" oninput="handleSearch('${type}')">
+                <div id="${type}L" class="drop-list"></div>
+            </div>
+            <div style="display:flex; gap:5px; align-items:center; background:#f1f5f9; padding:5px 10px; border-radius:10px; border:1px solid var(--border);">
+                <input type="date" id="${type}DateS" style="border:none; background:transparent; font-size:11px; font-weight:700; width:110px; outline:none;">
+                <span style="font-weight:800; color:#cbd5e1;">-</span>
+                <input type="date" id="${type}DateE" style="border:none; background:transparent; font-size:11px; font-weight:700; width:110px; outline:none;">
+            </div>
+            <button class="btn" style="background:var(--accent); color:white; white-space:nowrap;" onclick="confirmSelection('${type}')"><i class="fas fa-check"></i> ANALİZ ET</button>
+            <button class="btn" style="background:var(--success); color:white; white-space:nowrap;" onclick="exportEx('${type}')"><i class="fas fa-file-excel"></i> EXCEL</button>
+        `;
+    }
+
+    function initIadePage() {
+        const div = document.getElementById('iadeControls');
+        const ph = iadeType === 'u' ? 'İade Edilen Ürün Ara...' : 'İade Eden Müşteri/Depo Ara...';
+        div.innerHTML = `
+            <div class="toggle-container">
+                <button class="toggle-btn ${iadeType==='u'?'active':''}" onclick="switchIadeType('u')">Ürün Bazlı</button>
+                <button class="toggle-btn ${iadeType==='d'?'active':''}" onclick="switchIadeType('d')">Depo Bazlı</button>
+            </div>
+            <div class="search-box" style="flex:1; max-width:400px;">
+                <input type="text" id="iadeInp" placeholder="${ph}" oninput="handleSearch('iade')">
+                <div id="iadeL" class="drop-list"></div>
+            </div>
+            <div style="display:flex; gap:5px; align-items:center; background:#f1f5f9; padding:5px 10px; border-radius:10px; border:1px solid var(--border);">
+                <input type="date" id="iadeDateS" style="border:none; background:transparent; font-size:11px; font-weight:700; width:110px; outline:none;">
+                <span style="font-weight:800; color:#cbd5e1;">-</span>
+                <input type="date" id="iadeDateE" style="border:none; background:transparent; font-size:11px; font-weight:700; width:110px; outline:none;">
+            </div>
+            <button class="btn" style="background:var(--danger); color:white; white-space:nowrap;" onclick="confirmSelection('iade')"><i class="fas fa-sync-alt"></i> İADELERİ LİSTELE</button>
+            <button class="btn" style="background:var(--success); color:white; white-space:nowrap;" onclick="exportEx('iade')"><i class="fas fa-file-excel"></i> EXCEL</button>
+        `;
+    }
+
+    function initKonsolidePage() {
+        const div = document.getElementById('konsolideControls');
+        const ph = konsolideType === 'u' ? 'Konsolide Ürün Ara...' : 'Konsolide Müşteri/Depo Ara...';
+        div.innerHTML = `
+            <div class="toggle-container">
+                <button class="toggle-btn ${konsolideType==='u'?'active':''}" onclick="switchKonsolideType('u')">Ürün Bazlı</button>
+                <button class="toggle-btn ${konsolideType==='d'?'active':''}" onclick="switchKonsolideType('d')">Depo Bazlı</button>
+            </div>
+            <div class="search-box" style="flex:1; max-width:400px;">
+                <input type="text" id="konsolideInp" placeholder="${ph}" oninput="handleSearch('konsolide')">
+                <div id="konsolideL" class="drop-list"></div>
+            </div>
+            <div style="display:flex; gap:5px; align-items:center; background:#f1f5f9; padding:5px 10px; border-radius:10px; border:1px solid var(--border);">
+                <input type="date" id="konsolideDateS" style="border:none; background:transparent; font-size:11px; font-weight:700; width:110px; outline:none;">
+                <span style="font-weight:800; color:#cbd5e1;">-</span>
+                <input type="date" id="konsolideDateE" style="border:none; background:transparent; font-size:11px; font-weight:700; width:110px; outline:none;">
+            </div>
+            <button class="btn" style="background:var(--accent); color:white; white-space:nowrap;" onclick="confirmSelection('konsolide')"><i class="fas fa-chart-line"></i> KONSOLİDE LİSTELE</button>
+            <button class="btn" style="background:var(--success); color:white; white-space:nowrap;" onclick="exportEx('konsolide')"><i class="fas fa-file-excel"></i> EXCEL</button>
+        `;
+    }
+
+    function switchIadeType(t) { iadeType = t; selIade.clear(); document.getElementById('iadeH').innerHTML = ''; document.getElementById('iadeB').innerHTML = ''; initIadePage(); }
+    function switchKonsolideType(t) { konsolideType = t; selKonsolide.clear(); document.getElementById('konsolideH').innerHTML = ''; document.getElementById('konsolideB').innerHTML = ''; initKonsolidePage(); }
+
+    function handleSearch(type) {
+        const inp = document.getElementById(type+'Inp');
+        const list = document.getElementById(type+'L');
+        const query = normalize(inp.value);
+        
+        let items = [];
+        let set = null;
+        if(type === 'u') { items = uItems; set = selU; }
+        else if(type === 'd') { items = dItems; set = selD; }
+        else if(type === 'iade') { items = (iadeType === 'u' ? uItems : dItems); set = selIade; }
+        else if(type === 'konsolide') { items = (konsolideType === 'u' ? uItems : dItems); set = selKonsolide; }
+        
+        if (query.length < 1) { list.style.display = 'none'; return; }
+
+        const terms = query.split(' ').filter(t => t.length > 0);
+        const filtered = items.filter(item => {
+            const val = normalize(item);
+            return terms.every(term => {
+                if(term.startsWith('-')) {
+                    const neg = term.substring(1);
+                    return neg ? !val.includes(neg) : true;
+                }
+                return val.includes(term);
+            });
+        });
+
+        currentFilteredItems = filtered;
+        const isAllSelected = filtered.length > 0 && filtered.every(f => set.has(f));
+
+        let bulkHtml = filtered.length > 0 ? `
+            <div class="drop-item" style="background:#f1f5f9; border-bottom:2px solid #e2e8f0; position:sticky; top:0; z-index:10;">
+                <input type="checkbox" id="${type}_bulk" ${isAllSelected ? 'checked' : ''} onchange="bulkToggle('${type}', this.checked)">
+                <label for="${type}_bulk" style="flex-grow:1; cursor:pointer; font-weight:800; color:var(--accent);">
+                    ${isAllSelected ? 'TÜMÜNÜ KALDIR' : 'TÜMÜNÜ SEÇ'} (${filtered.length})
+                </label>
+            </div>` : "";
+
+        list.innerHTML = bulkHtml + filtered.map((f, i) => `
+            <div class="drop-item">
+                <input type="checkbox" id="${type}_${i}" ${set.has(f)?'checked':''} onchange="queueUpd('${type}','${f.replace(/'/g, "\\'")}',this.checked)">
+                <label for="${type}_${i}" style="flex-grow:1; cursor:pointer;">${f}</label>
+            </div>
+        `).join('');
+        list.style.display = 'block';
+    }
+
+    function bulkToggle(type, is) {
+        let set = null;
+        if(type === 'u') set = selU;
+        else if(type === 'd') set = selD;
+        else if(type === 'iade') set = selIade;
+        else if(type === 'konsolide') set = selKonsolide;
+        
+        currentFilteredItems.forEach(item => is ? set.add(item) : set.delete(item));
+        handleSearch(type);
+    }
+
+    function queueUpd(type, val, is) {
+        let set = null;
+        if(type === 'u') set = selU;
+        else if(type === 'd') set = selD;
+        else if(type === 'iade') set = selIade;
+        else if(type === 'konsolide') set = selKonsolide;
+        is ? set.add(val) : set.delete(val);
+    }
+
+    function confirmSelection(type) {
+        if(type === 'iade') renderIadeTable();
+        else if(type === 'konsolide') renderKonsolideTable();
+        else renderTable(type);
+        hideL();
+    }
+
+    function buildRowData(key, name, ds, de, codeK, mK, mfKey, yeniFormulKey) {
+        const rowData = raw.filter(r => {
+            if(r[key] !== name) return false;
+            if(ds && r["_realDate"] < ds) return false;
+            if(de && r["_realDate"] > de) return false;
+            return true;
+        });
+
+        const code = rowData.length > 0 ? rowData[0][codeK] : "-";
+        let ayData = Array.from({length: 12}, () => ({ net: 0, mf: 0, iade: 0, top: 0 }));
+        
+        rowData.forEach(r => {
+            const ay = r["_ayIdx"]; if(ay===undefined) return;
+            let m = parseFloat(r[mK])||0;
+            let isMF = mfKey && r[mfKey] && (r[mfKey].toString().includes("-") || r[mfKey]>0);
+            let formuldurumu = r[yeniFormulKey] ? r[yeniFormulKey].toString().trim() : "";
+            let isIade = (formuldurumu === "İade" || m < 0);
+            
+            if (isIade) { ayData[ay].iade += Math.abs(m); } 
+            else if (isMF) { ayData[ay].mf += m; } 
+            else { ayData[ay].net += m; }
+            ayData[ay].top = ayData[ay].net + ayData[ay].mf - ayData[ay].iade;
+        });
+        return { code, ayData };
+    }
+
+    function renderTable(type) {
+        const uK = headers.find(h => h.toLowerCase().includes("ürün adı") || h.toLowerCase().includes("malzeme kısa")) || headers[0];
+        const dK = headers.find(h => h.toLowerCase().includes("müşeri") || h.toLowerCase().includes("müşteri") || h.toLowerCase().includes("ad")) || headers[0];
+        const codeK = headers.find(h => h.toLowerCase() === "malzeme" || h.toLowerCase() === "kod 1") || headers[0];
+        const mK = headers.find(h => h.toLowerCase().includes("miktar")) || headers[1];
+        const mfKey = headers.find(h => h.toLowerCase().includes("mal fazlası")) || ""; 
+        const yeniFormulKey = headers[headers.length - 1];
+        
+        const set = (type === 'u') ? selU : (type === 'd') ? selD : (type === 'iade') ? selIade : selKonsolide;
+        const ds = document.getElementById(type+'DateS').value ? new Date(document.getElementById(type+'DateS').value) : null;
+        const de = document.getElementById(type+'DateE').value ? new Date(document.getElementById(type+'DateE').value) : null;
+
+        let h = `<tr>
+            <th rowspan="2" class="sticky-action"><input type="checkbox" onclick="toggleAll('${type}', this.checked)"></th>
+            <th rowspan="2" class="sticky-action">SİL</th>
+            <th rowspan="2" class="sticky-code">KOD</th>
+            <th rowspan="2" class="sticky-name">AD / ÜNVAN</th>`;
+        aylar.forEach(a => h += `<th colspan="4" style="background:#4f46e5; color:white;">${a}</th>`);
+        h += `<th colspan="4" class="grand-total">TOPLAM</th></tr><tr>`;
+        for(let i=0; i<12; i++) h += `<th>Net</th><th>MF</th><th>İade</th><th>Top.</th>`;
+        h += `<th>Net</th><th>MF</th><th>İade</th><th>Top.</th></tr>`;
+        document.getElementById(type+'H').innerHTML = h;
+
+        let b = "";
+        Array.from(set).sort((a, b) => a.localeCompare(b, 'tr')).forEach(name => {
+            const { code, ayData } = buildRowData(type === 'u' ? uK : dK, name, ds, de, codeK, mK, mfKey, yeniFormulKey);
+            let gn=0, gm=0, gi=0, gt=0;
+            let cells = ayData.map((a, i) => {
+                gn+=a.net; gm+=a.mf; gi+=a.iade; gt+=a.top;
+                return `<td class="clickable" onclick="showDetay('${type}','${name.replace(/'/g, "\\'")}',${i},'net')">${a.net||""}</td>
+                        <td class="clickable ${a.mf>0?'mf-cell':''}" onclick="showDetay('${type}','${name.replace(/'/g, "\\'")}',${i},'mf')">${a.mf||""}</td>
+                        <td class="clickable ${a.iade>0?'iade-cell':''}" onclick="showDetay('${type}','${name.replace(/'/g, "\\'")}',${i},'iade')">${a.iade?'-'+a.iade:""}</td>
+                        <td class="clickable total-cell">${a.top||""}</td>`;
+            }).join('');
+            
+            b += `<tr>
+                <td><input type="checkbox" class="row-check" data-name="${name.replace(/"/g, '&quot;')}" onchange="toggleRowSelection(this, '${type}', '${name.replace(/'/g, "\\'")}')" ${set.has(name) ? 'checked' : ''}></td>
+                <td class="sticky-action"><i class="fas fa-trash-alt" style="color:var(--danger); cursor:pointer;" onclick="delRow('${type}','${name.replace(/'/g, "\\'")}')"></i></td>
+                <td class="sticky-code">${code}</td>
+                <td class="sticky-name">${name}</td>${cells}
+                <td class="clickable" onclick="showDetay('${type}','${name.replace(/'/g, "\\'")}',-1,'total_net')">${gn}</td>
+                <td class="clickable mf-cell" onclick="showDetay('${type}','${name.replace(/'/g, "\\'")}',-1,'total_mf')">${gm}</td>
+                <td class="clickable iade-cell" onclick="showDetay('${type}','${name.replace(/'/g, "\\'")}',-1,'total_iade')">${gi?'-'+gi:0}</td>
+                <td class="clickable grand-total">${gt}</td>
+            </tr>`;
+        });
+        document.getElementById(type+'B').innerHTML = b;
+    }
+
+    function renderIadeTable() {
+        const uK = headers.find(h => h.toLowerCase().includes("ürün adı") || h.toLowerCase().includes("malzeme kısa")) || headers[0];
+        const dK = headers.find(h => h.toLowerCase().includes("müşeri") || h.toLowerCase().includes("müşteri") || h.toLowerCase().includes("ad")) || headers[0];
+        const codeK = headers.find(h => h.toLowerCase() === "malzeme" || h.toLowerCase() === "kod 1") || headers[0];
+        const mK = headers.find(h => h.toLowerCase().includes("miktar")) || headers[1];
+        const yeniFormulKey = headers[headers.length - 1];
+
+        const key = iadeType === 'u' ? uK : dK;
+        const ds = document.getElementById('iadeDateS').value ? new Date(document.getElementById('iadeDateS').value) : null;
+        const de = document.getElementById('iadeDateE').value ? new Date(document.getElementById('iadeDateE').value) : null;
+    
+        let h = `<tr><th class="sticky-action"><input type="checkbox" onclick="toggleAll('iade', this.checked)"></th><th class="sticky-action">SİL</th><th class="sticky-code">KOD</th><th class="sticky-name">İADE ODAKLI AD / ÜNVAN</th>`;
+        aylar.forEach(a => h += `<th style="background:var(--danger); color:white; min-width:80px;">${a}</th>`);
+        h += `<th class="grand-total" style="min-width:100px;">TOPLAM İADE</th></tr>`;
+        document.getElementById('iadeH').innerHTML = h;
+
+        let b = "";
+        Array.from(selIade).sort((a, b) => a.localeCompare(b, 'tr')).forEach(name => {
+            const rowData = raw.filter(r => {
+                if(r[key] !== name) return false;
+                if(ds && r["_realDate"] < ds) return false;
+                if(de && r["_realDate"] > de) return false;
+                return true;
+            });
+
+            const code = rowData.length > 0 ? rowData[0][codeK] : "-";
+            let ayIadeData = Array.from({length: 12}, () => 0);
+            let toplamIadeRow = 0;
+
+            rowData.forEach(r => {
+                const ay = r["_ayIdx"]; if(ay===undefined) return;
+                let m = parseFloat(r[mK])||0;
+                let formuldurumu = r[yeniFormulKey] ? r[yeniFormulKey].toString().trim() : "";
+                let isIade = (formuldurumu === "İade" || m < 0);
+                if(isIade) { ayIadeData[ay] += Math.abs(m); toplamIadeRow += Math.abs(m); }
+            });
+
+            let cells = ayIadeData.map((val, i) => `<td class="clickable ${val > 0 ? 'iade-cell' : ''}" onclick="showDetay('${iadeType === 'u' ? 'u' : 'd'}','${name.replace(/'/g, "\\'")}',${i},'iade')">${val ? '-'+val : ""}</td>`).join('');
+            
+            b += `<tr>
+                <td><input type="checkbox" class="row-check" data-name="${name.replace(/"/g, '&quot;')}" onchange="toggleRowSelection(this, 'iade', '${name.replace(/'/g, "\\'")}')" ${selIade.has(name) ? 'checked' : ''}></td>
+                <td class="sticky-action"><i class="fas fa-trash-alt" style="color:var(--danger); cursor:pointer;" onclick="delRow('iade','${name.replace(/'/g, "\\'")}')"></i></td>
+                <td class="sticky-code">${code}</td>
+                <td class="sticky-name">${name}</td>${cells}
+                <td class="clickable grand-total" onclick="showDetay('${iadeType === 'u' ? 'u' : 'd'}','${name.replace(/'/g, "\\'")}',-1,'total_iade')">${toplamIadeRow ? '-'+toplamIadeRow : 0}</td>
+            </tr>`;
+        });
+        document.getElementById('iadeB').innerHTML = b;
+    }
+
+    function renderKonsolideTable() {
+        const uK = headers.find(h => h.toLowerCase().includes("ürün adı") || h.toLowerCase().includes("malzeme kısa")) || headers[0];
+        const dK = headers.find(h => h.toLowerCase().includes("müşeri") || h.toLowerCase().includes("müşteri") || h.toLowerCase().includes("ad")) || headers[0];
+        const codeK = headers.find(h => h.toLowerCase() === "malzeme" || h.toLowerCase() === "kod 1") || headers[0];
+        const mK = headers.find(h => h.toLowerCase().includes("miktar")) || headers[1];
+        const mfKey = headers.find(h => h.toLowerCase().includes("mal fazlası")) || ""; 
+        const yeniFormulKey = headers[headers.length - 1];
+
+        const key = konsolideType === 'u' ? uK : dK;
+        const ds = document.getElementById('konsolideDateS').value ? new Date(document.getElementById('konsolideDateS').value) : null;
+        const de = document.getElementById('konsolideDateE').value ? new Date(document.getElementById('konsolideDateE').value) : null;
+
+        let h = `<tr>
+            <th rowspan="2" class="sticky-action"><input type="checkbox" onclick="toggleAll('konsolide', this.checked)"></th>
+            <th rowspan="2" class="sticky-action">SİL</th>
+            <th rowspan="2" class="sticky-code" style="color:var(--accent);">KOD</th>
+            <th rowspan="2" class="sticky-name">AD / ÜNVAN</th>`;
+        aylar.forEach(a => h += `<th colspan="4" style="background:#4f46e5; color:white;">${a}</th>`);
+        h += `<th colspan="4" class="grand-total">GENEL TOPLAM</th></tr><tr>`;
+        for(let i=0; i<12; i++) h += `<th style="font-size:9px; font-weight:700;">Net</th><th style="font-size:9px; font-weight:700;">MF</th><th style="font-size:9px; font-weight:700;">İade</th><th style="font-size:9px; font-weight:700;">Top.</th>`;
+        h += `<th>Net</th><th>MF</th><th>İade</th><th>Top.</th></tr>`;
+        document.getElementById('konsolideH').innerHTML = h;
+
+        let b = "";
+        Array.from(selKonsolide).sort((a, b) => a.localeCompare(b, 'tr')).forEach(name => {
+            const { code, ayData } = buildRowData(key, name, ds, de, codeK, mK, mfKey, yeniFormulKey);
+            let gn=0, gm=0, gi=0, gt=0;
+
+            let cells = ayData.map((a, i) => {
+                gn+=a.net; gm+=a.mf; gi+=a.iade; gt+=a.top;
+                return `<td class="clickable" onclick="showDetay('${konsolideType}','${name.replace(/'/g, "\\'")}',${i},'net')">${a.net || ""}</td>
+                        <td class="clickable ${a.mf>0?'mf-cell':''}" onclick="showDetay('${konsolideType}','${name.replace(/'/g, "\\'")}',${i},'mf')">${a.mf || ""}</td>
+                        <td class="clickable ${a.iade>0?'iade-cell':''}" onclick="showDetay('${konsolideType}','${name.replace(/'/g, "\\'")}',${i},'iade')">${a.iade ? '-'+a.iade : ""}</td>
+                        <td class="clickable total-cell" style="font-weight:700;">${a.top || ""}</td>`;
+            }).join('');
+
+            b += `<tr>
+                <td><input type="checkbox" class="row-check" data-name="${name.replace(/"/g, '&quot;')}" onchange="toggleRowSelection(this, 'konsolide', '${name.replace(/'/g, "\\'")}')" ${selKonsolide.has(name) ? 'checked' : ''}></td>
+                <td class="sticky-action"><i class="fas fa-trash-alt" style="color:var(--danger); cursor:pointer;" onclick="delRow('konsolide','${name.replace(/'/g, "\\'")}')"></i></td>
+                <td class="sticky-code" style="color:var(--accent); font-weight:700;">${code}</td>
+                <td class="sticky-name">${name}</td>
+                ${cells}
+                <td class="clickable" onclick="showDetay('${konsolideType}','${name.replace(/'/g, "\\'")}',-1,'total_net')" style="font-weight:700;">${gn}</td>
+                <td class="clickable mf-cell" onclick="showDetay('${konsolideType}','${name.replace(/'/g, "\\'")}',-1,'total_mf')" style="font-weight:700;">${gm}</td>
+                <td class="clickable iade-cell" onclick="showDetay('${konsolideType}','${name.replace(/'/g, "\\'")}',-1,'total_iade')" style="font-weight:700;">${gi ? '-'+gi : 0}</td>
+                <td class="clickable grand-total" style="font-weight:800;">${gt}</td>
+            </tr>`;
+        });
+        document.getElementById('konsolideB').innerHTML = b;
+    }
+
+    function showDetay(type, mainVal, ayIdx, target) {
+        const uK = headers.find(h => h.toLowerCase().includes("ürün adı") || h.toLowerCase().includes("malzeme kısa")) || headers[0];
+        const dK = headers.find(h => h.toLowerCase().includes("müşeri") || h.toLowerCase().includes("müşteri") || h.toLowerCase().includes("ad")) || headers[0];
+        const mK = headers.find(h => h.toLowerCase().includes("miktar")) || headers[1];
+        const mfKey = headers.find(h => h.toLowerCase().includes("mal fazlası")) || ""; 
+        const subKey = type === 'u' ? dK : uK;
+        const yeniFormulKey = headers[headers.length - 1];
+        
+        const filtered = raw.filter(r => {
+            let matchMain = r[type==='u'?uK:dK] === mainVal;
+            let matchAy = (ayIdx === -1) ? true : (r["_ayIdx"] === ayIdx);
+            return matchMain && matchAy;
+        });
+        
+        let res = {};
+        filtered.forEach(r => {
+            let m = parseFloat(r[mK])||0;
+            let isMF = mfKey && r[mfKey] && (r[mfKey].toString().includes("-") || r[mfKey]>0);
+            let formuldurumu = r[yeniFormulKey] ? r[yeniFormulKey].toString().trim() : "";
+            let isIade = (formuldurumu === "İade" || m < 0);
+            
+            let shouldAdd = false;
+            if ((target === 'mf' || target === 'total_mf') && isMF && !isIade) shouldAdd = true;
+            else if ((target === 'iade' || target === 'total_iade') && isIade) { shouldAdd = true; m = Math.abs(m); }
+            else if ((target === 'net' || target === 'total_net') && !isMF && !isIade && m > 0) shouldAdd = true;
+
+            if (shouldAdd) { res[r[subKey]] = (res[r[subKey]]||0) + m; }
+        });
+
+        // Detay listesini sepet için sakla (Sıralı dizi olarak)
+        currentModalRes = Object.entries(res).sort((a,b)=>b[1]-a[1]);
+
+        const modal = document.getElementById('detayModal');
+        const content = document.getElementById('modalContent');
+        
+        let sutunAdi = "NET SATIŞ";
+        let isIadeTarget = false;
+        if (target.includes("mf")) sutunAdi = "MAL FAZLASI (MF)";
+        if (target.includes("iade")) { sutunAdi = "İADE ANALİZİ"; isIadeTarget = true; }
+        let donemAdi = ayIdx === -1 ? "GENEL TOPLAM" : aylar[ayIdx];
+
+        content.innerHTML = `
+            <div class="modal-header">
+                <h3 style="margin:0; font-size:15px; color:var(--primary); font-weight:800;">${mainVal}</h3>
+                <div style="color:var(--accent); font-weight:800; font-size:12px; margin-top:6px; letter-spacing: 0.5px;">
+                    <i class="fas fa-search-plus"></i> ${donemAdi} &mdash; ${sutunAdi} DETAY KIRILIMI
+                </div>
+            </div>
+            <div class="modal-body">
+                <div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:2px solid var(--border); font-size:11px; font-weight:800; color:#64748b;">
+                    <span>ALT DETAY ADI / UNVANI</span>
+                    <span>MİKTAR (ADET)</span>
+                </div>
+                <div style="max-height: 45vh; overflow-y: auto;">
+                    ${currentModalRes.length > 0 ? currentModalRes.map(([k,v]) => `
+                        <div style="display:flex; justify-content:space-between; padding:11px 0; border-bottom:1px solid #f1f5f9; font-size:12px; font-weight:600;">
+                            <span style="color:#334155;">${k}</span>
+                            <span style="color:${isIadeTarget ? 'var(--danger)' : 'var(--primary)'}; font-weight:700; background:#f1f5f9; padding:2px 8px; border-radius:6px;">
+                                ${isIadeTarget ? '-' : ''}${v.toLocaleString('tr-TR')}
+                            </span>
+                        </div>
+                    `).join('') : '<div style="padding:40px; text-align:center; color:#64748b; font-weight:600;"><i class="fas fa-folder-open" style="display:block; margin-bottom:10px; font-size:24px;"></i>Seçilen kritere ait hareket kaydı bulunamadı.</div>'}
+                </div>
+            </div>
+            <div class="modal-footer" style="padding:15px; display:flex; gap:10px;">
+                <button class="btn" style="flex:1; background:var(--accent); color:white; border:none; padding:12px; border-radius:10px; cursor:pointer; font-weight:700;"
+                        onclick='sepeteEkleModal("${mainVal.replace(/'/g, "\\'")}", "${sutunAdi}", "${donemAdi}")'>
+                    <i class="fas fa-cart-plus"></i> SEPETE EKLE
+                </button>
+                <button onclick="closeDetay()" class="btn" style="flex:1; background:#64748b; color:white; border:none; padding:12px; border-radius:10px; cursor:pointer; font-weight:700;">
+                    KAPAT
+                </button>
+            </div>
+        `;
+        modal.style.display = 'flex';
+    }
+
+    function closeDetay() { document.getElementById('detayModal').style.display = 'none'; }
+    
+    function delRow(type, val) { 
+        if(type==='u') { selU.delete(val); renderTable('u'); } 
+        else if(type==='d') { selD.delete(val); renderTable('d'); }
+        else if(type==='iade') { selIade.delete(val); renderIadeTable(); }
+        else if(type==='konsolide') { selKonsolide.delete(val); renderKonsolideTable(); }
+    }
+    
+    function nav(id, el) { 
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); 
+        document.querySelectorAll('.nav-item').forEach(n => {
+            n.classList.remove('active');
+            n.style.background = ""; 
+            n.style.border = "";
+        }); 
+        document.getElementById(id).classList.add('active'); 
+        el.classList.add('active'); 
+    }
+    
+    function hideL() { document.querySelectorAll('.drop-list').forEach(l => l.style.display = 'none'); }
+    
+    // RENKLİ EXCEL DIŞA AKTARIMI
+    function exportEx(type) {
+        let targetPageId = type === 'u' ? 'p2' : (type === 'd' ? 'p3' : (type === 'iade' ? 'p4' : 'p5'));
+        let table = document.querySelector(`#${targetPageId} table`);
+        if (!table) { alert("Dışa aktarılacak tablo bulunamadı!"); return; }
+
+        let htmlHeader = '<meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8">';
+        let wrapper = document.createElement('div');
+        wrapper.innerHTML = table.outerHTML;
+
+        let ths = wrapper.querySelectorAll('th');
+        ths.forEach(th => {
+            th.style.backgroundColor = "#4f46e5";
+            th.style.color = "#ffffff";
+            th.style.fontWeight = "bold";
+            th.style.border = "1px solid #cbd5e1";
+            th.style.textAlign = "center";
+        });
+
+        let tds = wrapper.querySelectorAll('td');
+        tds.forEach(td => {
+            td.style.border = "1px solid #e2e8f0";
+            td.style.padding = "6px";
+            td.style.textAlign = "center";
+            if(td.classList.contains('mf-cell') || td.innerHTML.includes('mf-cell')) {
+                td.style.backgroundColor = "#fff7ed";
+                td.style.color = "#9a3412";
+                td.style.fontWeight = "bold";
+            } else if(td.classList.contains('iade-cell') || td.innerHTML.includes('iade-cell')) {
+                td.style.backgroundColor = "#fef2f2";
+                td.style.color = "#ef4444";
+                td.style.fontWeight = "bold";
+            } else if(td.classList.contains('total-cell')) {
+                td.style.backgroundColor = "#f0fdf4";
+                td.style.color = "#166534";
+                td.style.fontWeight = "bold";
+            } else if(td.classList.contains('grand-total')) {
+                td.style.backgroundColor = "#4f46e5";
+                td.style.color = "#ffffff";
+                td.style.fontWeight = "bold";
+            }
+        });
+
+        let blob = new Blob([htmlHeader + wrapper.innerHTML], { type: "application/vnd.ms-excel;charset=utf-8;" });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement("a");
+        a.href = url;
+        a.download = "GEN_SAP_Renkli_Rapor.xls";
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+    
+    window.onclick = (e) => { if(e.target.className === 'modal') closeDetay(); if(!e.target.closest('.search-box') && !e.target.closest('.toggle-container')) hideL(); }
+
+    // --- SEPET SİSTEMİ ---
+    let sepet = [];
+
+    // Detay Modalından Gelen Zengin Veriyi Sepete Ekleme
+    function sepeteEkleModal(anaBaslik, sutunAdi, donem) {
+        if (!currentModalRes || currentModalRes.length === 0) {
+            alert("Sepete eklenecek detay veri bulunamadı!");
+            return;
+        }
+        if (sepet.find(s => s.anaBaslik === anaBaslik && s.donem === donem && s.sutunAdi === sutunAdi)) {
+            alert("Bu detay raporu zaten sepetinizde mevcut!");
+            return;
+        }
+        sepet.push({ 
+            anaBaslik: anaBaslik, 
+            sutunAdi: sutunAdi, 
+            donem: donem, 
+            detaylar: currentModalRes 
+        });
+        document.getElementById('sepetBadge').innerText = sepet.length;
+        closeDetay();
+        alert(anaBaslik + " (" + donem + " - " + sutunAdi + ") detay kırılımıyla birlikte sepete eklendi! 🧿");
+    }
+
+    function sepetiGoster() {
+        let modal = document.getElementById('detayModal'); 
+        let content = document.getElementById('modalContent');
+        content.innerHTML = `
+            <div style="padding:20px;">
+                <h3 style="font-weight:800; color:var(--primary); margin-bottom:15px;">Sepetinizdeki Raporlar ve Detaylar</h3>
+                <div id="sepetListesi" style="max-height:280px; overflow:auto; margin:10px 0; border:1px solid var(--border); border-radius:10px; padding:10px;">
+                    ${sepet.length > 0 ? sepet.map((s,i) => `
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #f1f5f9; font-size:12px; font-weight:600;">
+                            <div>
+                                ${i+1}. <b>${s.anaBaslik}</b> 
+                                <span style="color:var(--accent); font-size:11px;">(${s.sutunAdi} - ${s.donem})</span>${s.detaylar ? `<div style="font-size:10px; color:#64748b; margin-top:3px;"><i class="fas fa-list"></i> ${s.detaylar.length} alt detay kalemi içeriyor</div>` : ''}
+                            </div>
+                            <button onclick="sepettenItemSil(${i})" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:14px;" title="Sepetten Çıkar"><i class="fas fa-trash"></i></button>
+                        </div>
+                    `).join('') : '<div style="text-align:center; color:#64748b; padding:20px;">Sepetiniz boş.</div>'}
+                </div>
+                <div style="display:flex; gap:10px; margin-top:15px;">
+                    <button onclick="topluRaporuIndir()" class="btn" style="background:var(--success); color:white; border:none; padding:12px; flex:1; justify-content:center; cursor:pointer;"><i class="fas fa-file-excel"></i> HEPSİNİ İNDİR (DETAYLI)</button>
+                    <button onclick="closeDetay()" class="btn" style="background:#64748b; color:white; border:none; padding:12px; flex:1; justify-content:center; cursor:pointer;">KAPAT</button>
+                </div>
+            </div>
+        `;
+        modal.style.display = 'flex';
+    }
+
+    function sepettenItemSil(index) {
+        sepet.splice(index, 1);
+        document.getElementById('sepetBadge').innerText = sepet.length;
+        sepetiGoster();
+    }
+
+    function topluRaporuIndir() {
+        if (sepet.length === 0) { alert("Sepetiniz boş!"); return; }
+
+        let metaTag = '<meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8">';
+        let html = metaTag + `
+        <table>
+            <thead>
+                <tr>
+                    <th style="background-color:#4f46e5; color:white; font-weight:bold; border:1px solid #cbd5e1; text-align:center;">ANA ÜRÜN / MÜŞTERİ</th>
+                    <th style="background-color:#4f46e5; color:white; font-weight:bold; border:1px solid #cbd5e1; text-align:center;">ALT DETAY ADI / UNVANI</th>
+                    <th style="background-color:#4f46e5; color:white; font-weight:bold; border:1px solid #cbd5e1; text-align:center;">RAPOR / İŞLEM TÜRÜ</th>
+                    <th style="background-color:#4f46e5; color:white; font-weight:bold; border:1px solid #cbd5e1; text-align:center;">DÖNEM</th>
+                    <th style="background-color:#4f46e5; color:white; font-weight:bold; border:1px solid #cbd5e1; text-align:center;">MİKTAR</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+        sepet.forEach(item => {
+            if (item.detaylar && item.detaylar.length > 0) {
+                item.detaylar.forEach(([subName, val]) => {
+                    html += `<tr>
+                        <td style="border:1px solid #e2e8f0; padding:6px; font-weight:bold; text-align:left;">${item.anaBaslik}</td>
+                        <td style="border:1px solid #e2e8f0; padding:6px; text-align:left;">${subName}</td>
+                        <td style="border:1px solid #e2e8f0; padding:6px; text-align:center;">${item.sutunAdi}</td>
+                        <td style="border:1px solid #e2e8f0; padding:6px; text-align:center;">${item.donem}</td>
+                        <td style="border:1px solid #e2e8f0; padding:6px; text-align:center; font-weight:bold; color:${val < 0 ? '#ef4444' : '#0f172a'};">${val.toLocaleString('tr-TR')}</td>
+                    </tr>`;
+                });
+            } else {
+                html += `<tr>
+                    <td style="border:1px solid #e2e8f0; padding:6px; font-weight:bold; text-align:left;">${item.anaBaslik}</td>
+                    <td style="border:1px solid #e2e8f0; padding:6px; text-align:left;">-</td>
+                    <td style="border:1px solid #e2e8f0; padding:6px; text-align:center;">${item.sutunAdi}</td>
+                    <td style="border:1px solid #e2e8f0; padding:6px; text-align:center;">${item.donem}</td>
+                    <td style="border:1px solid #e2e8f0; padding:6px; text-align:center;">-</td>
+                </tr>`;
+            }
+        });
+
+        html += `</tbody></table>`;
+
+        let blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement("a");
+        a.href = url;
+        a.download = "GEN_SAP_Toplu_Detayli_Rapor.xls";
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function toggleRowSelection(cb, type, name) {
+        const isChecked = cb.checked;
+        if (isChecked) {
+            if (sepet.find(s => s.anaBaslik === name)) return;
+            sepet.push({ anaBaslik: name, sutunAdi: type === 'u' ? 'Ürün Bazlı Genel' : 'Depo Bazlı Genel', donem: 'Tüm Yıl', detaylar: null });
+        } else {
+            sepet = sepet.filter(s => s.anaBaslik !== name);
+        }
+        document.getElementById('sepetBadge').innerText = sepet.length;
+    }
+
+    function toggleAll(type, isChecked) {
+        const targetSet = (type === 'u') ? selU : (type === 'd') ? selD : (type === 'iade' ? selIade : selKonsolide);
+        const checkboxes = document.querySelectorAll(`#${type}B .row-check`);
+        
+        checkboxes.forEach(cb => {
+            cb.checked = isChecked;
+            const name = cb.getAttribute('data-name');
+            if (isChecked) targetSet.add(name);
+            else targetSet.delete(name);
+            toggleRowSelection(cb, type, name);
+        });
+    }
+
+    function sepetiBosalt() {
+        sepet = [];
+        document.getElementById('sepetBadge').innerText = "0";
+        document.querySelectorAll('.row-check').forEach(cb => cb.checked = false);
+        alert("Sepetiniz başarıyla boşaltıldı! 🧿");
+    }
+</script>
+</body>
+</html>

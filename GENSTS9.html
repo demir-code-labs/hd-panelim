@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>GEN OS v8.0 - Logic Correction</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root { --p: #008080; --s: #0f172a; --a: #3b82f6; --bg: #f8fafc; --sepet: #f59e0b; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        header { background: var(--s); color: white; padding: 10px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--p); }
+        .live-clock { text-align: right; line-height: 1.2; }
+        #clock-time { font-size: 18px; font-weight: bold; color: var(--p); }
+        
+        main { display: flex; flex: 1; overflow: hidden; padding: 15px; gap: 15px; }
+        .sidebar { width: 300px; background: white; border-radius: 12px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+        .upload-area { border: 2px dashed var(--p); padding: 15px; border-radius: 10px; text-align: center; cursor: pointer; background: #f0fdfa; transition: 0.2s; }
+        
+        .filter-group { background: #f8fafc; padding: 10px; border-radius: 8px; border-left: 4px solid var(--a); }
+        .filter-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 5px; color: #475569; }
+        
+        select, input { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 12px; outline: none; box-sizing: border-box; }
+        .btn { padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; color: white; transition: 0.2s; }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-a { background: var(--a); } .btn-s { background: #64748b; } .btn-sepet { background: var(--sepet); } .btn-d { background: #be123c; margin-top: auto; }
+        .btn-kapat { background: #475569; }
+
+        .content { flex: 1; display: flex; flex-direction: column; gap: 15px; overflow: hidden; }
+        .data-card { background: white; border-radius: 12px; flex: 1; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden; }
+        .table-container { flex: 1; overflow: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { background: #f1f5f9; position: sticky; top: 0; padding: 12px; text-align: left; border-bottom: 2px solid #e2e8f0; z-index: 10; }
+        td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
+        
+        .link-depo { color: var(--a); font-weight: bold; cursor: pointer; text-decoration: underline; }
+        .link-urun { color: #8b5cf6; font-weight: bold; cursor: pointer; text-decoration: underline; }
+        .cart-btn { font-size: 18px; color: #cbd5e1; cursor: pointer; transition: 0.2s; }
+        .cart-btn.active { color: #10b981; transform: scale(1.2); }
+        
+        .modal { display:none; position:fixed; z-index:99999; left:0; top:0; width:100%; height:100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); }
+        .modal-content { background:white; margin: 1% auto; padding:20px; width:90%; border-radius:12px; max-height: 95vh; overflow:hidden; display: flex; flex-direction: column; }
+        .modal-calendar-badge { background: #f1f5f9; padding: 5px 12px; border-radius: 6px; border-left: 4px solid var(--p); display: flex; align-items: center; gap: 8px; color: var(--s); font-weight: bold; font-size: 13px; }
+        .summary-scroll { flex: 1; overflow-y: auto; }
+        .summary-table { width: 100%; border-collapse: collapse; margin-top:10px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div>
+        <h3 style="margin:0"><i class="fas fa-check-double"></i> GEN OS <small style="font-weight:300">v8.0 Correction</small></h3>
+        <span style="font-size:10px; color:var(--p); font-weight:bold;">MUHTEŞEM İKİLİ: MANTIK HATALARI GİDERİLDİ 🧿🧿</span>
+    </div>
+    <div class="live-clock"><div id="clock-time">00:00:00</div><div id="clock-date" style="font-size:11px;">...</div></div>
+</header>
+
+<main>
+    <aside class="sidebar">
+        <div class="upload-area" onclick="document.getElementById('fileInp').click()">
+            <i class="fas fa-file-excel fa-2x" style="color:var(--p)"></i>
+            <p style="margin:5px 0 0; font-size:12px; font-weight:bold">VERİ YÜKLE</p>
+            <input type="file" id="fileInp" style="display:none" multiple>
+        </div>
+        
+        <div class="filter-group">
+            <label><i class="fas fa-search"></i> GENEL ARA</label>
+            <input type="text" id="globalSearch" placeholder="Ürün / Müşteri..." oninput="filterData()">
+        </div>
+
+        <div class="filter-group">
+            <label>TARİH SEÇİMİ</label>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px;">
+                <select id="f-yil" onchange="updateMonthFilter()"><option value="">Yıl</option></select>
+                <select id="f-ay" onchange="updateDayFilter()"><option value="">Ay</option></select>
+                <select id="f-gun" onchange="filterData()"><option value="">Gün</option></select>
+            </div>
+        </div>
+
+        <div class="filter-group">
+            <label>MÜŞTERİ HIZLI SEÇ</label>
+            <select id="f-depo" onchange="filterData()"><option value="">Tüm Müşteriler</option></select>
+        </div>
+
+        <button class="btn btn-s" onclick="resetFilters()"><i class="fas fa-sync"></i> Temizle</button>
+        <button class="btn btn-a" onclick="window.exportExcel('all')"><i class="fas fa-file-download"></i> Ana Arşivi Excel Yap</button>
+        <button class="btn btn-sepet" onclick="window.showCart()"><i class="fas fa-shopping-basket"></i> SEPETİM (<span id="cart-count">0</span>)</button>
+        <button onclick="clearDB()" class="btn btn-d">SİSTEMİ SIFIRLA</button>
+    </aside>
+
+    <section class="content">
+        <div class="data-card">
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>TARİH</th><th>MÜŞTERİ ADI</th><th>ÜRÜN ÖNİZLEME</th><th style="text-align:center">TOPLAM</th><th style="text-align:center">SEPET</th></tr></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</main>
+
+<div id="mainModal" class="modal">
+    <div class="modal-content">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid var(--p); padding-bottom:10px;">
+            <div>
+                <div id="modalCalendar" class="modal-calendar-badge"></div>
+                <h3 id="modalTitle" style="margin:10px 0 0 0; color:var(--s)"></h3>
+            </div>
+            <span onclick="window.closeModal()" style="cursor:pointer; font-size:40px; line-height: 0.8;">&times;</span>
+        </div>
+        <div id="modalSearchArea" style="margin:10px 0;"><input type="text" id="innerSearch" placeholder="Liste içinde ara..." oninput="window.filterInner()"></div>
+        <div class="summary-scroll" id="modalBody"></div>
+        <div id="modalFooter" style="padding-top:15px; display:flex; gap:10px; justify-content: flex-end;">
+            </div>
+    </div>
+</div>
+
+<script>
+    let db = [];
+    let cart = JSON.parse(localStorage.getItem('GENOS_V80_CART') || '[]');
+    let currentDetailData = [];
+    let currentDetailType = "depo"; 
+    const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+
+    window.closeModal = () => document.getElementById('mainModal').style.display = "none";
+
+    // DETAY EKRANI BUTONLARINI AYARLAR
+    function setModalButtons(isCart = false) {
+        const footer = document.getElementById('modalFooter');
+        if (isCart) {
+            footer.innerHTML = `
+                <button class="btn btn-a" onclick="window.exportExcel('current')"><i class="fas fa-file-excel"></i> Sepeti Excel'e Aktar</button>
+                <button class="btn btn-d" onclick="window.clearCart()"><i class="fas fa-trash"></i> Sepeti Boşalt</button>
+                <button class="btn btn-kapat" onclick="window.closeModal()">Kapat</button>`;
+        } else {
+            footer.innerHTML = `
+                <button class="btn btn-a" onclick="window.exportExcel('current')"><i class="fas fa-file-excel"></i>Excel'e Aktar</button>
+                <button class="btn btn-kapat" onclick="window.closeModal()">Kapat</button>`;
+        }
+    }
+
+    window.showDepoDetail = function(depo, tarih) {
+        currentDetailType = "depo";
+        currentDetailData = db.filter(x => x.depo === depo && x.tarih === tarih);
+        document.getElementById('modalCalendar').innerHTML = `<i class="fas fa-warehouse"></i> ${tarih}`;
+        document.getElementById('modalTitle').innerText = depo;
+        window.renderModalTable();
+        setModalButtons(false);
+        document.getElementById('mainModal').style.display = "block";
+    };
+
+    window.showUrunDetail = function(urun, tarih) {
+        currentDetailType = "urun";
+        currentDetailData = db.filter(x => x.urun === urun && x.tarih === tarih);
+        document.getElementById('modalCalendar').innerHTML = `<i class="fas fa-box"></i> ${tarih}`;
+        document.getElementById('modalTitle').innerText = urun;
+        window.renderModalTable();
+        setModalButtons(false);
+        document.getElementById('mainModal').style.display = "block";
+    };
+
+    window.renderModalTable = function(data = currentDetailData) {
+        let label = (currentDetailType === "depo" || currentDetailType === "sepet") ? "ÜRÜN ADI" : "MÜŞTERİ / DEPO ADI";
+        let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>BELGE NO</th><th>${label}</th><th>ADET</th></tr></thead><tbody>`;
+        let t = 0;
+        data.forEach(x => {
+            let colVal = (currentDetailType === "depo" || currentDetailType === "sepet") ? x.urun : x.depo;
+            html += `<tr><td>${x.bNo}</td><td>${colVal}</td><td><b>${x.adet}</b></td></tr>`;
+            t += x.adet;
+        });
+        document.getElementById('modalBody').innerHTML = html + `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="2">TOPLAM</td><td>${t}</td></tr></tbody></table>`;
+    };
+
+    window.showCart = function() {
+        currentDetailType = "sepet";
+        document.getElementById('modalCalendar').innerHTML = `<i class="fas fa-shopping-basket"></i> Sepet Onay Listesi`;
+        document.getElementById('modalTitle').innerText = "Seçili Kayıtlar";
+        currentDetailData = cart.map(c => db.filter(x => x.tarih === c.t && x.depo === c.d)).flat();
+        window.renderModalTable(currentDetailData);
+        setModalButtons(true);
+        document.getElementById('mainModal').style.display = "block";
+    };
+
+    // EXCEL AKTARIMI DÜZELTİLDİ
+    window.exportExcel = function(type) {
+        let arr = [];
+        let source = [];
+        
+        if(type === 'all') source = db;
+        else if(type === 'current') source = currentDetailData; // O AN EKRANDA OLAN VERİ
+        
+        if(source.length === 0) { alert("Aktarılacak veri bulunamadı!"); return; }
+
+        source.forEach(i => arr.push({Tarih:i.tarih, Müşteri:i.depo, Belge:i.bNo, Ürün:i.urun, Adet:i.adet}));
+        const ws = XLSX.utils.json_to_sheet(arr);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "GENOS_DATA");
+        XLSX.writeFile(wb, `GENOS_V8_${new Date().getTime()}.xlsx`);
+    };
+
+    // FİLTRELEME VE DİĞER FONKSİYONLAR
+    window.filterData = function() {
+        const y=document.getElementById('f-yil').value, a=document.getElementById('f-ay').value, g=document.getElementById('f-gun').value, d=document.getElementById('f-depo').value, 
+              s=document.getElementById('globalSearch').value.toLowerCase();
+        let filtered = db.filter(i => (y===''||i.y===y) && (a===''||i.a===a) && (g===''||i.g===g) && (d===''||i.depo===d) && (i.depo.toLowerCase().includes(s) || i.urun.toLowerCase().includes(s)));
+        const groups = {};
+        filtered.forEach(i => {
+            const key = `${i.tarih}|${i.depo}`;
+            if(!groups[key]) groups[key] = {t:i.tarih, d:i.depo, urunler:[], toplam:0};
+            groups[key].toplam += i.adet;
+            if(!groups[key].urunler.includes(i.urun)) groups[key].urunler.push(i.urun);
+        });
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = Object.values(groups).map(item => {
+            const sKey = `${item.t}|${item.d}`, isCart = cart.some(c => c.key === sKey);
+            return `<tr>
+                <td>${item.t}</td>
+                <td><span class="link-depo" onclick="window.showDepoDetail('${item.d.replace(/'/g, "\\'")}', '${item.t}')">${item.d}</span></td>
+                <td><span class="link-urun" onclick="window.showUrunDetail('${item.urunler[0].replace(/'/g, "\\'")}', '${item.t}')">${item.urunler[0]} ...</span></td>
+                <td style="text-align:center"><b>${item.toplam}</b></td>
+                <td style="text-align:center"><i class="fas fa-shopping-basket cart-btn ${isCart?'active':''}" onclick="toggleCart('${sKey}')"></i></td>
+            </tr>`;
+        }).join('');
+        document.getElementById('cart-count').innerText = cart.length;
+    };
+
+    document.getElementById('fileInp').addEventListener('change', async (e) => {
+    // KRİTİK EKLEME: Yeni dosya seçildiğinde eski veriyi (db) sıfırlıyoruz.
+    db = []; 
+    
+    for (let file of e.target.files) {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data);
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, {header: 1});
+        
+        // Tarih okuma kısmı
+        let tStr = rows[0][0]?.toString().split(':')[1]?.trim() || "01.01.2026";
+        let p = tStr.split('.');
+        let h = rows[2];
+
+        for (let i = 3; i < rows.length; i++) {
+            let r = rows[i]; if (!r[1] || r[1].includes("TOPLAM")) continue;
+            for (let j = 3; j < h.length; j++) {
+                let v = parseFloat(String(r[j]).replace(',','.'));
+                // Burada veriyi db dizisine alıyoruz
+                if (v > 0) db.push({tarih:tStr, y:p[2], a:p[1], g:p[0], depo:r[1].trim(), urun:h[j].trim(), adet:v, bNo:String(r[2]||"-")});
+            }
+        }
+    }
+    // Temizlenmiş ve sadece yeni verilerle dolmuş haliyle kaydediyoruz
+    localStorage.setItem('GENOS_V80_DB', JSON.stringify(db));
+    finalizeUI();
+});
+
+    function finalizeUI() {
+        const y = [...new Set(db.map(d => d.y))].sort().reverse();
+        document.getElementById('f-yil').innerHTML = '<option value="">Yıl</option>' + y.map(i => `<option value="${i}">${i}</option>`).join('');
+        const de = [...new Set(db.map(d => d.depo))].sort();
+        document.getElementById('f-depo').innerHTML = '<option value="">Müşteri</option>' + de.map(i => `<option value="${i}">${i}</option>`).join('');
+        updateMonthFilter();
+    }
+    function updateMonthFilter() {
+        const selY = document.getElementById('f-yil').value;
+        const aylar = [...new Set(db.filter(d => selY === "" || d.y === selY).map(d => d.a))].sort();
+        document.getElementById('f-ay').innerHTML = '<option value="">Ay</option>' + aylar.map(a => `<option value="${a}">${ayIsimleri[parseInt(a)-1]}</option>`).join('');
+        updateDayFilter();
+    }
+    function updateDayFilter() {
+        const selY = document.getElementById('f-yil').value, selA = document.getElementById('f-ay').value;
+        const gunler = [...new Set(db.filter(d => (selY==="" || d.y===selY) && (selA==="" || d.a===selA)).map(d => d.g))].sort();
+        document.getElementById('f-gun').innerHTML = '<option value="">Gün</option>' + gunler.map(g => `<option value="${g}">${g}</option>`).join('');
+        filterData();
+    }
+    function toggleCart(key) {
+        const idx = cart.findIndex(c => c.key === key);
+        if(idx > -1) cart.splice(idx, 1); else { const [t, d] = key.split('|'); cart.push({key, t, d}); }
+        localStorage.setItem('GENOS_V80_CART', JSON.stringify(cart)); filterData();
+    }
+    function resetFilters() { document.getElementById('globalSearch').value = ""; document.querySelectorAll('select').forEach(s => s.value=""); filterData(); }
+    function updateClock() { document.getElementById('clock-time').innerText = new Date().toLocaleTimeString(); document.getElementById('clock-date').innerText = new Date().toLocaleDateString('tr-TR', {day:'numeric', month:'long', year:'numeric'}); }
+    setInterval(updateClock, 1000); updateClock();
+    function clearDB() { if(confirm("Sıfırlansın mı?")) { localStorage.clear(); location.reload(); } }
+    window.clearCart = function() { cart = []; localStorage.setItem('GENOS_V80_CART', '[]'); window.closeModal(); filterData(); };
+    window.filterInner = function() {
+        const s = document.getElementById('innerSearch').value.toLowerCase();
+        const f = currentDetailData.filter(x => x.urun.toLowerCase().includes(s) || x.depo.toLowerCase().includes(s) || x.bNo.toLowerCase().includes(s));
+        window.renderModalTable(f);
+    };
+    if(db.length > 0) finalizeUI();
+</script>
+</body>
+</html>

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEN OS | PLANNER PRO v13 SMART</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        :root {
+            --header-gradient: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            --accent-neon: #00f2ff;
+            --primary: #6366f1; 
+            --secondary: #0ea5e9;
+            --weekend-bg: #fff7ed;
+            --text-dark: #0f172a;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: #f1f5f9; color: var(--text-dark); height: 100vh; overflow: hidden; display: flex; flex-direction: column; transition: opacity 0.5s; }
+
+        header {
+            height: 75px; background: var(--header-gradient); color: white;
+            display: flex; align-items: center; justify-content: space-between; padding: 0 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2); z-index: 100;
+            border-bottom: 3px solid var(--accent-neon);
+        }
+        .logo-area { font-weight: 800; font-size: 22px; display: flex; align-items: center; gap: 12px; }
+        .logo-area i { color: var(--accent-neon); font-size: 30px; }
+
+        .ribbon { background: white; padding: 12px 25px; display: flex; gap: 20px; border-bottom: 1px solid #e2e8f0; }
+        .r-btn { display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; background: #fff; border: 1px solid #e2e8f0; padding: 10px 15px; border-radius: 14px; min-width: 90px; box-shadow: 0 4px 0 #cbd5e1; transition: all 0.2s; }
+        .r-btn:hover { transform: translateY(-2px); border-color: var(--primary); }
+        .r-btn i { font-size: 26px; }
+        .r-btn span { font-size: 11px; font-weight: 800; color: #475569; }
+
+        main { flex: 1; padding: 20px; display: flex; gap: 20px; overflow: hidden; }
+        .content-card { background: white; border-radius: 24px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); display: flex; flex-direction: column; overflow: hidden; border: 1px solid #e2e8f0; }
+        .left-panel { flex: 1.6; }
+        .right-panel { flex: 1; }
+
+        .table-container { flex: 1; overflow-y: auto; border-radius: 15px; border: 1px solid #eee; }
+        .plan-table { width: 100%; border-collapse: collapse; }
+        .plan-table th { position: sticky; top: 0; background: var(--primary); color: white; padding: 15px; text-align: left; font-size: 13px; z-index: 10; }
+        .plan-table td { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; }
+        
+        textarea { width: 100%; border: 1px solid transparent; background: transparent; font-size: 13px; font-weight: 600; outline: none; resize: none; min-height: 75px; padding: 8px; }
+
+        .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; background: var(--primary); padding: 12px; border-radius: 15px; color: white; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+        
+        .cal-day { background: white; border: 1px solid #f1f5f9; padding: 12px; min-height: 70px; border-radius: 14px; font-size: 13px; font-weight: 800; text-align: center; transition: all 0.2s; cursor: pointer; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .cal-day:hover { transform: scale(1.05); background: var(--primary); color: white; }
+        .cal-day.active-week { border: 2px solid var(--primary); background: #eef2ff; }
+        .cal-day.has-event { border: 2px solid var(--primary); }
+        .cal-day.has-event::after { content: ''; width: 6px; height: 6px; background: var(--primary); border-radius: 50%; position: absolute; bottom: 8px; }
+        .cal-event-icon { font-size: 10px; color: var(--primary); position: absolute; top: 5px; right: 5px; display: none; }
+        .cal-day.has-event .cal-event-icon { display: block; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.85); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+        .modal-content { background: white; padding: 30px; border-radius: 25px; width: 450px; text-align: center; }
+        .modal-avatar-upload { width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--primary); margin: 0 auto 20px; cursor: pointer; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; background-color: #f8fafc; }
+    </style>
+</head>
+<body id="mainBody">
+
+    <header>
+        <div class="logo-area"><i class="fas fa-bolt"></i> GEN OS | PLANNER</div>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <div id="clock" style="font-weight: 800; font-size: 20px; color: var(--accent-neon);">00:00:00</div>
+            <div class="header-profile-box" style="display: flex; align-items: center; gap: 15px; border-left: 2px solid rgba(255,255,255,0.1); padding-left: 20px;">
+                <div style="text-align: right;">
+                    <h4 id="display-name" style="font-size: 15px; font-weight: 800;">Ad Soyad</h4>
+                    <p id="display-loc" style="font-size: 11px; color: var(--accent-neon); font-weight: 700;">LOKASYON</p>
+                </div>
+                <div id="header-avatar" class="user-avatar" onclick="openSettings()" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--accent-neon); background-size: cover; background-position: center; cursor: pointer; display: flex; align-items: center; justify-content: center; background-color: rgba(255,255,255,0.1);">
+                    <i class="fas fa-camera" style="color:var(--accent-neon); font-size: 14px;"></i>
+                </div>
+            </div>
+            <button onclick="systemExit()" style="background:none; border:none; cursor:pointer;" title="Güvenli Çıkış"><i class="fas fa-power-off" style="color: #ff4757; font-size: 24px;"></i></button>
+        </div>
+    </header>
+
+    <div class="ribbon">
+        <button class="r-btn" onclick="saveData()"><i class="fas fa-save" style="color: var(--primary);"></i><span>KAYDET</span></button>
+        <button class="r-btn" onclick="exportToExcel()"><i class="fas fa-file-excel" style="color: #2ed573;"></i><span>EXCEL</span></button>
+        <button class="r-btn" onclick="openSettings()"><i class="fas fa-user-circle" style="color: var(--secondary);"></i><span>PROFİL</span></button>
+        <button class="r-btn" onclick="location.reload()"><i class="fas fa-sync" style="color: #f39c12;"></i><span>YENİLE</span></button>
+    </div>
+
+    <main>
+        <div class="content-card left-panel">
+            <h2 id="tableTitle" style="margin-bottom: 20px; font-weight: 800;"><i class="fas fa-list-check" style="color:var(--primary)"></i> OPERASYON AKIŞI</h2>
+            <div class="table-container">
+                <table class="plan-table" id="workTable">
+                    <thead><tr><th style="width: 170px;">TARİH / GÜN</th><th>SABAH (AM)</th><th>ÖĞLEDEN SONRA (PM)</th></tr></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="content-card right-panel">
+            <div class="cal-header">
+                <button onclick="changeMonth(-1)" style="background:none; border:none; color:white; cursor:pointer;"><i class="fas fa-chevron-left"></i></button>
+                <h3 id="monthTitle" style="font-weight: 800;">OCAK 2024</h3>
+                <button onclick="changeMonth(1)" style="background:none; border:none; color:white; cursor:pointer;"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <div class="calendar-grid" id="calendarBody"></div>
+            <div style="margin-top: auto; padding: 15px; background: #f8fafc; border-radius: 15px; border-left: 5px solid var(--accent-neon);">
+                <p id="display-corp" style="font-size: 12px; font-weight: 800; color: #475569;">KURUM: -</p>
+                <p id="display-mail" style="font-size: 12px; font-weight: 800; color: #475569; margin-top: 8px;">E-POSTA: -</p>
+            </div>
+        </div>
+    </main>
+
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <input type="file" id="photo-input" hidden accept="image/*" onchange="previewPhoto(this)">
+            <div id="modal-avatar" class="modal-avatar-upload" onclick="document.getElementById('photo-input').click()">
+                <i class="fas fa-camera" style="color: #cbd5e1; font-size: 30px;"></i>
+            </div>
+            <div style="text-align:left;">
+                <label style="font-size:11px; font-weight:800; color:#64748b;">AD SOYAD</label>
+                <input type="text" id="set-name" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:8px;">
+                <label style="font-size:11px; font-weight:800; color:#64748b;">KURUM</label>
+                <input type="text" id="set-corp" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:8px;">
+                <label style="font-size:11px; font-weight:800; color:#64748b;">LOKASYON</label>
+                <input type="text" id="set-loc" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:8px;">
+                <label style="font-size:11px; font-weight:800; color:#64748b;">E-POSTA</label>
+                <input type="email" id="set-mail" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:8px;">
+                
+                <label style="font-size:11px; font-weight:800; color:#64748b;">SİSTEM RENGİ</label>
+                <input type="color" id="set-color" value="#6366f1" style="width:100%; height:40px; padding:5px; border:1px solid #ddd; border-radius:8px; cursor:pointer;">
+            </div>
+            <button onclick="saveSettings()" style="width:100%; padding:15px; background:var(--primary); color:white; border:none; border-radius:15px; font-weight:800; margin-top:20px; cursor:pointer;">GÜNCELLE</button>
+        </div>
+    </div>
+
+    <script>
+        let userData = JSON.parse(localStorage.getItem('gen_user_v13_final')) || { name: "Ad Soyad", corp: "Gen Teknolojileri", mail: "iletisim@gen.com", loc: "Ankara", photo: "", themeColor: "#6366f1" };
+        let planData = JSON.parse(localStorage.getItem('gen_plan_v13_final')) || {};
+        let viewDate = new Date(); // Takvim ayı için
+        let activeMonday = getMonday(new Date()); // Tabloda gösterilen haftanın Pazartesi'si
+
+        function init() {
+            updateUI();
+            updateClock();
+            renderTable(activeMonday);
+            renderCalendar();
+            applyTheme(userData.themeColor);
+        }
+
+        // Seçilen tarihin Pazartesi gününü bulur
+        function getMonday(d) {
+            let date = new Date(d);
+            let day = date.getDay();
+            let diff = date.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(date.setDate(diff));
+        }
+
+        function applyTheme(color) {
+            document.documentElement.style.setProperty('--primary', color);
+            document.documentElement.style.setProperty('--header-gradient', `linear-gradient(135deg, #1e1b4b 0%, ${color} 100%)`);
+        }
+
+        function updateUI() {
+            document.getElementById('display-name').innerText = userData.name;
+            document.getElementById('display-loc').innerText = userData.loc;
+            document.getElementById('display-corp').innerText = `KURUM: ${userData.corp}`;
+            document.getElementById('display-mail').innerText = userData.mail;
+            if(userData.photo) {
+                document.getElementById('header-avatar').style.backgroundImage = `url(${userData.photo})`;
+                document.getElementById('modal-avatar').style.backgroundImage = `url(${userData.photo})`;
+            }
+        }
+
+        function previewPhoto(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => { userData.photo = e.target.result; updateUI(); };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function renderTable(mondayDate) {
+            activeMonday = mondayDate;
+            const body = document.getElementById('tableBody');
+            body.innerHTML = '';
+            const daysArr = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"];
+            
+            document.getElementById('tableTitle').innerHTML = `<i class="fas fa-list-check" style="color:var(--primary)"></i> OPERASYON AKIŞI (${mondayDate.toLocaleDateString('tr-TR')})`;
+
+            for(let i=0; i<5; i++) {
+                let current = new Date(mondayDate);
+                current.setDate(mondayDate.getDate() + i);
+                let key = `${current.getDate()}-${current.getMonth()}-${current.getFullYear()}`;
+                
+                body.innerHTML += `<tr>
+                    <td><strong>${current.toLocaleDateString('tr-TR')}</strong><br><small style="color:var(--primary)">${daysArr[i].toUpperCase()}</small></td>
+                    <td><textarea id="am-${key}" oninput="sync()">${planData['am-'+key] || ''}</textarea></td>
+                    <td><textarea id="pm-${key}" oninput="sync()">${planData['pm-'+key] || ''}</textarea></td>
+                </tr>`;
+            }
+            renderCalendar(); // Hafta değiştiğinde takvimi güncelle (vurgu için)
+        }
+
+        function renderCalendar() {
+            const cal = document.getElementById('calendarBody');
+            cal.innerHTML = '';
+            const months = ["OCAK", "ŞUBAT", "MART", "NİSAN", "MAYIS", "HAZİRAN", "TEMMUZ", "AĞUSTOS", "EYLÜL", "EKİM", "KASIM", "ARALIK"];
+            const m = viewDate.getMonth(); const y = viewDate.getFullYear();
+            document.getElementById('monthTitle').innerText = `${months[m]} ${y}`;
+            
+            const firstDay = new Date(y, m, 1).getDay();
+            const daysInMonth = new Date(y, m + 1, 0).getDate();
+            let offset = firstDay === 0 ? 6 : firstDay - 1;
+
+            for(let i=0; i<offset; i++) cal.innerHTML += '<div></div>';
+
+            for(let d=1; d<=daysInMonth; d++) {
+                let dateObj = new Date(y, m, d);
+                let key = `${d}-${m}-${y}`;
+                let isWeekend = (dateObj.getDay() === 0 || dateObj.getDay() === 6);
+                let hasEvent = (planData['am-'+key] && planData['am-'+key].trim() !== "") || (planData['pm-'+key] && planData['pm-'+key].trim() !== "");
+                
+                // Seçilen haftayı vurgula
+                let isWeekActive = getMonday(dateObj).getTime() === activeMonday.getTime();
+
+                cal.innerHTML += `
+                    <div class="cal-day ${isWeekend ? 'weekend' : ''} ${hasEvent ? 'has-event' : ''} ${isWeekActive ? 'active-week' : ''}" 
+                         onclick="renderTable(getMonday(new Date(${y}, ${m}, ${d})))">
+                        <i class="fas fa-calendar-check cal-event-icon"></i>
+                        ${d}
+                    </div>`;
+            }
+        }
+
+        function sync() {
+            document.querySelectorAll('textarea').forEach(a => planData[a.id] = a.value);
+            localStorage.setItem('gen_plan_v13_final', JSON.stringify(planData));
+            // renderCalendar çağırıp tüm takvimi yenilemek yerine sadece mevcut hafta görünümünü bozmadan devam ediyoruz
+        }
+
+        function systemExit() {
+            sync();
+            if(confirm("Güvenli çıkış yapılsın mı?")) {
+                document.getElementById('mainBody').style.opacity = '0';
+                setTimeout(() => { location.reload(); }, 500);
+            }
+        }
+
+        function openSettings() {
+            document.getElementById('set-name').value = userData.name;
+            document.getElementById('set-corp').value = userData.corp;
+            document.getElementById('set-loc').value = userData.loc;
+            document.getElementById('set-mail').value = userData.mail;
+            document.getElementById('set-color').value = userData.themeColor || "#6366f1";
+            document.getElementById('settingsModal').style.display = 'flex';
+        }
+
+        function saveSettings() {
+            userData.name = document.getElementById('set-name').value;
+            userData.corp = document.getElementById('set-corp').value;
+            userData.loc = document.getElementById('set-loc').value;
+            userData.mail = document.getElementById('set-mail').value;
+            userData.themeColor = document.getElementById('set-color').value; 
+            localStorage.setItem('gen_user_v13_final', JSON.stringify(userData));
+            applyTheme(userData.themeColor);
+            updateUI(); closeSettings();
+        }
+
+        function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
+        function updateClock() { setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString('tr-TR'); }, 1000); }
+        function changeMonth(dir) { viewDate.setMonth(viewDate.getMonth() + dir); renderCalendar(); }
+        function saveData() { sync(); alert("Değişiklikler kaydedildi!"); }
+        function exportToExcel() { const wb = XLSX.utils.table_to_book(document.getElementById("workTable")); XLSX.writeFile(wb, "GenOS_Operasyon_Plani.xlsx"); }
+        window.onload = init;
+    </script>
+</body>
+</html>

@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İlaç Fiyat Güncelleme ve Karşılaştırma Paneli</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS for Excel processing (Standard Stable CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #2d3748;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .navbar-brand {
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .card {
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.05);
+            background: #ffffff;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card:hover {
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+        }
+        .upload-section-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+        .upload-section-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background: linear-gradient(to bottom, #198754, #20c997);
+        }
+        .custom-file-upload {
+            position: relative;
+            display: flex;
+            align-items: center;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 6px 12px;
+            transition: all 0.2s ease;
+        }
+        .custom-file-upload:hover {
+            border-color: #94a3b8;
+            background: #e2e8f0;
+        }
+        .custom-file-upload input[type="file"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        .file-upload-btn {
+            background: #ffffff;
+            color: #1e293b;
+            border: 1px solid #cbd5e1;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            transition: all 0.2s;
+        }
+        .custom-file-upload:hover .file-upload-btn {
+            background: #1e3c72;
+            color: #ffffff;
+            border-color: #1e3c72;
+        }
+        .file-name-display {
+            font-size: 0.9rem;
+            color: #64748b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-left: 10px;
+        }
+        .avatar-icon {
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+            flex-shrink: 0;
+        }
+        .avatar-primary { background: linear-gradient(135deg, #0d6efd, #0dcaf0); color: #fff; }
+        .avatar-success { background: linear-gradient(135deg, #198754, #20c997); color: #fff; }
+        .avatar-warning { background: linear-gradient(135deg, #ffc107, #fd7e14); color: #fff; }
+        .avatar-danger  { background: linear-gradient(135deg, #dc3545, #f87171); color: #fff; }
+        .avatar-info    { background: linear-gradient(135deg, #0dcaf0, #3b82f6); color: #fff; }
+
+        .nav-tabs { border-bottom: 2px solid #e9ecef; }
+        .nav-tabs .nav-link {
+            border: none;
+            color: #64748b;
+            font-weight: 600;
+            padding: 14px 24px;
+            border-radius: 12px 12px 0 0;
+            transition: all 0.3s;
+            background-color: #f8fafc;
+            margin-right: 4px;
+        }
+        .nav-tabs .nav-link:hover { color: #1e3c72; background-color: #f1f5f9; }
+        .nav-tabs .nav-link.active {
+            color: #1e3c72;
+            background-color: #ffffff;
+            border-bottom: 3px solid #2a5298;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.03);
+        }
+        .table-container {
+            max-height: 520px;
+            overflow: auto;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            position: relative;
+        }
+        table.custom-fixed-table {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+            white-space: nowrap;
+        }
+        table.custom-fixed-table th {
+            position: sticky;
+            top: 0;
+            background: #f8fafc !important;
+            color: #334155;
+            z-index: 3;
+            padding: 12px 14px;
+            font-weight: 700;
+            font-size: 0.8rem;
+            letter-spacing: 0.4px;
+            border-bottom: 2px solid #cbd5e1 !important;
+            border-right: 1px solid #f1f5f9;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            text-align: center;
+        }
+        table.custom-fixed-table th:nth-child(1), table.custom-fixed-table td:nth-child(1) {
+            position: sticky; left: 0; z-index: 2; background-color: #ffffff; border-right: 1px solid #e2e8f0; width: 130px; min-width: 130px; max-width: 130px;
+        }
+        table.custom-fixed-table th:nth-child(1) { z-index: 4; background-color: #f8fafc !important; }
+        table.custom-fixed-table th:nth-child(2), table.custom-fixed-table td:nth-child(2) {
+            position: sticky; left: 130px; z-index: 2; background-color: #ffffff; border-right: 1px solid #e2e8f0; width: 180px; min-width: 180px; max-width: 180px;
+        }
+        table.custom-fixed-table th:nth-child(2) { z-index: 4; background-color: #f8fafc !important; }
+        table.custom-fixed-table th:nth-child(3), table.custom-fixed-table td:nth-child(3) {
+            position: sticky; left: 310px; z-index: 2; background-color: #ffffff; border-right: 2px solid #cbd5e1; width: 220px; min-width: 220px; max-width: 220px;
+        }
+        table.custom-fixed-table th:nth-child(3) { z-index: 4; background-color: #f8fafc !important; }
+        .fixed-col-cell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 0; }
+        .col-numeric { background-color: #fdfefe; color: #0f172a; font-weight: 500; text-align: right; }
+        .col-dsf { background-color: #eff6ff !important; color: #1e40af !important; font-weight: 600; }
+        .col-esf { background-color: #ecfdf5 !important; color: #065f46 !important; font-weight: 600; }
+        .col-psf { background-color: #fef3c7 !important; color: #92400e !important; font-weight: 600; }
+        table.custom-fixed-table tbody tr:hover td { background-color: #f1f5f9 !important; }
+        table.custom-fixed-table tbody tr:hover td:nth-child(1),
+        table.custom-fixed-table tbody tr:hover td:nth-child(2),
+        table.custom-fixed-table tbody tr:hover td:nth-child(3) { background-color: #e8eff5 !important; }
+        .kpi-card { background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border-left: 5px solid #2a5298; border-radius: 16px; }
+        .badge-diff { font-size: 0.85rem; padding: 6px 12px; border-radius: 30px; }
+        .btn { border-radius: 10px; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-primary { background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); border: none; box-shadow: 0 4px 10px rgba(13, 110, 253, 0.25); }
+        .btn-success { background: linear-gradient(135deg, #198754 0%, #157347 100%); border: none; box-shadow: 0 4px 10px rgba(25, 135, 84, 0.25); }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.15); }
+        #calcFloatBtn {
+            position: fixed; bottom: 25px; right: 25px; z-index: 1050; border-radius: 50px; padding: 12px 22px; box-shadow: 0 6px 20px rgba(0,0,0,0.25); background: linear-gradient(135deg, #212529 0%, #343a40 100%); border: none;
+        }
+        .calculator-card {
+            position: fixed; bottom: 95px; right: 25px; width: 310px; z-index: 1050; display: none; box-shadow: 0 15px 35px rgba(0,0,0,0.2); border-radius: 20px; overflow: hidden; background: #ffffff; border: 1px solid rgba(0,0,0,0.05);
+        }
+        .calculator-screen { width: 100%; height: 60px; background: #1e293b; color: #38bdf8; text-align: right; padding: 10px 15px; font-size: 1.6rem; font-weight: 700; border: none; border-radius: 12px; margin-bottom: 12px; }
+        .calc-btn { height: 50px; font-size: 1.2rem; font-weight: 600; border-radius: 10px; }
+        
+        .header-date-toolbar {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 14px 18px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        }
+        .date-input-group {
+            position: relative;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 4px 12px;
+            display: flex;
+            align-items: center;
+            height: 44px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .date-input-group:focus-within {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+        }
+        .date-input-group input[type="date"] {
+            border: none;
+            background: transparent;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #1e293b;
+            width: 100%;
+            outline: none;
+        }
+        .dynamic-action-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            height: 44px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+            transition: all 0.25s ease;
+            cursor: pointer;
+            width: 100%;
+        }
+        .dynamic-action-btn:hover {
+            background: linear-gradient(135deg, #059669 100%, #047857 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-dark shadow-sm mb-4">
+        <div class="container-fluid px-4 py-2">
+            <span class="navbar-brand mb-0 h1 d-flex align-items-center gap-3">
+                <div class="avatar-icon avatar-primary shadow-sm"><i class="fa-solid fa-boxes-stacked"></i></div>
+                <div>
+                    <div class="fs-5">İlaç Fiyat Güncelleme ve Karşılaştırma Paneli</div>
+                    <div class="small text-white-50 fw-normal">Yönetim ve Analiz Modülü</div>
+                </div>
+            </span>
+            <div class="text-light small d-flex align-items-center gap-3 bg-white bg-opacity-10 px-3 py-2 rounded-pill shadow-sm">
+                <span><i class="fa-regular fa-calendar-days me-1 text-info"></i><span id="liveDate"></span></span>
+                <span><span class="text-white-50">|</span></span>
+                <span><i class="fa-regular fa-clock me-1 text-warning"></i><span id="liveTime"></span></span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4">
+        <!-- Dosya Yükleme Paneli -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card upload-section-card p-4 shadow-sm">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="avatar-icon avatar-success"><i class="fa-solid fa-file-excel"></i></div>
+                        <div>
+                            <h5 class="card-title mb-0 fw-bold text-dark">1. Veri Dosyalarını Seçin</h5>
+                            <small class="text-muted">Karşılaştırma için master ve güncel listeleri yükleyin</small>
+                        </div>
+                    </div>
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-5">
+                            <label class="form-label fw-semibold text-secondary small">Tam Fiyat Listesi (Mevcut Liste - .xls / .xlsx)</label>
+                            <div class="custom-file-upload">
+                                <input type="file" id="masterFile" accept=".xls, .xlsx" onchange="updateFileName('masterFile', 'masterFileName')">
+                                <span class="file-upload-btn"><i class="fa-solid fa-folder-open text-success"></i> Dosya Seç</span>
+                                <span class="file-name-display" id="masterFileName">Dosya seçilmedi</span>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label fw-semibold text-secondary small">Güncel Fiyat Listesi (Yeni Güncelleme - .xls / .xlsx)</label>
+                            <div class="custom-file-upload">
+                                <input type="file" id="updateFile" accept=".xls, .xlsx" onchange="updateFileName('updateFile', 'updateFileName')">
+                                <span class="file-upload-btn"><i class="fa-solid fa-folder-open text-primary"></i> Dosya Seç</span>
+                                <span class="file-name-display" id="updateFileName">Dosya seçilmedi</span>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <button id="processBtn" class="btn btn-primary w-100 fw-bold shadow-sm" onclick="processFiles()" style="height: 44px;">
+                                <i class="fa-solid fa-sync-alt"></i> Karşılaştır
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Özet KPI Kartları -->
+        <div class="row g-3 mb-4" id="kpiContainer" style="display: none;">
+            <div class="col-md-4">
+                <div class="card kpi-card p-4 d-flex flex-row align-items-center gap-3">
+                    <div class="avatar-icon avatar-primary"><i class="fa-solid fa-list-check"></i></div>
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Tam Liste Ürün Sayısı</div>
+                        <div class="fs-3 fw-bold text-dark" id="kpiTotalMaster">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card kpi-card p-4 d-flex flex-row align-items-center gap-3" style="border-left-color: #198754;">
+                    <div class="avatar-icon avatar-success"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Güncel Liste Ürün Sayısı</div>
+                        <div class="fs-3 fw-bold text-success" id="kpiTotalUpdate">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card kpi-card p-4 d-flex flex-row align-items-center gap-3" style="border-left-color: #ffc107;">
+                    <div class="avatar-icon avatar-warning"><i class="fa-solid fa-tags"></i></div>
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Fiyatı Değişen Ürün Sayısı</div>
+                        <div class="fs-3 fw-bold text-warning" id="kpiTotalDiff">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Durum Bildirim Mesajı -->
+        <div id="statusAlertBanner" class="alert shadow-sm mb-4" style="display: none;" role="alert"></div>
+
+        <!-- Sekmeler ve Zarif Tarih/Buton Alanı -->
+        <div class="card shadow-sm mb-5" id="mainCard" style="display: none;">
+            <div class="card-header bg-white pt-4 pb-0 border-bottom-0">
+                
+                <div class="header-date-toolbar mb-4">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-secondary small mb-1">
+                                <i class="fa-solid fa-clock-rotate-left text-primary me-1"></i> Değişiklik Tarihi
+                            </label>
+                            <div class="date-input-group">
+                                <input type="date" id="globalChangeDate">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-secondary small mb-1">
+                                <i class="fa-solid fa-calendar-check text-success me-1"></i> Geçerlilik Tarihi
+                            </label>
+                            <div class="date-input-group">
+                                <input type="date" id="globalValidDate">
+                            </div>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <div class="w-100" style="padding-top: 22px;">
+                                <button class="dynamic-action-btn" type="button" onclick="applyAllDates()">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i> Tarihleri Tüm Listelere Uygula
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sekme Başlıkları -->
+                <ul class="nav nav-tabs card-header-tabs" id="myTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active d-flex align-items-center gap-2" id="master-tab" data-bs-toggle="tab" data-bs-target="#master-pane" type="button" role="tab">
+                            <i class="fa-solid fa-list text-primary"></i>Tam Fiyat Listesi (<span id="countMaster">0</span>)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link d-flex align-items-center gap-2" id="update-tab" data-bs-toggle="tab" data-bs-target="#update-pane" type="button" role="tab">
+                            <i class="fa-solid fa-file-arrow-up text-success"></i>Güncel Fiyat Listesi (<span id="countUpdate">0</span>)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link d-flex align-items-center gap-2" id="diff-tab" data-bs-toggle="tab" data-bs-target="#diff-pane" type="button" role="tab">
+                            <i class="fa-solid fa-percent text-warning"></i>Fiyatı Güncellenen Ürünler (<span id="countDiff">0</span>)
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body p-4">
+                <div class="tab-content" id="myTabContent">
+                    <!-- Sekme 1 -->
+                    <div class="tab-pane fade show active" id="master-pane" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="input-group w-25 shadow-sm">
+                                <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-search text-muted"></i></span>
+                                <input type="text" id="searchMaster" class="form-control border-start-0" placeholder="Tam listede ara..." onkeyup="filterTable('masterTable', 'searchMaster')">
+                            </div>
+                            <button class="btn btn-success px-4" onclick="exportTableToExcel('masterTable', 'Tam_Fiyat_Listesi.xls', masterData)">
+                                <i class="fa-solid fa-file-excel"></i> Excel İndir (.xls)
+                            </button>
+                        </div>
+                        <div class="table-container shadow-sm">
+                            <table class="table table-hover align-middle mb-0 custom-fixed-table" id="masterTable">
+                                <thead id="masterHead"></thead>
+                                <tbody id="masterBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Sekme 2 -->
+                    <div class="tab-pane fade" id="update-pane" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="input-group w-25 shadow-sm">
+                                <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-search text-muted"></i></span>
+                                <input type="text" id="searchUpdate" class="form-control border-start-0" placeholder="Güncel listede ara..." onkeyup="filterTable('updateTable', 'searchUpdate')">
+                            </div>
+                            <button class="btn btn-success px-4" onclick="exportTableToExcel('updateTable', 'Guncel_Fiyat_Listesi.xls', updateData)">
+                                <i class="fa-solid fa-file-excel"></i> Excel İndir (.xls)
+                            </button>
+                        </div>
+                        <div class="table-container shadow-sm">
+                            <table class="table table-hover align-middle mb-0 custom-fixed-table" id="updateTable">
+                                <thead id="updateHead"></thead>
+                                <tbody id="updateBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Sekme 3 -->
+                    <div class="tab-pane fade" id="diff-pane" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="input-group w-25 shadow-sm">
+                                <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-search text-muted"></i></span>
+                                <input type="text" id="searchDiff" class="form-control border-start-0" placeholder="Değişenlerde ara..." onkeyup="filterTable('diffTable', 'searchDiff')">
+                            </div>
+                            <button class="btn btn-success px-4" onclick="exportDiffTableToExcel('Fiyati_Guncellenen_Urunler.xls')">
+                                <i class="fa-solid fa-file-excel"></i> Excel İndir (.xls)
+                            </button>
+                        </div>
+                        <div class="table-container shadow-sm">
+                            <table class="table table-hover align-middle mb-0 custom-fixed-table" id="diffTable">
+                                <thead>
+                                    <tr>
+                                        <th>Barkod</th>
+                                        <th>İlaç Adı</th>
+                                        <th>Eski DSF</th>
+                                        <th>Yeni DSF</th>
+                                        <th>Fark (TL)</th>
+                                        <th>Değişim Oranı</th>
+                                        <th>Değişiklik Tarihi</th>
+                                        <th>Geçerlilik Tarihi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="diffBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="contentDetailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                <div class="modal-header bg-light border-0 py-3">
+                    <h5 class="modal-title fw-bold text-dark fs-6 d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-circle-info text-primary"></i> <span id="modalHeaderTitle">İçerik Detayı</span>
+                    </h5>
+                    <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p id="modalFullContentText" class="fs-5 text-secondary mb-0" style="word-break: break-word; line-height: 1.5;"></p>
+                </div>
+                <div class="modal-footer border-0 bg-light py-2">
+                    <button type="button" class="btn btn-secondary btn-sm px-4" data-bs-dismiss="modal">Kapat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hesap Makinesi -->
+    <button class="btn shadow-lg" id="calcFloatBtn" onclick="toggleCalculator()">
+        <div class="avatar-icon avatar-warning" style="width: 30px; height: 30px; font-size: 0.9rem;"><i class="fa-solid fa-calculator"></i></div>
+        <span class="text-white px-1">Hesap Makinesi</span>
+    </button>
+
+    <div class="card calculator-card p-3" id="calculatorBox">
+        <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
+            <span class="fw-bold text-secondary d-flex align-items-center gap-2">
+                <i class="fa-solid fa-calculator text-warning"></i> Hızlı Hesap
+            </span>
+            <button type="button" class="btn-close shadow-none" onclick="toggleCalculator()"></button>
+        </div>
+        <input type="text" class="calculator-screen shadow-inner" id="calcScreen" readonly value="0">
+        <div class="row g-2">
+            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn bg-gradient" onclick="calcClear()">C</button></div>
+            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn bg-gradient" onclick="calcAppend('/')">÷</button></div>
+            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn bg-gradient" onclick="calcAppend('*')">×</button></div>
+            <div class="col-3"><button class="btn btn-danger w-100 calc-btn bg-gradient" onclick="calcBackSpace()"><i class="fa-solid fa-delete-left"></i></button></div>
+            
+            <div class="col-3"><button class="btn btn-light w-100 calc-btn border shadow-sm" onclick="calcAppend('7')">7</button></div>
+            <div class="col-3"><button class="btn btn-light w-100 calc-btn border shadow-sm" onclick="calcAppend('8')">8</button></div>
+            <div class="col-3"><button class="btn btn-light w-100 calc-btn border shadow-sm" onclick="calcAppend('9')">9</button></div>
+            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn bg-gradient" onclick="calcAppend('-')">-</button></div>
+            
+            <div class="col-3"><button class="btn btn-light w-100 calc-btn border shadow-sm" onclick="calcAppend('4')">4</button></div>
+            <div class="col-3"><button class="btn btn-light w-100 calc-btn border shadow-sm" onclick="calcAppend('5')">5</button></div>
+            <div class="col-3"><button class="btn btn-light w-100 calc-btn border shadow-sm" onclick="calcAppend('6')">6</button></div>
+            <div class="col-3"><button class="btn btn-secondary w-100 calc-btn bg-gradient" onclick="calcAppend('+')">+</button></div>
+            
+            <div class="col-3"><button class="btn btn-light w-100 calc-btn border shadow-sm" onclick="calcAppend('1')">1</button></div>
+            <div class="col-3"><button class="btn btn-light w-100 calc-btn border shadow-sm" onclick="calcAppend('2')">2</button></div>
+            <div class="col-3"><button class="btn btn-light w-100 calc-btn border shadow-sm" onclick="calcAppend('3')">3</button></div>
+            <div class="col-3"><button class="btn btn-primary w-100 calc-btn h-100 bg-gradient" style="height: 108px !important;" onclick="calcCalculate()">=</button></div>
+            
+            <div class="col-6"><button class="btn btn-light w-100 calc-btn border shadow-sm" onclick="calcAppend('0')">0</button></div>
+            <div class="col-3"><button class="btn btn-light w-100 calc-btn border shadow-sm" onclick="calcAppend('.')">,</button></div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        const headerDictionary = {
+            "İLAÇ SATIŞ FİYATI": { short: "İSF", desc: "İlaç Satış Fiyatı" },
+            "DEPOCUYA SATIŞ FİYATI": { short: "DSF", desc: "Depocuya Satış Fiyatı" },
+            "DEPOCU SATIŞ FİYATI": { short: "DSF", desc: "Depocu Satış Fiyatı" },
+            "ECZANE SATIŞ FİYATI": { short: "ESF", desc: "Eczane Satış Fiyatı" },
+            "ECZANESATIŞ FİYATI": { short: "ESF", desc: "Eczane Satış Fiyatı" },
+            "PERAKENDE SATIŞ FİYATI": { short: "PSF", desc: "Perakende Satış Fiyatı" },
+            "ECZANESATIŞ FİYATI KDV HARIÇ": { short: "ESF (KDV Hariç)", desc: "Eczane Satış Fiyatı KDV Hariç" },
+            "ECZANE SATIŞ FİYATI KDV HARIÇ": { short: "ESF (KDV Hariç)", desc: "Eczane Satış Fiyatı KDV Hariç" }
+        };
+
+        function formatHeaderName(originalHeader) {
+            let upper = originalHeader.trim().toUpperCase();
+            for (let key in headerDictionary) {
+                if (upper.includes(key)) {
+                    let item = headerDictionary[key];
+                    let escapedDesc = item.desc.replace(/'/g, "\\'");
+                    return `<span title="${item.desc}">${item.short} <i class="fa-solid fa-circle-info text-primary small" style="font-size: 0.7rem; cursor:pointer;" onclick="showCellDetail('${escapedDesc}', '${escapedDesc}')" title="${item.desc}"></i></span>`;
+                }
+            }
+            return originalHeader;
+        }
+
+        function isNumericColumn(headerName) {
+            let upper = headerName.toUpperCase();
+            return upper.includes('FİYAT') || upper.includes('FIYAT') || upper.includes('TUTAR') || upper.includes('ORAN') || upper.includes('KKİ') || upper.includes('VADE');
+        }
+
+        function isBarcodeColumn(headerName) {
+            let upper = headerName.toUpperCase();
+            return upper.includes('BARKOD') || upper.includes('BARCODE');
+        }
+
+        function isDSFColumn(headerName) { let upper = headerName.toUpperCase(); return upper.includes('DEPOCU') || upper.includes('DSF'); }
+        function isESFColumn(headerName) { let upper = headerName.toUpperCase(); return upper.includes('ECZANE') || upper.includes('ESF'); }
+        function isPSFColumn(headerName) { let upper = headerName.toUpperCase(); return upper.includes('PERAKENDE') || upper.includes('PSF'); }
+        function isDateColumn(headerName) { let upper = headerName.toUpperCase(); return upper.includes('TARİH') || upper.includes('TARIH') || upper.includes('GEÇERLİLİK') || upper.includes('GECERLILIK'); }
+        
+        function isChangeDateColumn(headerName) { let upper = headerName.toUpperCase(); return upper.includes('DEĞİŞİKLİK') || upper.includes('DEGISIKLIK'); }
+        function isValidityDateColumn(headerName) { let upper = headerName.toUpperCase(); return upper.includes('GEÇERLİLİK') || upper.includes('GECERLILIK'); }
+
+        function formatExcelDate(val) {
+            if (!val) return '';
+            if (val instanceof Date) {
+                let d = String(val.getDate()).padStart(2, '0');
+                let m = String(val.getMonth() + 1).padStart(2, '0');
+                let y = val.getFullYear();
+                return `${d}.${m}.${y}`;
+            }
+            let num = Number(val);
+            if (!isNaN(num) && num > 30000 && num < 60000) {
+                let utcMs = (num - 25569) * 86400 * 1000;
+                let correctedDate = new Date(utcMs);
+                let day = String(correctedDate.getUTCDate()).padStart(2, '0');
+                let month = String(correctedDate.getUTCMonth() + 1).padStart(2, '0');
+                let year = String(correctedDate.getUTCFullYear());
+                if (!isNaN(year)) return `${day}.${month}.${year}`;
+            }
+            let strVal = String(val).trim();
+            if (strVal.match(/^\d{4}-\d{2}-\d{2}/)) {
+                let parts = strVal.substring(0, 10).split('-');
+                if (parts.length === 3) return `${parts[2]}.${parts[1]}.${parts[0]}`;
+            }
+            return val;
+        }
+
+        function updateFileName(inputId, nameDisplayId) {
+            const input = document.getElementById(inputId);
+            const nameDisplay = document.getElementById(nameDisplayId);
+            if (input.files && input.files[0]) {
+                nameDisplay.innerText = input.files[0].name;
+                nameDisplay.style.color = '#1e293b';
+                nameDisplay.style.fontWeight = '600';
+            } else {
+                nameDisplay.innerText = 'Dosya seçilmedi';
+                nameDisplay.style.color = '#64748b';
+                nameDisplay.style.fontWeight = 'normal';
+            }
+        }
+
+        function updateDateTime() {
+            const now = new Date();
+            const dateOptions = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+            document.getElementById('liveDate').innerText = now.toLocaleDateString('tr-TR', dateOptions);
+            document.getElementById('liveTime').innerText = now.toLocaleTimeString('tr-TR');
+        }
+        setInterval(updateDateTime, 1000);
+        updateDateTime();
+
+        function toggleCalculator() {
+            const box = document.getElementById('calculatorBox');
+            box.style.display = box.style.display === 'block' ? 'none' : 'block';
+        }
+
+        let calcInputVal = '0';
+        function calcAppend(val) {
+            if (calcInputVal === '0' && val !== '.') calcInputVal = val;
+            else calcInputVal += val;
+            document.getElementById('calcScreen').value = calcInputVal;
+        }
+        function calcClear() { calcInputVal = '0'; document.getElementById('calcScreen').value = calcInputVal; }
+        function calcBackSpace() {
+            calcInputVal = calcInputVal.length > 1 ? calcInputVal.slice(0, -1) : '0';
+            document.getElementById('calcScreen').value = calcInputVal;
+        }
+        function calcCalculate() {
+            try {
+                let sanitized = calcInputVal.replace(/×/g, '*').replace(/÷/g, '/');
+                let result = eval(sanitized);
+                calcInputVal = String(result);
+                document.getElementById('calcScreen').value = calcInputVal;
+            } catch (e) {
+                document.getElementById('calcScreen').value = 'Hata';
+                calcInputVal = '0';
+            }
+        }
+
+        function showCellDetail(title, fullText) {
+            document.getElementById('modalHeaderTitle').innerText = title || "İçerik Detayı";
+            document.getElementById('modalFullContentText').innerText = fullText || "";
+            let detailModal = new bootstrap.Modal(document.getElementById('contentDetailModal'));
+            detailModal.show();
+        }
+
+        let masterData = [];
+        let updateData = [];
+        let diffData = [];
+
+        function formatTurkishNumber(val) {
+            if (val === null || val === undefined || val === '') return '';
+            let num = Number(val);
+            if (!isNaN(num) && typeof val !== 'string' || !isNaN(val) && String(val).trim() !== '') {
+                return num.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+            return val;
+        }
+
+        async function processFiles() {
+            const masterFile = document.getElementById('masterFile').files[0];
+            const updateFile = document.getElementById('updateFile').files[0];
+
+            if (!masterFile || !updateFile) {
+                alert('Lütfen hem Tam Fiyat Listesi\'ni hem de Güncel Fiyat Listesi\'ni seçin!');
+                return;
+            }
+
+            try {
+                masterData = await readExcelFile(masterFile);
+                updateData = await readExcelFile(updateFile);
+
+                populateTable('masterTable', 'masterHead', 'masterBody', masterData);
+                populateTable('updateTable', 'updateHead', 'updateBody', updateData);
+                comparePrices();
+
+                document.getElementById('kpiTotalMaster').innerText = masterData.length.toLocaleString('tr-TR');
+                document.getElementById('kpiTotalUpdate').innerText = updateData.length.toLocaleString('tr-TR');
+                document.getElementById('countMaster').innerText = masterData.length.toLocaleString('tr-TR');
+                document.getElementById('countUpdate').innerText = updateData.length.toLocaleString('tr-TR');
+
+                document.getElementById('kpiContainer').style.display = 'flex';
+                document.getElementById('mainCard').style.display = 'block';
+
+            } catch (error) {
+                console.error(error);
+                alert('Dosyalar okunurken bir hata oluştu: ' + error.message);
+            }
+        }
+
+        function readExcelFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, {type: 'array', cellDates: true});
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const json = XLSX.utils.sheet_to_json(worksheet, {defval: ""});
+                        
+                        const cleanedJson = json.map(row => {
+                            let cleaned = {};
+                            Object.keys(row).forEach(k => {
+                                if (k && !k.toUpperCase().startsWith('__EMPTY') && k.trim() !== '') {
+                                    let val = row[k];
+                                    if (k.toUpperCase().includes('BARKOD') || k.toUpperCase().includes('BARCODE')) {
+                                        if (typeof val === 'number') {
+                                            val = val.toLocaleString('fullwide', {useGrouping:false});
+                                        }
+                                    }
+                                    cleaned[k] = val;
+                                }
+                            });
+                            return cleaned;
+                        }).filter(row => Object.keys(row).length > 0);
+
+                        resolve(cleanedJson);
+                    } catch (err) { reject(err); }
+                };
+                reader.onerror = (error) => reject(error);
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function populateTable(tableId, headId, bodyId, data) {
+            const headElem = document.getElementById(headId);
+            const bodyElem = document.getElementById(bodyId);
+            headElem.innerHTML = '';
+            bodyElem.innerHTML = '';
+
+            if (data.length === 0) return;
+
+            const headers = Object.keys(data[0]);
+            let trHead = document.createElement('tr');
+            headers.forEach(h => {
+                let th = document.createElement('th');
+                th.innerHTML = formatHeaderName(h);
+                trHead.appendChild(th);
+            });
+            headElem.appendChild(trHead);
+
+            data.forEach(row => {
+                let tr = document.createElement('tr');
+                headers.forEach((h, index) => {
+                    let td = document.createElement('td');
+                    let rawVal = row[h] !== undefined ? row[h] : '';
+
+                    if (index < 3) td.className = 'fixed-col-cell';
+
+                    let stringVal = String(rawVal).trim();
+                    let escapedFullText = stringVal.replace(/"/g, '&quot;');
+
+                    if (isDSFColumn(h)) {
+                        td.className += (td.className ? ' ' : '') + 'col-numeric col-dsf';
+                        td.innerText = formatTurkishNumber(rawVal);
+                    } else if (isESFColumn(h)) {
+                        td.className += (td.className ? ' ' : '') + 'col-numeric col-esf';
+                        td.innerText = formatTurkishNumber(rawVal);
+                    } else if (isPSFColumn(h)) {
+                        td.className += (td.className ? ' ' : '') + 'col-numeric col-psf';
+                        td.innerText = formatTurkishNumber(rawVal);
+                    } else if (isNumericColumn(h)) {
+                        td.className += (td.className ? ' ' : '') + 'col-numeric';
+                        td.innerText = formatTurkishNumber(rawVal);
+                    } else if (isDateColumn(h)) {
+                        td.innerText = formatExcelDate(rawVal);
+                    } else if (stringVal !== '' && stringVal.indexOf(' ') > -1) {
+                        let firstWord = stringVal.split(/\s+/)[0];
+                        td.innerHTML = `<span title="${escapedFullText}">${firstWord}</span> <i class="fa-solid fa-circle-info text-primary" style="font-size: 0.75rem; cursor:pointer;" onclick="showCellDetail('${h.replace(/'/g, "\\'")}', '${escapedFullText}')" title="Tam içeriği göster"></i>`;
+                    } else {
+                        td.innerText = stringVal;
+                    }
+
+                    tr.appendChild(td);
+                });
+                bodyElem.appendChild(tr);
+            });
+        }
+
+        function applyAllDates() {
+            const changeDateInput = document.getElementById('globalChangeDate').value;
+            const validDateInput = document.getElementById('globalValidDate').value;
+
+            let formattedChangeDate = '';
+            let formattedValidDate = '';
+
+            if (changeDateInput) {
+                let p = changeDateInput.split('-');
+                formattedChangeDate = `${p[2]}.${p[1]}.${p[0]}`;
+                updateSpecificDateColumn('updateTable', formattedChangeDate, isChangeDateColumn);
+            }
+
+            if (validDateInput) {
+                let p = validDateInput.split('-');
+                formattedValidDate = `${p[2]}.${p[1]}.${p[0]}`;
+                updateSpecificDateColumn('updateTable', formattedValidDate, isValidityDateColumn);
+            }
+
+            const updateHeaders = updateData.length > 0 ? Object.keys(updateData[0]) : [];
+            const uChangeCol = updateHeaders.find(isChangeDateColumn);
+            const uValidCol = updateHeaders.find(isValidityDateColumn);
+
+            updateData.forEach(row => {
+                if (formattedChangeDate && uChangeCol) row[uChangeCol] = formattedChangeDate;
+                if (formattedValidDate && uValidCol) row[uValidCol] = formattedValidDate;
+            });
+
+            comparePrices();
+
+            alert('Seçilen tarihler başarıyla güncellendi ve listelere uygulandı.');
+        }
+
+        function updateSpecificDateColumn(tableId, newDateStr, filterFn) {
+            const table = document.getElementById(tableId);
+            if (!table) return;
+            const trs = table.getElementsByTagName('tr');
+            if (trs.length < 2) return;
+
+            let ths = trs[0].getElementsByTagName('th');
+            let targetColIdx = -1;
+
+            for (let i = 0; i < ths.length; i++) {
+                if (filterFn(ths[i].innerText)) {
+                    targetColIdx = i;
+                    break;
+                }
+            }
+
+            if (targetColIdx !== -1) {
+                for (let i = 1; i < trs.length; i++) {
+                    let tds = trs[i].getElementsByTagName('td');
+                    if (tds[targetColIdx]) {
+                        tds[targetColIdx].innerText = newDateStr;
+                    }
+                }
+            }
+        }
+
+        function comparePrices() {
+            if (masterData.length === 0 || updateData.length === 0) return;
+
+            const masterHeaders = Object.keys(masterData[0]);
+            const updateHeaders = Object.keys(updateData[0]);
+
+            const findCol = (headers, keywords) => {
+                for (let kw of keywords) {
+                    let found = headers.find(h => h.toUpperCase().includes(kw));
+                    if (found) return found;
+                }
+                return headers[0];
+            };
+
+            const mBarkodCol = findCol(masterHeaders, ['BARKOD', 'BARCODE']);
+            const uBarkodCol = findCol(updateHeaders, ['BARKOD', 'BARCODE']);
+            const mNameCol = findCol(masterHeaders, ['İLAÇ ADI', 'ILAC', 'NAME', 'ÜRÜN']);
+            const uNameCol = findCol(updateHeaders, ['İLAÇ ADI', 'ILAC', 'NAME', 'ÜRÜN']);
+            const mPriceCol = findCol(masterHeaders, ['DEPOCUYA SATIŞ', 'DEPOCU SATIŞ', 'FİYATI', 'FIYATI']);
+            const uPriceCol = findCol(updateHeaders, ['DEPOCUYA SATIŞ', 'DEPOCU SATIŞ', 'FİYATI', 'FIYATI']);
+            
+            const uChangeDateCol = updateHeaders.find(h => h.toUpperCase().includes('DEĞİŞİKLİK') || h.toUpperCase().includes('DEGISIKLIK')) || updateHeaders.find(isDateColumn);
+            const uValidDateCol = updateHeaders.find(h => h.toUpperCase().includes('GEÇERLİLİK') || h.toUpperCase().includes('GECERLILIK')) || updateHeaders.find(isDateColumn);
+
+            let masterMap = {};
+            masterData.forEach(row => {
+                let b = String(row[mBarkodCol] || '').trim().replace(/\s/g, '');
+                masterMap[b] = row;
+            });
+
+            diffData = [];
+            updateData.forEach(uRow => {
+                let b = String(uRow[uBarkodCol] || '').trim().replace(/\s/g, '');
+                let uPrice = parseFloat(uRow[uPriceCol]) || 0;
+
+                if (masterMap[b]) {
+                    let mRow = masterMap[b];
+                    let mPrice = parseFloat(mRow[mPriceCol]) || 0;
+
+                    if (Math.abs(mPrice - uPrice) > 0.001) {
+                        let diff = uPrice - mPrice;
+                        let pct = mPrice > 0 ? (diff / mPrice) * 100 : 0;
+                        let changeDateVal = formatExcelDate(uRow[uChangeDateCol]) || '';
+                        let validDateVal = formatExcelDate(uRow[uValidDateCol]) || '';
+                        
+                        diffData.push({
+                            Barkod: b,
+                            IlacAdi: uRow[uNameCol] || mRow[mNameCol] || '',
+                            EskiFiyat: mPrice,
+                            YeniFiyat: uPrice,
+                            Fark: diff,
+                            Oran: pct,
+                            ChangeDate: changeDateVal,
+                            ValidDate: validDateVal
+                        });
+                    }
+                }
+            });
+
+            document.getElementById('kpiTotalDiff').innerText = diffData.length.toLocaleString('tr-TR');
+            document.getElementById('countDiff').innerText = diffData.length.toLocaleString('tr-TR');
+
+            const banner = document.getElementById('statusAlertBanner');
+            banner.style.display = 'block';
+            if (diffData.length > 0) {
+                banner.className = 'alert alert-warning shadow-sm mb-4 d-flex align-items-center gap-3';
+                banner.innerHTML = `
+                    <div class="avatar-icon avatar-warning" style="width: 35px; height: 35px; font-size: 1rem;"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div>
+                        <strong class="alert-heading">Fiyat Güncellemesi Tespit Edildi!</strong>
+                        <div class="mb-0 small">Güncel listede master listeye kıyasla <strong>${diffData.length.toLocaleString('tr-TR')} adet</strong> kalemde fiyat değişimi bulunmaktadır.</div>
+                    </div>
+                `;
+            } else {
+                banner.className = 'alert alert-success shadow-sm mb-4 d-flex align-items-center gap-3';
+                banner.innerHTML = `
+                    <div class="avatar-icon avatar-success" style="width: 35px; height: 35px; font-size: 1rem;"><i class="fa-solid fa-circle-check"></i></div>
+                    <div>
+                        <strong class="alert-heading">Fiyat Değişikliği Yok</strong>
+                        <div class="mb-0 small">Yüklenen güncel listede master listeye göre herhangi bir fiyat farkı bulunmamaktadır.</div>
+                    </div>
+                `;
+            }
+
+            const diffBody = document.getElementById('diffBody');
+            diffBody.innerHTML = '';
+
+            if (diffData.length === 0) {
+                diffBody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Fiyatı değişen ürün bulunamadı.</td></tr>';
+                return;
+            }
+
+            diffData.forEach(item => {
+                let tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${item.Barkod}</td>
+                    <td class="fw-semibold">${item.IlacAdi}</td>
+                    <td class="col-numeric text-danger">${item.EskiFiyat.toLocaleString('tr-TR', {style: 'currency', currency: 'TRY'})}</td>
+                    <td class="col-numeric text-success fw-bold">${item.YeniFiyat.toLocaleString('tr-TR', {style: 'currency', currency: 'TRY'})}</td>
+                    <td class="col-numeric ${item.Fark > 0 ? 'text-success' : 'text-danger'} fw-bold">${item.Fark > 0 ? '+' : ''}${item.Fark.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL</td>
+                    <td class="col-numeric"><span class="badge ${item.Oran > 0 ? 'bg-success' : 'bg-danger'} badge-diff">${item.Oran > 0 ? '+' : ''}${item.Oran.toFixed(2)}%</span></td>
+                    <td>${item.ChangeDate}</td>
+                    <td>${item.ValidDate}</td>
+                `;
+                diffBody.appendChild(tr);
+            });
+        }
+
+        function filterTable(tableId, inputId) {
+            const input = document.getElementById(inputId);
+            const filter = input.value.toUpperCase();
+            const table = document.getElementById(tableId);
+            const trs = table.getElementsByTagName('tr');
+
+            for (let i = 1; i < trs.length; i++) {
+                let td = trs[i].getElementsByTagName('td');
+                let found = false;
+                for (let j = 0; j < td.length; j++) {
+                    if (td[j]) {
+                        let txtValue = td[j].textContent || td[j].innerText;
+                        if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                trs[i].style.display = found ? '' : 'none';
+            }
+        }
+
+        // KESİN ÇÖZÜM: Excel Barkod Bilimsel Gösterim (E+12) Hatasını Engelleyen Dışa Aktarım Fonksiyonları
+        function exportTableToExcel(tableId, filename, dataset) {
+            if (!dataset || dataset.length === 0) {
+                alert('Aktarılacak veri bulunamadı!');
+                return;
+            }
+
+            const headers = Object.keys(dataset[0]);
+
+            let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Sayfa1</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table border="1"><thead><tr>';
+            
+            headers.forEach(h => {
+                let cleanH = h;
+                for (let key in headerDictionary) {
+                    if (h.toUpperCase().includes(key)) {
+                        cleanH = headerDictionary[key].desc;
+                        break;
+                    }
+                }
+                html += `<th style="background-color:#f8fafc; font-weight:bold; text-align:center;">${cleanH}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            dataset.forEach(row => {
+                html += '<tr>';
+                headers.forEach(h => {
+                    let val = row[h] !== undefined ? row[h] : '';
+                    let strVal = String(val).trim();
+                    
+                    if (isBarcodeColumn(h)) {
+                        // Hücrenin başına eklenen tek tırnak (') ve x:str özniteliği barkodun bilimsel gösterime (E+12) girmesini engeller
+                        html += `<td x:str style="mso-number-format:\\@; text-align:left;">'${strVal}</td>`;
+                    } else if (isNumericColumn(h)) {
+                        let num = Number(strVal);
+                        let formattedNum = !isNaN(num) && strVal !== '' ? num.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : strVal;
+                        html += `<td style="text-align:right;">${formattedNum}</td>`;
+                    } else if (isDateColumn(h)) {
+                        html += `<td>${formatExcelDate(val)}</td>`;
+                    } else {
+                        html += `<td>${strVal}</td>`;
+                    }
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table></body></html>';
+
+            let blob = new Blob(['\ufeff' + html], {
+                type: 'application/vnd.ms-excel'
+            });
+            
+            let url = URL.createObjectURL(blob);
+            let a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function exportDiffTableToExcel(filename) {
+            if (!diffData || diffData.length === 0) {
+                alert('Aktarılacak değişen ürün bulunamadı!');
+                return;
+            }
+
+            let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Sayfa1</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table border="1"><thead><tr style="background-color:#f8fafc; font-weight:bold;">';
+            html += '<th>Barkod</th><th>İlaç Adı</th><th>Eski DSF</th><th>Yeni DSF</th><th>Fark (TL)</th><th>Değişim Oranı</th><th>Değişiklik Tarihi</th><th>Geçerlilik Tarihi</th>';
+            html += '</tr></thead><tbody>';
+
+            diffData.forEach(item => {
+                html += '<tr>';
+                html += `<td x:str style="mso-number-format:\\@; text-align:left;">'${item.Barkod}</td>`;
+                html += `<td>${item.IlacAdi}</td>`;
+                html += `<td style="text-align:right;">${item.EskiFiyat.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>`;
+                html += `<td style="text-align:right;">${item.YeniFiyat.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>`;
+                html += `<td style="text-align:right;">${item.Fark.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>`;
+                html += `<td style="text-align:right;">%${item.Oran.toFixed(2)}</td>`;
+                html += `<td>${item.ChangeDate}</td>`;
+                html += `<td>${item.ValidDate}</td>`;
+                html += '</tr>';
+            });
+            html += '</tbody></table></body></html>';
+
+            let blob = new Blob(['\ufeff' + html], {
+                type: 'application/vnd.ms-excel'
+            });
+            
+            let url = URL.createObjectURL(blob);
+            let a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>SAP/4Hana MASTER v16.4 - ULTIMATE</title>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { 
+            --nav-bg: #0f172a; --filter-bg: #1e293b; --accent: #f59e0b; 
+            --secondary: #38bdf8; --danger: #ef4444; --success: #22c55e;
+            --table-head-bg: #334155;
+        }
+        * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { margin: 0; background: #f1f5f9; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+        /* LOADER ANIMASYONU */
+        #dataLoader { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.98); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; color: white; }
+        .spinner { width: 70px; height: 70px; position: relative; }
+        .spinner div { position: absolute; width: 15px; height: 15px; background: var(--secondary); border-radius: 50%; animation: bubble 1.2s infinite ease-in-out; }
+        .spinner div:nth-child(1) { top: 0; left: 27px; }
+        .spinner div:nth-child(2) { top: 8px; left: 46px; animation-delay: -0.1s; }
+        .spinner div:nth-child(3) { top: 27px; left: 55px; animation-delay: -0.2s; }
+        .spinner div:nth-child(4) { top: 46px; left: 46px; animation-delay: -0.3s; }
+        .spinner div:nth-child(5) { top: 55px; left: 27px; animation-delay: -0.4s; }
+        .spinner div:nth-child(6) { top: 46px; left: 8px; animation-delay: -0.5s; }
+        .spinner div:nth-child(7) { top: 27px; left: 0; animation-delay: -0.6s; }
+        .spinner div:nth-child(8) { top: 8px; left: 8px; animation-delay: -0.7s; }
+        @keyframes bubble { 0%, 80%, 100% { transform: scale(0); opacity: 0.3; } 40% { transform: scale(1); opacity: 1; } }
+
+        /* NAV & ICONS */
+        .nav { background: var(--nav-bg); color: white; padding: 10px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--secondary); }
+        .nav-actions { display: flex; align-items: center; gap: 20px; }
+        .cart-btn { position: relative; font-size: 24px; color: var(--accent); cursor: pointer; transition: 0.3s; }
+        .cart-count { position: absolute; top: -8px; right: -12px; background: var(--danger); color: white; font-size: 11px; padding: 2px 6px; border-radius: 10px; font-weight: 900; }
+        .home-btn { font-size: 22px; color: white; cursor: pointer; opacity: 0.7; }
+        .home-btn:hover { opacity: 1; color: var(--danger); }
+
+        /* FILTER BAR & NEW DATE WRAPPER */
+        .filter-bar { background: var(--filter-bg); padding: 15px 25px; display: flex; gap: 15px; align-items: flex-end; }
+        .inp-grp { display: flex; flex-direction: column; gap: 6px; }
+        .inp-grp label { font-size: 10px; font-weight: 800; color: var(--secondary); text-transform: uppercase; }
+        .date-wrapper { position: relative; display: flex; align-items: center; width: 190px; }
+        .inp { padding: 10px; border: 2px solid #475569; border-radius: 6px; width: 100%; font-size: 13px; background: #334155; color: white; outline: none; }
+        
+        .cal-icon { position: absolute; right: 10px; color: var(--secondary); cursor: pointer; transition: 0.3s; z-index: 5; }
+        .cal-icon:hover { color: var(--accent); transform: scale(1.1); }
+        .inp::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0; position: absolute; right: 0; width: 30px; height: 100%; }
+
+        .clean-btn { background: #475569; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; height: 38px; transition: 0.3s; }
+        .clean-btn:hover { background: var(--accent); }
+
+        /* TABLE */
+        .table-wrap { flex: 1; overflow: auto; background: white; margin: 15px; border-radius: 12px; border: 1px solid #cbd5e1; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 2000px; }
+        th { position: sticky; top: 0; background: var(--table-head-bg); color: white; padding: 15px; text-align: left; z-index: 100; }
+        td { padding: 10px 15px; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
+        .row-mf { background-color: #fff1f2 !important; }
+        .badge-mf { background: #be123c; color: white; padding: 3px 6px; border-radius: 4px; font-size: 10px; font-weight: 900; margin-right: 5px; }
+        .row-selected { background-color: #fffbeb !important; border-left: 5px solid var(--accent) !important; }
+
+        /* BASKET DRAWER */
+        #basketDrawer { position: fixed; right: -600px; top: 0; width: 550px; height: 100%; background: white; transition: 0.4s; z-index: 2500; display: flex; flex-direction: column; box-shadow: -10px 0 30px rgba(0,0,0,0.3); }
+        #basketDrawer.open { right: 0; }
+        .basket-item { padding: 10px; border-bottom: 1px solid #eee; display: grid; grid-template-columns: 2fr 1fr 1fr 40px; align-items: center; font-size: 12px; }
+
+        /* CALENDAR */
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 4000; }
+        .modal-card { background: white; padding: 25px; border-radius: 15px; width: 350px; }
+        .day-header-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-bottom: 5px; }
+        .day-header { font-size: 11px; font-weight: 900; color: #64748b; text-align: center; }
+        .day-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+        .day-box { padding: 10px 5px; background: #f1f5f9; border-radius: 5px; cursor: pointer; text-align: center; font-size: 12px; font-weight: 600; }
+        .day-box:hover, .day-active { background: var(--accent); color: white; }
+    </style>
+</head>
+<body>
+
+<div id="dataLoader">
+    <div class="spinner">
+        <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+    </div>
+    <h3 style="margin-top:25px; letter-spacing: 2px;">VERİLER İŞLENİYOR...</h3>
+</div>
+
+<div class="nav">
+    <h2 style="margin:0;"><i class="fas fa-crown" style="color:var(--accent)"></i> SAP/4Hana <span style="font-weight:200">MASTER v16.4</span></h2>
+    <div class="nav-actions">
+        <div class="cart-btn" onclick="toggleBasket()">
+            <i class="fas fa-shopping-cart"></i>
+            <span class="cart-count" id="cartCount">0</span>
+        </div>
+        <i class="fas fa-power-off home-btn" onclick="location.reload()" title="Sistemi Sıfırla / Ana Sayfa"></i>
+    </div>
+</div>
+
+<div id="landing" style="flex:1; display:flex; align-items:center; justify-content:center;">
+    <div style="background:white; padding:60px; border-radius:30px; text-align:center; box-shadow:0 25px 50px rgba(0,0,0,0.15);">
+        <i class="fas fa-gem fa-5x" style="color:var(--secondary); margin-bottom:25px;"></i>
+        <h2 style="color:#1e293b">SAP/4Hana Ultimate Analiz</h2>
+        <input type="file" id="fileInp" hidden onchange="runTitan(this)">
+        <button onclick="document.getElementById('fileInp').click()" style="background:var(--secondary); color:white; border:none; padding:18px 50px; border-radius:12px; font-size:16px; font-weight:bold; cursor:pointer;">
+            DOSYAYI ANALİZ ET
+        </button>
+    </div>
+</div>
+
+<div id="mainUI" style="display:none; flex:1; flex-direction:column; overflow:hidden;">
+    <div class="filter-bar">
+        <div class="inp-grp">
+            <label>Dönem / Gün</label>
+            <div class="date-wrapper">
+                <input type="month" id="fMonth" class="inp" onchange="openCalendar()" onclick="if(this.value) openCalendar()">
+                <i class="fas fa-calendar-alt cal-icon" onclick="document.getElementById('fMonth').showPicker();"></i>
+            </div>
+        </div>
+        <div class="inp-grp">
+            <label>Müşteri</label>
+            <input type="text" id="fDepo" class="inp" style="width:190px;" placeholder="Müşteri ara..." oninput="applyFilters()">
+        </div>
+        <div class="inp-grp">
+            <label>Ürün</label>
+            <input type="text" id="fUrun" class="inp" style="width:190px;" placeholder="Ürün ara..." oninput="applyFilters()">
+        </div>
+        <button class="clean-btn" onclick="clearFilters()" title="Filtreleri Süpür">
+            <i class="fas fa-broom"></i>
+        </button>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th><input type="checkbox" onclick="selectAll(this)"></th>
+                    <th>TARİH</th><th>FATURA NO</th><th>MÜŞTERİ ADI</th><th>ÜRÜN KISA METNİ</th>
+                    <th>ADET</th><th>LİSTE</th><th>İNDİRİM</th><th>İSK %</th>
+                    <th>K.K.İ.</th><th>K.K.İ. %</th><th>MF TUTARI</th>
+                    <th>NET TUTAR</th><th>KDV</th><th>GENEL TOPLAM</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="calModal" class="overlay" onclick="if(event.target==this) this.style.display='none'">
+    <div class="modal-card">
+        <h3 id="calTitle" style="text-align:center; margin-bottom:15px; font-size:16px; color:var(--nav-bg)"></h3>
+        <div class="day-header-grid">
+            <div class="day-header">Pzt</div><div class="day-header">Sal</div><div class="day-header">Çar</div>
+            <div class="day-header">Per</div><div class="day-header">Cum</div><div class="day-header">Cmt</div><div class="day-header">Paz</div>
+        </div>
+        <div id="calGrid" class="day-grid"></div>
+        <button onclick="selectDay(null)" style="width:100%; margin-top:20px; padding:10px; background:var(--nav-bg); color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">TÜM AYI GÖSTER</button>
+    </div>
+</div>
+
+<div id="basketDrawer">
+    <div style="background:var(--nav-bg); color:white; padding:20px; display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0;"><i class="fas fa-clipboard-check"></i> SEPET ÖN İZLEME</h3>
+        <i class="fas fa-times fa-lg" onclick="toggleBasket()" style="cursor:pointer;"></i>
+    </div>
+    <div style="background:#f1f5f9; padding:10px; font-weight:bold; display:grid; grid-template-columns: 2fr 1fr 1fr 40px; font-size:11px; color:#64748b; border-bottom:1px solid #ddd;">
+        <span>ÜRÜN DETAYI</span><span align="center">ADET</span><span align="right">NET</span><span></span>
+    </div>
+    <div id="basketItems" style="flex:1; overflow-y:auto;"></div>
+    <div style="padding:20px; border-top:2px solid #eee; background:#fafafa;">
+        <div style="display:flex; justify-content:space-between; font-size:18px; font-weight:900; margin-bottom:15px; color:var(--nav-bg);">
+            <span>GENEL TOPLAM:</span><span id="totalNet">0.00 ₺</span>
+        </div>
+        <button onclick="exportBasket()" style="width:100%; padding:15px; background:var(--success); color:white; border:none; border-radius:10px; font-weight:bold; cursor:pointer; font-size:16px;">
+            <i class="fas fa-file-excel"></i> EXCEL OLARAK AKTAR
+        </button>
+    </div>
+</div>
+
+<script>
+    let db = []; let basket = new Set(); let selectedDay = null;
+    const monthsTr = ["OCAK", "ŞUBAT", "MART", "NİSAN", "MAYIS", "HAZİRAN", "TEMMUZ", "AĞUSTOS", "EYLÜL", "EKİM", "KASIM", "ARALIK"];
+    
+    function trLower(str) {
+        if(!str) return "";
+        return str.toString().replace(/İ/g, "i").replace(/I/g, "ı").replace(/Ş/g, "s").replace(/Ğ/g, "g").replace(/Ü/g, "u").replace(/Ö/g, "o").replace(/Ç/g, "c").toLowerCase().trim();
+    }
+
+    const cur = (v) => parseFloat(v || 0).toLocaleString('tr-TR', {minimumFractionDigits:2}) + " ₺";
+
+    function titanGet(row, keys) {
+        let rowKeys = Object.keys(row);
+        for (let k of keys) {
+            let normK = k.replace(/\s+/g, '').toUpperCase();
+            let foundKey = rowKeys.find(rk => rk.replace(/\s+/g, '').toUpperCase() === normK);
+            if (foundKey) return row[foundKey];
+        }
+        return 0;
+    }
+
+    function runTitan(input) {
+        if(!input.files[0]) return;
+        document.getElementById('dataLoader').style.display = 'flex';
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
+            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: 0 });
+            db = json.map((r, i) => {
+                const rawDate = titanGet(r, ["Fatura Tarihi", "FATURATARİHİ", "BELGETARİHİ", "FAT.TARİHİ"]);
+                let tStr = rawDate; let iso = "";
+                if (rawDate instanceof Date) { tStr = rawDate.toLocaleDateString('tr-TR'); iso = rawDate.toISOString().split('T')[0]; }
+                
+                let netVal = titanGet(r, ["Net Toplam", "NETDEĞER", "NET TUTAR", "NET SATIŞ"]);
+                let mfVal = titanGet(r, ["Mf İskonto", "MALFAZLASIİSKONTO", "M.F.İSK", "MFTUTARI", "MAL FAZLASI İSKONTO"]);
+                let iskOrani = (parseFloat(netVal) === 0 && parseFloat(mfVal) !== 0) ? 100 : titanGet(r, ["İskonto Oranı", "İSKONTOORANI%", "İSK%", "ISK%", "İSKONTO ORANI %"]);
+                
+                return {
+                    id: i, tarih: tStr, iso: iso,
+                    no: titanGet(r, ["Fatura No", "FATURABELGESİ", "REFERANS", "BELGENO", "FAT. BEL"]),
+                    depo: titanGet(r, ["Depo Adı", "AD", "MÜŞTERİ", "MÜŞTERİADI", "AD"]),
+                    urun: titanGet(r, ["Ürün adı", "MALZEMEKISAMETNİ", "ÜRÜNKISAMETNİ", "MALZEME KISA METNİ"]),
+                    adet: titanGet(r, ["Adet", "ADET", "FAT.MİK.", "MİKTAR", "FAT. MİK."]),
+                    liste: titanGet(r, ["Liste Fiyatı", "LİSTEFİYATI", "BİRİM FİYAT", "LİSTE FİYATI"]),
+                    ind: titanGet(r, ["İndirim Toplamı", "İNDİRİMLERTOPLAMI", "İNDİRİMLER TOPLAMI"]),
+                    iskOran: iskOrani,
+                    kki: titanGet(r, ["K.K.İ.", "KURUMİSKONTOSU", "KURUM İSKONTOSU"]),
+                    kkiOran: titanGet(r, ["K.K.İ. Oranı", "KURUMİSKONTOORANI%", "KURUM İSKONTO ORANI %"]),
+                    mf: mfVal, net: netVal,
+                    kdv: titanGet(r, ["KDVOranı", "KDVTUTARI", "HESPKDV", "HESAPLANANKDV", "KDV", "VERGİ"]),
+                    toplam: titanGet(r, ["Genel Toplam", "GENELTOPLAM", "GEN.TOP", "TOPLAM"]),
+                    isMF: (iskOrani == 100)
+                };
+            });
+            setTimeout(() => {
+                document.getElementById('dataLoader').style.display = 'none';
+                document.getElementById('landing').style.display = 'none';
+                document.getElementById('mainUI').style.display = 'flex';
+                renderTable(db);
+            }, 1000);
+        };
+        reader.readAsArrayBuffer(input.files[0]);
+    }
+
+    function renderTable(data) {
+        const body = document.getElementById('tableBody');
+        body.innerHTML = data.map(r => `
+            <tr id="r-${r.id}" class="${r.isMF ? 'row-mf' : ''} ${basket.has(r.id) ? 'row-selected' : ''}">
+                <td><input type="checkbox" id="chk-${r.id}" ${basket.has(r.id) ? 'checked' : ''} onchange="toggleRow(${r.id}, this)"></td>
+                <td>${r.tarih}</td><td><b>${r.no}</b></td><td>${r.depo}</td>
+                <td>${r.isMF ? '<span class="badge-mf">BEDELSİZ MF</span>' : ''}${r.urun}</td>
+                <td align="center"><b>${r.adet}</b></td><td>${cur(r.liste)}</td><td>${cur(r.ind)}</td>
+                <td align="center"><b>%${r.iskOran}</b></td><td>${cur(r.kki)}</td><td align="center">%${r.kkiOran}</td>
+                <td>${cur(r.mf)}</td><td><b>${cur(r.net)}</b></td><td>${cur(r.kdv)}</td><td><b>${cur(r.toplam)}</b></td>
+            </tr>`).join('');
+    }
+
+    function clearFilters() {
+        document.getElementById('fDepo').value = "";
+        document.getElementById('fUrun').value = "";
+        document.getElementById('fMonth').value = "";
+        selectedDay = null;
+        applyFilters();
+    }
+
+    function openCalendar() {
+        const val = document.getElementById('fMonth').value; if(!val) return;
+        const [y, m] = val.split('-');
+        document.getElementById('calTitle').innerText = `${monthsTr[parseInt(m)-1]} ${y}`;
+        const firstDay = new Date(y, m - 1, 1).getDay();
+        const offset = firstDay === 0 ? 6 : firstDay - 1;
+        const lastDay = new Date(y, m, 0).getDate();
+        const grid = document.getElementById('calGrid'); grid.innerHTML = "";
+        for(let b=0; b < offset; b++) grid.innerHTML += `<div></div>`;
+        for(let i=1; i<=lastDay; i++) {
+            const dStr = i.toString().padStart(2, '0');
+            grid.innerHTML += `<div class="day-box ${selectedDay === dStr ? 'day-active' : ''}" onclick="selectDay('${dStr}')">${i}</div>`;
+        }
+        document.getElementById('calModal').style.display = 'flex';
+    }
+
+    function selectDay(d) { selectedDay = d; document.getElementById('calModal').style.display = 'none'; applyFilters(); }
+
+    function applyFilters() {
+        const mVal = document.getElementById('fMonth').value;
+        const dSrc = trLower(document.getElementById('fDepo').value);
+        const uSrc = trLower(document.getElementById('fUrun').value);
+        const filtered = db.filter(r => {
+            let mMatch = !mVal || r.iso.startsWith(mVal);
+            let dMatch = !selectedDay || r.iso.endsWith("-" + selectedDay);
+            let textMatch = trLower(r.depo).includes(dSrc) && trLower(r.urun).includes(uSrc);
+            return mMatch && dMatch && textMatch;
+        });
+        renderTable(filtered);
+    }
+
+    function toggleRow(id, el) { el.checked ? basket.add(id) : basket.delete(id); updateBasketUI(); document.getElementById(`r-${id}`).classList.toggle('row-selected', el.checked); }
+    
+    function updateBasketUI() {
+        document.getElementById('cartCount').innerText = basket.size;
+        let total = 0;
+        const items = db.filter(r => basket.has(r.id));
+        document.getElementById('basketItems').innerHTML = items.map(r => {
+            total += parseFloat(r.net || 0);
+            return `<div class="basket-item">
+                <span style="font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${r.urun}">${r.urun}</span>
+                <span align="center">${r.adet} Ad.</span>
+                <span align="right" style="color:var(--success); font-weight:bold;">${cur(r.net)}</span>
+                <i class="fas fa-trash-alt" style="color:var(--danger); cursor:pointer; margin-left:10px;" onclick="removeFromBasket(${r.id})"></i>
+            </div>`;
+        }).join('');
+        document.getElementById('totalNet').innerText = cur(total);
+    }
+
+    function removeFromBasket(id) {
+        basket.delete(id);
+        const ch = document.getElementById(`chk-${id}`); if(ch) ch.checked = false;
+        const ro = document.getElementById(`r-${id}`); if(ro) ro.classList.remove('row-selected');
+        updateBasketUI();
+    }
+
+    function toggleBasket() { document.getElementById('basketDrawer').classList.toggle('open'); }
+    function selectAll(m) { 
+        const visibleRows = document.querySelectorAll('#tableBody tr');
+        visibleRows.forEach(row => {
+            const id = parseInt(row.id.replace('r-', ''));
+            const chk = row.querySelector('input[type="checkbox"]');
+            if(m.checked) { basket.add(id); chk.checked = true; row.classList.add('row-selected'); }
+            else { basket.delete(id); chk.checked = false; row.classList.remove('row-selected'); }
+        });
+        updateBasketUI(); 
+    }
+    
+    function exportBasket() {
+        if(basket.size === 0) return alert("Sepet boş!");
+        const sel = db.filter(r => basket.has(r.id)).map(({isMF, id, iso, ...rest}) => rest);
+        const ws = XLSX.utils.json_to_sheet(sel); const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "SAP_ANALIZ"); XLSX.writeFile(wb, "SAP_Rapor.xlsx");
+    }
+</script>
+</body>
+</html>

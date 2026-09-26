@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEN IADE OTOMASYONU | v11.4 CHARACTER & CALC FIX</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #e0e5ec;
+            --primary: #2563eb;
+            --shadow: 9px 9px 16px rgb(163,177,198,0.6), -9px -9px 16px rgba(255,255,255, 0.5);
+            --inner-shadow: inset 6px 6px 12px #c1c9d2, inset -6px -6px 12px #ffffff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Arial', sans-serif; }
+        body { background-color: var(--bg); padding: 30px; color: #444; }
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        header {
+            background: var(--bg); padding: 25px; border-radius: 20px;
+            box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 30px;
+        }
+
+        h1 { font-size: 22px; color: #2d3748; letter-spacing: 1px; }
+
+        .card {
+            background: var(--bg); border-radius: 30px; padding: 35px;
+            box-shadow: var(--shadow); margin-bottom: 30px;
+        }
+
+        .grid-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+        .input-group { display: flex; flex-direction: column; gap: 8px; }
+        label { font-size: 11px; font-weight: bold; color: #718096; margin-left: 5px; }
+
+        input {
+            background: #ffffff; border: none; padding: 12px;
+            border-radius: 12px; box-shadow: inset 2px 2px 5px rgba(0,0,0,0.05);
+            font-size: 14px; color: #1e293b; outline: none; transition: 0.3s ease;
+            font-weight: 500;
+        }
+        input:focus { box-shadow: 0 0 0 2px var(--primary); }
+
+        .btn {
+            padding: 12px 25px; border-radius: 15px; border: none; cursor: pointer;
+            font-weight: bold; display: flex; align-items: center; gap: 10px; transition: 0.2s;
+            box-shadow: var(--shadow);
+        }
+        .btn:active { box-shadow: var(--inner-shadow); transform: scale(0.98); }
+        .btn-primary { background: var(--primary); color: white; width: 100%; justify-content: center; margin-top: 25px; font-size: 16px; }
+        .btn-excel { background: #10b981; color: white; }
+        .btn-clear { background: #ef4444; color: white; }
+        .btn-pdf { background: #ef4444; color: white; font-size: 11px; padding: 8px 12px; }
+
+        .table-container {
+            background: var(--bg); border-radius: 25px; box-shadow: var(--shadow);
+            overflow: hidden; padding: 15px;
+        }
+
+        table { width: 100%; border-collapse: separate; border-spacing: 0 10px; }
+        th { padding: 15px; text-align: left; color: #718096; font-size: 11px; text-transform: uppercase; }
+        td { padding: 15px; background: var(--bg); box-shadow: var(--shadow); border-top: 1px solid rgba(255,255,255,0.3); }
+        td:first-child { border-radius: 12px 0 0 12px; }
+        td:last-child { border-radius: 0 12px 12px 0; }
+        .total-badge { color: #059669; font-weight: 800; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1><i class="fas fa-calculator"></i> GEN IADE <small style="font-size: 11px; opacity: 0.5;">v11.4 FIX</small></h1>
+        <div style="display:flex; gap:12px;">
+            <button class="btn btn-excel" onclick="app.exportExcel()"><i class="fas fa-file-excel"></i> EXCEL</button>
+            <button class="btn btn-clear" onclick="app.clearList()"><i class="fas fa-trash-can"></i> SIFIRLA</button>
+        </div>
+    </header>
+
+    <div class="card">
+        <div class="grid-form">
+            <div class="input-group"><label>İADE TARİHİ</label><input type="date" id="tarih"></div>
+            <div class="input-group">
+                <label>ÜRÜN ADI</label>
+                <input list="uL" id="urun" onblur="app.fix(this)" placeholder="Ürün adı yazın...">
+                <datalist id="uL">
+                    <option value="B-Sync On 20 Capsul"></option>
+                    <option value="B-Sync Now 20 Capsul"></option>
+                    <option value="Cabometyx 20 Mg Fılm Kaplı Tablet"></option>
+                    <option value="Cabometyx 40 Mg Fılm Kaplı Tablet"></option>
+                    <option value="Cabometyx 60 Mg Fılm Kaplı Tablet"></option>
+                    <option value="Carbaglu 200 mg 60 tb"></option>
+					<option value="Epamor 20Mg/2Ml Ampul"></option>
+                    <option value="Epamor 30 Mg/3Ml Enj. Çöz. (5 Kartuş)"></option>
+                    <option value="Epamor 50Mg/5Ml Ampul"></option>
+                    <option value="Genbutrol 15 Mmol/15 Ml Enj. Coz."></option>
+                    <option value="Genbutrol 30 Mmol/30 Ml Enj. Coz."></option>
+                    <option value="Genbutrol 7,5 Mmol/7,5 Ml Enj. Coz."></option>
+                    <option value="Genkort 10 Mg 60 Tabletl"></option>
+                    <option value="Ilopera 10 Mcg/Ml Nebulazyon"></option>
+                    <option value="Ilopera 20 Mcg/Ml Iv Inf. Icın "></option>
+                    <option value="Kuvan 100 Mg Çözünebilir 30 Tablet"></option>
+                    <option value="Novils Sert Kapsül 250 Mg"></option>
+                    <option value="Pleksor 24 Mg/12 Ml S.C. Enj."></option>
+                    <option value="Regen-D 150 Mcg Jel"></option>
+                    <option value="Somatulıne Autogel 120 Mg U.S. Enj"></option>
+                    <option value="Somatulıne Autogel 60 Mg U.S. Enj"></option>
+                    <option value="Somatulıne Autogel 90 Mg U.S. Enj"></option>
+                    <option value="Tysabrı 300 Mg I.V. 1 Flk"></option>
+                </datalist>
+            </div>
+            <div class="input-group"><label>PARTİ NO</label><input type="text" id="batch"></div>
+            <div class="input-group"><label>S.K.T.</label><input type="text" id="skt" placeholder="Örn: Kasım.2027"></div>
+            <div class="input-group"><label>İADE EDEN KURUM</label><input list="dL" id="depo" onblur="app.fix(this)" placeholder="Kurum..."><datalist id="dL"><option value="Nevzat Ecza Deposu Tıcaret Ve San. A.S."></option><option value="Selcuk Ecza Deposu A.S."></option><option value="Cencora Ecza Deposu"></option></datalist></div>
+            <div class="input-group"><label>ŞUBE ADI</label><input type="text" id="sube" onblur="app.fix(this)" placeholder="Şube Adı..."></div>
+            <div class="input-group"><label>İADE GEREKÇESİ</label><input type="text" id="gerekce" onblur="app.fix(this)"></div>
+            <div class="input-group"><label>İ.S.F. (BİRİM)</label><input type="number" id="isf" oninput="app.calc()" step="0.01"></div>
+            <div class="input-group"><label>İSKONTO (%)</label><input type="number" id="isk" oninput="app.calc()" value="0"></div>
+            <div class="input-group"><label>KDV ORANI (%)</label><input type="number" id="manual_kdv" oninput="app.calc()" value="10"></div>
+            <div class="input-group">
+                <label>ANA MAL / M.F.</label>
+                <div style="display:flex; gap:5px;">
+                    <input type="number" id="amal" oninput="app.calc()" value="1" style="width:50%">
+                    <input type="number" id="mf" oninput="app.calc()" value="0" style="width:50%">
+                </div>
+            </div>
+            <div class="input-group"><label>MİKTAR (ADET)</label><input type="number" id="adet" oninput="app.calc()" value="1"></div>
+            <div class="input-group"><label>BİRİM NET (KDV'SİZ)</label><input type="text" id="res_birim" readonly style="color:#2563eb; background:#f8fafc;"></div>
+            <div class="input-group"><label>GENEL TOPLAM (KDV DAHİL)</label><input type="text" id="res_toplam" readonly style="font-weight:bold; color:#059669; background:#f8fafc;"></div>
+        </div>
+        <button class="btn btn-primary" onclick="app.save()"><i class="fas fa-check-circle"></i> HESAPLA VE LİSTEYE KAYDET</button>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr><th>Tarih</th><th>Ürün / Parti</th><th>Kurum</th><th>Adet</th><th>Tutar</th><th style="text-align:center">Form</th><th>İşlem</th></tr>
+            </thead>
+            <tbody id="list"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const app = {
+        data: JSON.parse(localStorage.getItem('gen_ultimate_v11')) || [],
+        
+        init() { 
+            this.render(); 
+            document.getElementById('tarih').valueAsDate = new Date(); 
+        },
+
+        fix(el) { 
+            if(!el.value) return;
+            el.value = el.value.toLowerCase().split(' ').map(s => s.charAt(0).toUpperCase() + s.substring(1)).join(' '); 
+        },
+
+        // Türkçe karakter temizleme
+        trFix(text) {
+            if(!text) return "";
+            return text.toString()
+                .replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+                .replace(/Ü/g, 'U').replace(/ü/g, 'u')
+                .replace(/Ş/g, 'S').replace(/ş/g, 's')
+                .replace(/İ/g, 'I').replace(/ı/g, 'i')
+                .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+                .replace(/Ç/g, 'C').replace(/ç/g, 'c');
+        },
+
+        calc() {
+            const isf = parseFloat(document.getElementById('isf').value) || 0;
+            const isk = parseFloat(document.getElementById('isk').value) || 0;
+            const amal = parseFloat(document.getElementById('amal').value) || 1;
+            const mf = parseFloat(document.getElementById('mf').value) || 0;
+            const adet = parseFloat(document.getElementById('adet').value) || 1;
+            const kdv_oran = parseFloat(document.getElementById('manual_kdv').value) || 0;
+
+            const netIskonto = isf - (isf * isk / 100);
+            const birimNet = (netIskonto * amal) / (amal + mf);
+            const kdvCarpan = (kdv_oran / 100) + 1;
+            const toplamKdvli = (birimNet * kdvCarpan) * adet;
+
+            document.getElementById('res_birim').value = birimNet.toFixed(4);
+            document.getElementById('res_toplam').value = toplamKdvli.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        },
+
+        save() {
+            const entry = {
+                tarih: document.getElementById('tarih').value, 
+                urun: document.getElementById('urun').value,
+                batch: document.getElementById('batch').value, 
+                skt: document.getElementById('skt').value,
+                depo: document.getElementById('depo').value, 
+                sube: document.getElementById('sube').value,
+                gerekce: document.getElementById('gerekce').value,
+                adet: document.getElementById('adet').value, 
+                toplam: document.getElementById('res_toplam').value
+            };
+            if(!entry.urun || !entry.batch) return alert("Ürün ve Parti No alanları boş bırakılamaz!");
+            this.data.push(entry);
+            localStorage.setItem('gen_ultimate_v11', JSON.stringify(this.data));
+            this.render();
+            alert("İşlem Başarılı! ✔️🧿");
+        },
+
+        render() {
+            document.getElementById('list').innerHTML = this.data.map((r, i) => `
+                <tr>
+                    <td>${r.tarih}</td>
+                    <td><b>${r.urun}</b><br><small>${r.batch}</small></td>
+                    <td>${r.depo} ${r.sube ? '/ ' + r.sube : ''}</td>
+                    <td>${r.adet}</td>
+                    <td class="total-badge">₺${r.toplam}</td>
+                    <td style="text-align:center"><button class="btn btn-pdf" onclick="app.pdf(${i})">PDF</button></td>
+                    <td><i class="fas fa-trash" style="color:#ef4444; cursor:pointer" onclick="app.remove(${i})"></i></td>
+                </tr>
+            `).join('');
+        },
+
+        pdf(i) {
+            const r = this.data[i];
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const dynamicFontSize = r.urun.length > 60 ? 8 : 10;
+            const tamKurumAdi = r.sube ? `${r.depo} / ${r.sube}` : r.depo;
+
+            doc.setFont("helvetica", "bold");
+            doc.text(this.trFix("Ek 2. Iade Urun Teslim Formu"), 14, 15);
+            doc.autoTable({
+    startY: 25,
+    theme: 'grid',
+    styles: { font: 'helvetica', fontSize: 10, cellPadding: 4, lineColor: [0, 0, 0], lineWidth: 0.1, valign: 'middle' },
+    columnStyles: { 0: { cellWidth: 50, fontStyle: 'bold' }, 1: { cellWidth: 40, fontStyle: 'bold' }, 2: { cellWidth: 'auto' } },
+    body: [
+        [{content: this.trFix('Iade Urun Teslim Formu / Returned Product Delivery Form'), colSpan: 3, styles: {halign:'center', fillColor: [240, 240, 240]}}],
+        [this.trFix('Iade Tarihi / Return Date'), {content: r.tarih, colSpan: 2}],
+        [{content: this.trFix("Urunun\nProduct's"), rowSpan: 4, styles: {halign: 'center', fontStyle: 'bold'}}, this.trFix('Adi / Name'), {content: this.trFix(r.urun), styles: {fontSize: dynamicFontSize}}],
+        [this.trFix('Parti No / Batch No'), this.trFix(r.batch)],
+        [this.trFix('SKT / Expiry Date'), this.trFix(r.skt)],
+        [this.trFix('Miktar / Amount'), this.trFix(r.adet) + " ADET"],
+        [this.trFix('Iade Eden Kurum / Returned by'), {content: this.trFix(tamKurumAdi), colSpan: 2}], 
+        [this.trFix('Iade Gerekcesi / Return Reason'), {content: this.trFix(r.gerekce), colSpan: 2}]
+    ]
+});
+
+// 2. TABLO: İMZA VE DEPO BİLGİLERİ (ÇİZGİ SAĞA KAYDIRILDI)
+doc.autoTable({
+    startY: doc.lastAutoTable.finalY, 
+    theme: 'grid',
+    styles: { 
+        font: 'helvetica', 
+        fontSize: 10, 
+        cellPadding: 2, 
+        lineColor: [0, 0, 0], 
+        lineWidth: 0.1, 
+        valign: 'middle',
+        overflow: 'linebreak'
+    },
+    columnStyles: { 
+        // İlk sütunu 40mm yaparak çizgiyi sağa kaydırdık
+        0: { cellWidth: 50 }, 
+        1: { cellWidth: 51 }, // İmza alanının dengesi için (91-40=51)
+        2: { cellWidth: 81 }  
+    },
+    body: [
+        [
+            { 
+                content: this.trFix('TESLIM EDEN / Delivered by\n(Isim-Imza-Tarih)'), 
+                colSpan: 2, 
+                styles: { minCellHeight: 25, halign: 'center', fontStyle: 'normal' } 
+            },
+            { 
+                content: this.trFix('TESLIM ALAN / Receipt by\n(Isim-Imza-Tarih)'), 
+                styles: { minCellHeight: 25, halign: 'center', fontStyle: 'normal' } 
+            }
+        ],
+        [
+            { 
+                // Genişlik 50mm olduğu için 2 satıra çok rahat sığacak
+                content: this.trFix('Depoya Donus Tarihi /\nReturn Date To Warehouse'), 
+                styles: { 
+                    fontStyle: 'bold', 
+                    halign: 'left', 
+                    fontSize: 10, // Genişlik arttığı için puntoyu biraz büyütebildik
+                    cellPadding: 2
+                } 
+            },
+            { 
+                content: '', 
+                colSpan: 2,
+                styles: { halign: 'left' } 
+            }
+        ]
+    ]
+});
+            doc.save(`Iade_Formu_${r.batch}.pdf`);
+        },
+
+        exportExcel() {
+            const ws = XLSX.utils.json_to_sheet(this.data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Iadeler");
+            XLSX.writeFile(wb, "Gen_Iade_Sistem_Raporu.xlsx");
+        },
+
+        clearList() { if(confirm("Dikkat! Tüm liste silinecek. Onaylıyor musunuz?")) { this.data = []; localStorage.removeItem('gen_ultimate_v11'); this.render(); } },
+        remove(i) { if(confirm("Bu satırı silmek istiyor musunuz?")) { this.data.splice(i,1); localStorage.setItem('gen_ultimate_v11', JSON.stringify(this.data)); this.render(); } }
+    };
+    app.init();
+</script>
+</body>
+</html>

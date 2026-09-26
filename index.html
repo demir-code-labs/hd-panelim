@@ -1,0 +1,780 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>HD COMMAND GEN CENTER | OS v2.9 (Manual Backup)</title>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <style>
+        :root { 
+            --bg-color: #0f172a; --bg-image: none; --accent: #fbbf24; 
+            --accent-dark: #b45309; --text-color: #ffffff;
+            --group-title-color: #fbbf24;
+            --card-bg: rgba(255,255,255,0.05); --card-min-height: 140px;
+            --card-width: 180px; --card-padding: 15px;
+            --nav-height: 75px;
+        }
+        body { margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-color); background-image: var(--bg-image); background-size: cover; background-position: center; background-attachment: fixed; color: var(--text-color); transition: 0.3s; }
+        
+        nav { 
+            display: flex; 
+            align-items: center; 
+            padding: 0 50px; 
+            background: rgba(15, 23, 42, 0.85); 
+            backdrop-filter: blur(15px); 
+            border-bottom: 2px solid var(--accent); 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            right: 0; 
+            height: var(--nav-height); 
+            z-index: 5000; 
+            box-sizing: border-box;
+        }
+        .nav-links { display: flex; gap: 30px; margin-left: 50px; }
+        
+        .storage-status { margin-left: 20px; display: flex; flex-direction: column; width: 145px; }
+        .storage-bar-bg { background: #334155; height: 4px; border-radius: 2px; overflow: hidden; margin-top: 4px; }
+        #storageBar { height: 100%; width: 100%; background: #22c55e; transition: 0.5s; }
+        
+        .dropdown { position: relative; cursor: pointer; padding: 15px 0; font-weight: 600; }
+        .dropdown-content { display: none; position: absolute; top: 100%; left: 0; background: #fff; color: #333; width: 260px; padding: 10px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 5500; }
+        .dropdown:hover .dropdown-content { display: block; }
+        .dropdown-content a, .dropdown-content label { display: flex; justify-content: space-between; align-items: center; padding: 10px; cursor: pointer; border-radius: 4px; color: #333; text-decoration: none; font-size: 14px; }
+        .dropdown-content a:hover, .dropdown-content label:hover { background: #f8fafc; color: var(--accent-dark); }
+        
+        .menu-admin-btn, .menu-delete-x { transition: opacity 0.2s ease; }
+
+        .main-wrapper { padding-top: calc(var(--nav-height) + 10px); }
+
+        .dashboard-header { display: flex; justify-content: space-between; align-items: center; padding: 30px 50px 10px 50px; }
+        #searchInput { padding: 12px 20px; border-radius: 8px; border: 2px solid var(--accent); background: #ffffff !important; color: #000000 !important; width: 350px; outline: none; font-weight: 600; }
+        
+        .groups-container { padding: 10px 50px 50px 50px; display: flex; flex-direction: column; gap: 35px; }
+        .group-wrapper { background: rgba(255, 255, 255, 0.02); border-radius: 12px; padding: 20px; border: 1px dashed rgba(255, 255, 255, 0.1); }
+        
+        .group-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 15px; }
+        .group-title { font-size: 18px; font-weight: 800; color: var(--group-title-color); display: flex; align-items: center; gap: 10px; transition: color 0.3s; }
+        
+        .group-actions { display: flex; gap: 10px; transition: opacity 0.3s ease; }
+        .group-btn { background: transparent; border: 1px solid rgba(255,255,255,0.3); color: #ccc; cursor: pointer; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .group-btn:hover { border-color: var(--accent); color: white; }
+
+        .admin-header-btns { display: flex; gap: 10px; transition: opacity 0.3s ease; }
+
+        .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--card-width), 1fr)); gap: 20px; min-height: 100px; padding: 5px; border-radius: 8px; transition: background 0.2s; }
+        .apps-grid.drag-over { background: rgba(255, 255, 255, 0.05); }
+
+        .app-card { 
+            background: var(--card-bg); backdrop-filter: blur(10px); 
+            min-height: var(--card-min-height); box-sizing: border-box;
+            border-radius: 15px; text-align: center; border: 2px solid transparent; 
+            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; position: relative; overflow: hidden;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            padding: var(--card-padding);
+        }
+        .app-card:hover { border-color: var(--accent); transform: translateY(-5px); box-shadow: 0 8px 20px var(--accent-dark); }
+        .card-label { width: 100%; color: white; font-weight: 800; font-size: 15px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); pointer-events: none; word-break: break-word; }
+
+        .admin-tools { position: absolute; top: 8px; right: 8px; opacity: 0; display: flex; gap: 5px; z-index: 10; transition: opacity 0.2s; }
+        .app-card:hover .admin-tools { opacity: 1; }
+        .tool-btn { cursor: pointer; background: rgba(0,0,0,0.7); padding: 4px 6px; border-radius: 4px; font-size: 11px; color: white; }
+
+        body.sorting-active .app-card { cursor: grab !important; }
+        body.sorting-active .app-card:active { cursor: grabbing !important; }
+        
+        body.sorting-passive .group-actions { display: none !important; }
+        body.sorting-passive .admin-header-btns { display: none !important; }
+        body.sorting-passive .admin-tools { display: none !important; }
+        body.sorting-passive .menu-admin-btn { display: none !important; }
+        body.sorting-passive .menu-delete-x { display: none !important; }
+        body.sorting-passive .group-wrapper { border: 1px solid rgba(255, 255, 255, 0.05); background: transparent; }
+        body.sorting-passive .app-card { cursor: pointer; }
+
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 9000; justify-content: center; align-items: center; }
+        .modal-content { background: var(--bg-color); padding: 30px; border-radius: 15px; border: 2px solid var(--accent); width: 400px; max-height: 90vh; overflow-y: auto; }
+        .modal-input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: 1px solid #334155; background: #1e293b; color: white; box-sizing: border-box; }
+        .modal-select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: 1px solid #334155; background: #1e293b; color: white; }
+        hr { border: 0; border-top: 1px solid #334155; margin: 15px 0; }
+        
+        #contentDisplayArea { display: none; padding: 30px 50px; background: rgba(255,255,255,0.03); margin: 20px 50px; border-radius: 15px; border-left: 4px solid var(--accent); }
+        
+        /* Manuel Kaydet Butonu Stili */
+        .manual-save-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: var(--accent);
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+        }
+        .manual-save-btn:hover {
+            background: var(--accent);
+            color: #000;
+            border-color: var(--accent);
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
+        }
+    </style>
+</head>
+<body class="sorting-passive">
+
+<nav>
+    <div style="font-weight: 800; font-size: 24px; letter-spacing: -1px;">GEN <span style="color:var(--accent)"> HD PANEL 🧿</span></div>
+    <div class="nav-links">
+        <div class="dropdown">Kurumsal ▾ 
+            <div class="dropdown-content">
+                <a onclick="viewPage('Misyonumuz')">Misyonumuz</a>
+                <a onclick="viewPage('Vizyon')">Vizyon</a>
+                <hr class="menu-admin-btn">
+                <a onclick="openContentModal('Misyonumuz')" class="menu-admin-btn" style="font-size:11px; color:var(--accent)">✏️ Misyonu Düzenle</a>
+                <a onclick="openContentModal('Vizyon')" class="menu-admin-btn" style="font-size:11px; color:var(--accent)">✏️ Vizyonu Düzenle</a>
+            </div>
+        </div>
+        <div class="dropdown">Ürünler ▾ <div class="dropdown-content" id="productsMenu"></div></div>
+        <div class="dropdown">Yönetim ▾ <div class="dropdown-content" id="managementMenu"></div></div>
+    </div>
+    
+    <div class="storage-status">
+        <span style="font-size: 9px; font-weight: bold; color: #94a3b8;" id="autoBackupStatus">💾 OTO-YEDEK: AKTİF</span>
+        <div class="storage-bar-bg"><div id="storageBar"></div></div>
+    </div>
+
+    <div style="margin-left: auto; display: flex; gap: 15px; align-items: center;">
+        <!-- MANUEL HAFIZA İKONU (DİSKET) -->
+        <button class="manual-save-btn" onclick="manualSaveTrigger()" title="Hafızaya Al / Manuel Yedekle">
+            💾
+        </button>
+
+        <div id="dateTimeDisplay" style="color:var(--accent); font-weight:bold;"></div>
+        <div class="dropdown" style="padding:0">⚙️ Ayarlar ▾ 
+            <div class="dropdown-content" style="right:0; left:auto;">
+                <label>Tema Rengi: <input type="color" id="accentColorPicker" onchange="changeAccent(this.value)"></label>
+                <label>Grup Başlık Rengi: <input type="color" id="groupTitleColorPicker" onchange="changeGroupTitleColor(this.value)"></label>
+                <label>Arka Plan Rengi: <input type="color" id="bgColorPicker" onchange="changeBgColor(this.value)"></label>
+                <label>Yazı Rengi: <input type="color" id="textColorPicker" onchange="changeTextColor(this.value)"></label>
+                <hr>
+                <label>Genişlik (px): <input type="number" id="wInput" onchange="changeCardWidth(this.value)" style="width:60px;"></label>
+                <label>Yükseklik (px): <input type="number" id="hInput" onchange="changeCardHeight(this.value)" style="width:60px;"></label>
+                <hr>
+                <label>Sürükleme: <button onclick="toggleSortingMode()" id="sortModeBtn" style="padding: 4px 10px; font-size:11px; background:#ef4444; color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">Kapalı</button></label>
+                <hr>
+                <a onclick="promptWallpaper()">Duvar Kağıdı (URL)</a>
+                <label>PC'den Yükle: <input type="file" id="bgFileInput" accept="image/*" style="display:none;" onchange="handleFileUpload(this)"> <span onclick="document.getElementById('bgFileInput').click()">Seç...</span></label>
+                <a onclick="resetWallpaper()" style="color:#ef4444; font-weight:bold;">Sıfırla (Kaldır)</a>
+                <hr>
+                <a onclick="exportConfig()" style="color:#16a34a; font-weight:bold;">📥 Paneli Yedekle (.json)</a>
+                <a onclick="restoreAutoBackup()" style="color:#d97706; font-weight:bold;">🔄 Otomatik Yedeği Geri Yükle</a>
+                <a onclick="document.getElementById('importFile').click()" style="color:#2563eb; font-weight:bold;">📤 Dosyadan Yedeği Yükle</a>
+                <input type="file" id="importFile" style="display:none" onchange="importConfig(this)">
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="main-wrapper">
+
+    <div id="contentDisplayArea">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 id="viewTitle" style="color:var(--accent); margin:0;"></h2>
+            <button onclick="document.getElementById('contentDisplayArea').style.display='none'" style="background:transparent; border:1px solid var(--accent); color:white; cursor:pointer; padding:5px 15px; border-radius:5px;">Kapat</button>
+        </div>
+        <p id="viewBody" style="line-height:1.6; margin-top:20px; white-space: pre-wrap;"></p>
+    </div>
+
+    <div class="dashboard-header">
+        <h2>Gösterge Paneli</h2>
+        <input type="text" id="searchInput" placeholder="Modüllerde ara..." oninput="filterCards()" onkeydown="handleSearchEnter(event)">
+        
+        <div class="admin-header-btns" id="adminHeaderBtns">
+            <button style="background:transparent; border: 1px solid var(--accent); color:white; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer;" onclick="createNewGroup()">+ Yeni Grup Ekle</button>
+            <button style="background:var(--accent); color:black; padding:12px 24px; border-radius:8px; border:none; font-weight:bold; cursor:pointer;" onclick="openModal('cards')">+ Yeni Modül</button>
+        </div>
+    </div>
+
+    <div class="groups-container" id="groupsMasterContainer"></div>
+
+</div>
+
+<!-- MODÜL EKLEME/DÜZENLEME MODALİ -->
+<div class="modal" id="addModal">
+    <div class="modal-content">
+        <h3 id="modalTitle">Modül Düzenleme</h3>
+        
+        <div id="modalGroupSelectorWrapper">
+            <label style="font-size:12px; color:#94a3b8;">Bağlı Olduğu Grup:</label>
+            <select id="modalGroupSelect" class="modal-select"></select>
+        </div>
+        
+        <input type="text" id="modalName" class="modal-input" placeholder="Modül Adı / Link Adı">
+        <input type="text" id="modalUrl" class="modal-input" placeholder="URL (https://...)">
+        
+        <div id="modalVisualsWrapper">
+            <hr>
+            <p style="font-size: 11px; color: var(--accent);">GÖRSEL SEÇİMİ</p>
+            <input type="text" id="modalImageUrl" class="modal-input" placeholder="Görsel URL yapıştır">
+            <input type="file" id="modalImageInput" accept="image/*" style="display:none" onchange="previewImage(this)">
+            <button onclick="document.getElementById('modalImageInput').click()" style="width:100%; padding:10px; background:#334155; border:none; border-radius:5px; color:white; cursor:pointer;">PC'den Görsel Seç</button>
+        </div>
+        
+        <hr>
+        <button id="saveBtn" onclick="saveFromModal()" style="width:100%; padding:12px; background:var(--accent); border:none; border-radius:5px; font-weight:bold; cursor:pointer;">KAYDET</button>
+        <button onclick="document.getElementById('addModal').style.display='none'" style="width:100%; padding:12px; margin-top:10px; background:transparent; border:1px solid #334155; color:white; cursor:pointer;">İptal</button>
+    </div>
+</div>
+
+<!-- İÇERİK MODALİ -->
+<div class="modal" id="contentModal">
+    <div class="modal-content">
+        <h3 id="modalContentTitle">İçerik</h3>
+        <textarea id="pageContentArea" class="modal-input" style="height: 200px; resize: vertical;"></textarea>
+        <button onclick="savePageContent()" style="width:100%; padding:12px; background:var(--accent); border:none; border-radius:5px; font-weight:bold;">Kaydet</button>
+        <button onclick="document.getElementById('contentModal').style.display='none'" style="width:100%; padding:12px; margin-top:10px; background:transparent; border:1px solid #334155; color:white; cursor:pointer;">İptal</button>
+    </div>
+</div>
+
+<script>
+    const DB_NAME = 'GenPanelDB_v2';
+    const STORE_NAME = 'storage';
+
+    function openDB() {
+        return new Promise((resolve, reject) => {
+            let request = indexedDB.open(DB_NAME, 1);
+            request.onupgradeneeded = (e) => {
+                let db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME);
+                }
+            };
+            request.onsuccess = (e) => resolve(e.target.result);
+            request.onerror = (e) => reject(e.target.error);
+        });
+    }
+
+    async function dbGet(key) {
+        let db = await openDB();
+        return new Promise((resolve, reject) => {
+            let tx = db.transaction(STORE_NAME, 'readonly');
+            let store = tx.objectStore(STORE_NAME);
+            let req = store.get(key);
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    async function dbSet(key, value) {
+        let db = await openDB();
+        return new Promise((resolve, reject) => {
+            let tx = db.transaction(STORE_NAME, 'readwrite');
+            let store = tx.objectStore(STORE_NAME);
+            let req = store.put(value, key);
+            req.onsuccess = () => {
+                resolve();
+                triggerAutoBackup();
+            };
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    async function dbRemove(key) {
+        let db = await openDB();
+        return new Promise((resolve, reject) => {
+            let tx = db.transaction(STORE_NAME, 'readwrite');
+            let store = tx.objectStore(STORE_NAME);
+            let req = store.delete(key);
+            req.onsuccess = () => {
+                resolve();
+                triggerAutoBackup();
+            };
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    async function dbGetAll() {
+        let db = await openDB();
+        return new Promise((resolve, reject) => {
+            let tx = db.transaction(STORE_NAME, 'readonly');
+            let store = tx.objectStore(STORE_NAME);
+            let req = store.getAllKeys();
+            let reqVals = store.getAll();
+            reqVals.onsuccess = () => {
+                let keys = req.result;
+                let vals = reqVals.result;
+                let obj = {};
+                for(let i=0; i<keys.length; i++) { obj[keys[i]] = vals[i]; }
+                resolve(obj);
+            };
+            reqVals.onerror = () => reject(reqVals.error);
+        });
+    }
+
+    async function triggerAutoBackup() {
+        try {
+            let allData = await dbGetAll();
+            let db = await openDB();
+            let tx = db.transaction(STORE_NAME, 'readwrite');
+            let store = tx.objectStore(STORE_NAME);
+            store.put(allData, '_auto_backup_point');
+            
+            let timeStr = new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+            const statusEl = document.getElementById('autoBackupStatus');
+            if(statusEl) {
+                statusEl.innerText = `💾 OTO-YEDEK: (${timeStr})`;
+                statusEl.style.color = '#22c55e';
+            }
+        } catch(err) {
+            console.error("Otomatik yedek alınamadı:", err);
+        }
+    }
+
+    // MANUEL HAFIZAYA ALMA FONKSİYONU
+    async function manualSaveTrigger() {
+        await triggerAutoBackup();
+        const statusEl = document.getElementById('autoBackupStatus');
+        let originalText = statusEl.innerText;
+        statusEl.innerText = "✨ HAFIZAYA ALINDI!";
+        statusEl.style.color = '#fbbf24';
+        setTimeout(() => {
+            statusEl.innerText = originalText;
+            statusEl.style.color = '#22c55e';
+        }, 2000);
+    }
+
+    async function restoreAutoBackup() {
+        let backupData = await dbGet('_auto_backup_point');
+        if (!backupData) {
+            alert("Henüz sistemde kayıtlı bir otomatik yedek bulunamadı.");
+            return;
+        }
+        if (confirm("Sistemde kayıtlı en son otomatik yedek noktasına geri dönmek istiyor musunuz?")) {
+            let db = await openDB();
+            let tx = db.transaction(STORE_NAME, 'readwrite');
+            let store = tx.objectStore(STORE_NAME);
+            for (let k of Object.keys(backupData)) {
+                if(k !== '_auto_backup_point') {
+                    store.put(backupData[k], k);
+                }
+            }
+            alert("Otomatik yedek başarıyla yüklendi, sayfa yenileniyor.");
+            location.reload();
+        }
+    }
+
+    async function migrateIfNeeded() {
+        let existing = await dbGet('gen_cards');
+        if (!existing && localStorage.length > 0) {
+            for (let i = 0; i < localStorage.length; i++) {
+                let k = localStorage.key(i);
+                let v = localStorage.getItem(k);
+                try { v = JSON.parse(v); } catch(e) {}
+                await dbSet(k, v);
+            }
+        }
+    }
+
+    let data = { groups: [], cards: [], products: [], management: [], pages: {} };
+    let currentType = ''; let editIndex = -1; let tempImageData = null; let currentPage = '';
+    let isSortingMode = false; 
+
+    async function initApp() {
+        await migrateIfNeeded();
+
+        let rawCards = await dbGet('gen_cards');
+        let parsedCards = rawCards ? (typeof rawCards === 'string' ? JSON.parse(rawCards) : rawCards) : [];
+        
+        let defaultGroups = [ { id: "g_default", name: "Genel Modüller" } ];
+        if (parsedCards.length > 0 && !parsedCards[0].hasOwnProperty('groupId')) {
+            parsedCards = parsedCards.map(c => ({...c, groupId: "g_default"}));
+        }
+
+        let storedGroups = await dbGet('gen_groups');
+        let storedProducts = await dbGet('gen_products');
+        let storedManagement = await dbGet('gen_management');
+        let storedPages = await dbGet('gen_pages');
+        let storedSortMode = await dbGet('gen_sort_mode');
+
+        data.groups = storedGroups || defaultGroups;
+        data.cards = parsedCards;
+        data.products = storedProducts || [];
+        data.management = storedManagement || [];
+        data.pages = storedPages || { 'Misyonumuz': 'Misyon içeriği buraya gelecek...', 'Vizyon': 'Vizyon içeriği buraya gelecek...' };
+        
+        if (storedSortMode !== undefined && storedSortMode !== null) {
+            isSortingMode = storedSortMode === true || storedSortMode === 'true';
+        } else {
+            isSortingMode = false;
+        }
+
+        const savedAccent = await dbGet('gen_theme') || '#fbbf24';
+        const savedGroupTitle = await dbGet('gen_grouptitlecolor') || '#fbbf24';
+        const savedBgColor = await dbGet('gen_bgcolor') || '#0f172a';
+        const savedTextColor = await dbGet('gen_textcolor') || '#ffffff';
+
+        document.documentElement.style.setProperty('--accent', savedAccent);
+        document.documentElement.style.setProperty('--group-title-color', savedGroupTitle);
+        document.documentElement.style.setProperty('--bg-color', savedBgColor);
+        document.documentElement.style.setProperty('--text-color', savedTextColor);
+        
+        document.getElementById('accentColorPicker').value = savedAccent;
+        document.getElementById('groupTitleColorPicker').value = savedGroupTitle;
+        document.getElementById('bgColorPicker').value = savedBgColor;
+        document.getElementById('textColorPicker').value = savedTextColor;
+
+        document.documentElement.style.setProperty('--card-width', (await dbGet('gen_cardwidth') || '180') + 'px');
+        document.documentElement.style.setProperty('--card-min-height', (await dbGet('gen_cardheight') || '140') + 'px');
+        
+        const savedBg = await dbGet('gen_bgimage');
+        if(savedBg) document.documentElement.style.setProperty('--bg-image', `url('${savedBg}')`);
+
+        render();
+        triggerAutoBackup();
+    }
+
+    async function saveData(key, val) {
+        data[key] = val;
+        await dbSet('gen_' + key, val);
+    }
+
+    function render() {
+        activeSortables.forEach(s => s.destroy());
+        activeSortables = [];
+
+        if(isSortingMode) {
+            document.body.className = "sorting-active";
+        } else {
+            document.body.className = "sorting-passive";
+        }
+
+        const container = document.getElementById('groupsMasterContainer');
+        container.innerHTML = '';
+
+        if(data.groups.length === 0) {
+            data.groups.push({id: "g_" + Date.now(), name: "Genel Modüller"});
+            dbSet('gen_groups', data.groups);
+        }
+
+        data.groups.forEach((group) => {
+            const groupCards = data.cards.filter(c => c.groupId === group.id);
+            
+            let groupHtml = `
+            <div class="group-wrapper" data-group-id="${group.id}">
+                <div class="group-header">
+                    <div class="group-title">📁 ${group.name} <span style="font-size:12px; color:var(--text-color); opacity:0.6; font-weight:normal;">(${groupCards.length} Modül)</span></div>
+                    <div class="group-actions">
+                        <button class="group-btn" onclick="renameGroup('${group.id}')">✏️ Adı Değiştir</button>
+                        <button class="group-btn" onclick="deleteGroup('${group.id}')" style="color:#ef4444;">🗑️ Grubu Sil</button>
+                    </div>
+                </div>
+                <div class="apps-grid" id="grid_${group.id}" data-group-id="${group.id}">
+            `;
+
+            groupCards.forEach((c) => {
+                const realIndex = data.cards.findIndex(rc => rc === c);
+                const bg = c.image ? `background-image: url('${c.image}'); background-size: cover; background-position: center;` : '';
+                
+                groupHtml += `
+                <div class="app-card" data-card-id="${realIndex}" onclick="handleCardClick(event, '${c.url}')" style="${bg}">
+                    <div class="admin-tools">
+                        <span class="tool-btn" onclick="event.stopPropagation(); edit('cards', ${realIndex})">✏️</span>
+                        <span class="tool-btn" onclick="event.stopPropagation(); remove('cards', ${realIndex})" style="color:#ef4444">✕</span>
+                    </div>
+                    <div class="card-label">${c.name}</div>
+                </div>`;
+            });
+
+            groupHtml += `
+                </div>
+            </div>`;
+            
+            container.innerHTML += groupHtml;
+        });
+
+        ['products', 'management'].forEach(type => {
+            const menu = document.getElementById(type + 'Menu');
+            if(menu) {
+                menu.innerHTML = `<a onclick="openModal('${type}')" class="menu-admin-btn" style="color:var(--accent); font-weight:bold; justify-content:center;">➕ Yeni Ekle</a><hr class="menu-admin-btn">`;
+                
+                data[type].forEach((l, i) => {
+                    menu.innerHTML += `<a href="${l.url}" target="_blank">${l.name} <span class="menu-delete-x" style="color:#ef4444; font-weight:bold; padding-left:10px;" onclick="event.preventDefault(); event.stopPropagation(); remove('${type}', ${i})">✕</span></a>`;
+                });
+            }
+        });
+
+        const btn = document.getElementById('sortModeBtn');
+        if(btn) {
+            btn.innerText = isSortingMode ? "Açık" : "Kapalı";
+            btn.style.background = isSortingMode ? "#fbbf24" : "#ef4444"; 
+            btn.style.color = isSortingMode ? "black" : "white";
+        }
+
+        initMultiSortable();
+    }
+
+    let activeSortables = [];
+    function initMultiSortable() {
+        data.groups.forEach(group => {
+            const el = document.getElementById(`grid_${group.id}`);
+            if (!el) return;
+
+            let s = new Sortable(el, {
+                group: 'shared_dashboard',
+                animation: 180,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                dragClass: 'sortable-drag',
+                disabled: !isSortingMode,
+                
+                onDragEnter: function(evt) { evt.to.classList.add('drag-over'); },
+                onDragLeave: function(evt) { evt.to.classList.remove('drag-over'); },
+                
+                onEnd: function (evt) {
+                    document.querySelectorAll('.apps-grid').forEach(g => g.classList.remove('drag-over'));
+                    
+                    let newCardsOrder = [];
+                    data.groups.forEach(g => {
+                        const gridDom = document.getElementById(`grid_${g.id}`);
+                        if(gridDom) {
+                            const cardElements = gridDom.querySelectorAll('.app-card');
+                            cardElements.forEach(cardEl => {
+                                const oldIndex = parseInt(cardEl.getAttribute('data-card-id'));
+                                let cardData = data.cards[oldIndex];
+                                if(cardData) {
+                                    cardData.groupId = g.id;
+                                    newCardsOrder.push(cardData);
+                                }
+                            });
+                        }
+                    });
+
+                    data.cards = newCardsOrder;
+                    dbSet('gen_cards', data.cards);
+                    render();
+                }
+            });
+            activeSortables.push(s);
+        });
+    }
+
+    function toggleSortingMode() {
+        isSortingMode = !isSortingMode;
+        dbSet('gen_sort_mode', isSortingMode); 
+        render(); 
+    }
+
+    async function createNewGroup() {
+        let gName = prompt("Yeni Grup Adı Giriniz:");
+        if(gName && gName.trim() !== "") {
+            let newGroup = { id: "g_" + Date.now(), name: gName.trim() };
+            data.groups.push(newGroup);
+            await dbSet('gen_groups', data.groups);
+            render();
+        }
+    }
+
+    async function renameGroup(gId) {
+        let group = data.groups.find(g => g.id === gId);
+        if(group) {
+            let newName = prompt("Grup için yeni ad girin:", group.name);
+            if(newName && newName.trim() !== "") {
+                group.name = newName.trim();
+                await dbSet('gen_groups', data.groups);
+                render();
+            }
+        }
+    }
+
+    async function deleteGroup(gId) {
+        if(confirm("Bu grubu sildiğinizde içindeki modüller 'Genel Modüller' alanına taşınacaktır. Onaylıyor musunuz?")) {
+            let remainingGroup = data.groups.find(g => g.id !== gId);
+            if(!remainingGroup) {
+                alert("Son grubu silemezsiniz! Lütfen önce başka bir grup oluşturun.");
+                return;
+            }
+            data.cards.forEach(c => {
+                if(c.groupId === gId) c.groupId = remainingGroup.id;
+            });
+            
+            data.groups = data.groups.filter(g => g.id !== gId);
+            await dbSet('gen_groups', data.groups);
+            await dbSet('gen_cards', data.cards);
+            render();
+        }
+    }
+
+    function handleCardClick(event, url) {
+        if(!event.target.classList.contains('tool-btn')) {
+            window.location.href = url;
+        }
+    }
+
+    function viewPage(pageName) {
+        document.getElementById('viewTitle').innerText = pageName;
+        document.getElementById('viewBody').innerText = data.pages[pageName] || "İçerik henüz girilmemiş.";
+        document.getElementById('contentDisplayArea').style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function openContentModal(pageName) {
+        currentPage = pageName;
+        document.getElementById('modalContentTitle').innerText = pageName + " Düzenle";
+        document.getElementById('pageContentArea').value = data.pages[pageName] || "";
+        document.getElementById('contentModal').style.display = 'flex';
+    }
+
+    async function savePageContent() {
+        data.pages[currentPage] = document.getElementById('pageContentArea').value;
+        await dbSet('gen_pages', data.pages);
+        document.getElementById('contentModal').style.display = 'none';
+        if(document.getElementById('contentDisplayArea').style.display === 'block') { viewPage(currentPage); }
+    }
+
+    function openModal(type, index = -1) {
+        currentType = type; editIndex = index; tempImageData = null;
+        
+        const groupWrapper = document.getElementById('modalGroupSelectorWrapper');
+        const visualsWrapper = document.getElementById('modalVisualsWrapper');
+        const modalTitle = document.getElementById('modalTitle');
+
+        if(type === 'cards') {
+            modalTitle.innerText = index > -1 ? "Modülü Düzenle" : "Yeni Modül Ekle";
+            if(groupWrapper) groupWrapper.style.display = 'block';
+            if(visualsWrapper) visualsWrapper.style.display = 'block';
+            
+            const select = document.getElementById('modalGroupSelect');
+            select.innerHTML = '';
+            data.groups.forEach(g => {
+                select.innerHTML += `<option value="${g.id}">${g.name}</option>`;
+            });
+            if(index > -1) select.value = data.cards[index].groupId;
+        } else {
+            modalTitle.innerText = type === 'products' ? "Ürünler Menüsüne Link Ekle" : "Yönetim Menüsüne Link Ekle";
+            if(groupWrapper) groupWrapper.style.display = 'none';
+            if(visualsWrapper) visualsWrapper.style.display = 'none';
+        }
+
+        document.getElementById('addModal').style.display = 'flex';
+        document.getElementById('modalName').value = index > -1 ? data[type][index].name : '';
+        document.getElementById('modalUrl').value = index > -1 ? data[type][index].url : '';
+        document.getElementById('modalImageUrl').value = (type === 'cards' && index > -1) ? (data[type][index].image?.startsWith('http') ? data[type][index].image : '') : '';
+    }
+
+    function previewImage(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (e) => tempImageData = e.target.result;
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    async function saveFromModal() {
+        const name = document.getElementById('modalName').value;
+        const url = document.getElementById('modalUrl').value;
+        const urlImg = document.getElementById('modalImageUrl').value;
+        
+        if(name && url) {
+            let finalImg = urlImg || tempImageData || (editIndex > -1 ? data[currentType][editIndex].image : null);
+            
+            if(currentType === 'cards') {
+                const selectedGroupId = document.getElementById('modalGroupSelect').value;
+                if(editIndex > -1) {
+                    data.cards[editIndex] = { name, url, image: finalImg, groupId: selectedGroupId };
+                } else {
+                    data.cards.push({ name, url, image: finalImg, groupId: selectedGroupId });
+                }
+                await dbSet('gen_cards', data.cards);
+            } else {
+                if(editIndex > -1) {
+                    data[currentType][editIndex] = { name, url };
+                } else {
+                    data[currentType].push({ name, url });
+                }
+                await dbSet('gen_' + currentType, data[currentType]);
+            }
+            render(); document.getElementById('addModal').style.display = 'none';
+        }
+    }
+
+    async function remove(type, i) { 
+        if(confirm("Bu bağlantıyı silmek istediğinize emin misiniz?")) { 
+            data[type].splice(i, 1); 
+            await dbSet('gen_' + type, data[type]); 
+            render(); 
+        } 
+    }
+
+    function edit(type, i) { openModal(type, i); }
+    
+    async function changeAccent(c) { document.documentElement.style.setProperty('--accent', c); await dbSet('gen_theme', c); }
+    async function changeGroupTitleColor(c) { document.documentElement.style.setProperty('--group-title-color', c); await dbSet('gen_grouptitlecolor', c); }
+    async function changeBgColor(c) { document.documentElement.style.setProperty('--bg-color', c); await dbSet('gen_bgcolor', c); }
+    async function changeTextColor(c) { document.documentElement.style.setProperty('--text-color', c); await dbSet('gen_textcolor', c); }
+    async function changeCardWidth(px) { document.documentElement.style.setProperty('--card-width', px + 'px'); await dbSet('gen_cardwidth', px); render(); }
+    async function changeCardHeight(px) { document.documentElement.style.setProperty('--card-min-height', px + 'px'); await dbSet('gen_cardheight', px); render(); }
+
+    async function handleFileUpload(input) {
+        const file = input.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = async (e) => { 
+                document.documentElement.style.setProperty('--bg-image', `url('${e.target.result}')`); 
+                await dbSet('gen_bgimage', e.target.result); 
+                render(); 
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    async function exportConfig() {
+        let allData = await dbGetAll();
+        delete allData['_auto_backup_point'];
+        let blob = new Blob([JSON.stringify(allData)], {type:'application/json'});
+        let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'GEN_PANEL_V2.9_YEDEK.json'; a.click();
+    }
+
+    async function importConfig(inp) {
+        let reader = new FileReader();
+        reader.onload = async (e) => {
+            let res = JSON.parse(e.target.result);
+            for (let k of Object.keys(res)) {
+                await dbSet(k, res[k]);
+            }
+            location.reload();
+        };
+        reader.readAsText(inp.files[0]);
+    }
+
+    function updateClock() { document.getElementById('dateTimeDisplay').innerText = new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }); }
+    setInterval(updateClock, 1000); updateClock();
+    
+    async function promptWallpaper() { 
+        let u = prompt("URL:"); 
+        if(u) { 
+            document.documentElement.style.setProperty('--bg-image', `url('${u}')`); 
+            await dbSet('gen_bgimage', u); 
+            render(); 
+        } 
+    }
+    async function resetWallpaper() { 
+        if(confirm("Kaldırılsın mı?")) { 
+            await dbRemove('gen_bgimage'); 
+            location.reload(); 
+        } 
+    }
+    
+    function filterCards() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        document.querySelectorAll('.app-card').forEach(card => {
+            card.style.display = card.querySelector('.card-label').textContent.toLowerCase().includes(query) ? 'flex' : 'none';
+        });
+    }
+    function handleSearchEnter(event) { if (event.key === 'Enter' && event.target.value.trim() !== "") window.open('https://www.google.com/search?q=' + encodeURIComponent(event.target.value), '_blank'); }
+
+    initApp();
+</script>
+</body>
+</html>

@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Smart Reminder v25.3 - Draggable & Blurred</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@400;800&family=Pacifico&family=Playfair+Display:ital,wght@1,900&family=Shadows+Into+Light&family=Caveat:wght@700&family=Great+Vibes&family=Comfortaa:wght@700&family=Permanent+Marker&family=Satisfy&family=Kalam:wght@700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+
+    <style>
+        :root { 
+            --bg: #f8fafc; --text: #334155; --card-bg: #ffffff; 
+            --accent: #3b82f6; --border: #e2e8f0; --title-size: 32px;
+            --font-head: 'Playfair Display', serif;
+        }
+
+        body.default { --bg: #f8fafc; --text: #334155; --card-bg: #ffffff; --border: #e2e8f0; --accent: #3b82f6; }
+        body.dark-mode { --bg: #0f172a; --text: #f1f5f9; --card-bg: #1e293b; --border: #334155; --accent: #38bdf8; }
+        body.soft-mint { --bg: #f0fdf4; --text: #166534; --card-bg: #ffffff; --border: #bbf7d0; --accent: #22c55e; }
+        body.soft-rose { --bg: #fff1f2; --text: #9f1239; --card-bg: #ffffff; --border: #fecdd3; --accent: #f43f5e; }
+        body.soft-sky { --bg: #f0f9ff; --text: #075985; --card-bg: #ffffff; --border: #bae6fd; --accent: #0ea5e9; }
+        body.soft-amber { --bg: #fffbeb; --text: #92400e; --card-bg: #ffffff; --border: #fef3c7; --accent: #f59e0b; }
+
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; transition: 0.5s ease; }
+        .c { max-width: 1200px; margin: 0 auto; position: relative; }
+        #t-head { text-align: center; margin-bottom: 30px; font-weight: bold; font-family: var(--font-head); font-size: var(--title-size); transition: 0.3s; }
+
+        .top-controls { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-bottom: 25px; }
+        .sort-btn {
+            background: var(--card-bg); border: 1px solid var(--border); color: var(--text); padding: 0 15px; height: 44px;
+            border-radius: 12px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+
+        .theme-panel { display: flex; gap: 8px; background: var(--card-bg); padding: 10px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .t-btn { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.05); cursor: pointer; transition: 0.2s; }
+        
+        .pro-settings-btn { 
+            font-size: 20px; cursor: pointer; color: var(--text); background: var(--card-bg); width: 44px; height: 44px; 
+            display: flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid var(--border);
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
+        }
+
+        .settings-panel {
+            display: none; position: absolute; top: 65px; right: 0; background: var(--card-bg); color: var(--text); border: 1px solid var(--border);
+            padding: 25px; border-radius: 20px; z-index: 2000; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); width: 380px;
+        }
+
+        .panel { 
+            background: var(--card-bg); padding: 25px; border-radius: 24px; display: grid; grid-template-columns: 2.5fr 1fr 1fr 140px; 
+            gap: 15px; margin-bottom: 35px; border: 1px solid var(--border); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); align-items: center;
+        }
+
+        input, select { padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); color: var(--text); width: 100%; outline: none; font-size: 14px;}
+        .btn-add { background: var(--accent); color: white; border: none; padding: 14px 0; border-radius: 12px; cursor: pointer; font-weight: 800; width: 100%; transition: 0.3s;}
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 25px; }
+        
+        /* NOT KARTI */
+        .note { 
+            padding: 30px; min-height: 220px; border-radius: 4px; display: flex; flex-direction: column; 
+            box-shadow: 10px 10px 15px rgba(0,0,0,0.05); position: relative; color: #1e293b !important; 
+            transition: all 0.4s ease; overflow: hidden;
+            cursor: grab;
+        }
+        .note:active { cursor: grabbing; }
+        .sortable-ghost { opacity: 0.3; transform: scale(0.95); border: 2px dashed var(--accent); }
+
+        .stamp {
+            display: none; position: absolute !important; top: 50% !important; left: 50% !important;
+            transform: translate(-50%, -50%) rotate(0deg) scale(4); border: 5px double #10b981 !important;
+            background: rgba(255, 255, 255, 0.9) !important; color: #10b981 !important; padding: 10px 20px !important;
+            font-weight: 900 !important; font-size: 24px !important; text-transform: uppercase !important;
+            border-radius: 10px !important; font-family: 'Montserrat', sans-serif !important;
+            pointer-events: none !important; z-index: 5 !important;
+        }
+
+        /* FLU (BLUR) EFEKTİ BURADA */
+        .note.done { 
+            transform: rotate(3deg) translateY(10px) !important; 
+            filter: grayscale(0.5) blur(1px) !important; /* Hafif bulanıklık */
+            opacity: 0.7 !important; 
+            background-color: #f1f5f9 !important; 
+        }
+        
+        .note.done .stamp { 
+            display: block !important; 
+            opacity: 1 !important; 
+            visibility: visible !important; 
+            transform: translate(-50%, -50%) rotate(-20deg) scale(1) !important; 
+            filter: blur(0); /* Mühür bulanık olmasın, net görünsün */
+        }
+
+        .note-pencil { position: absolute !important; top: 15px !important; right: 15px !important; font-size: 20px !important; cursor: pointer !important; z-index: 10 !important; color: #64748b; transition: 0.3s; }
+        .note-pencil:hover { transform: scale(1.3); color: var(--accent); }
+
+        .high { background-color: #ffe4e6; border-left: 10px solid #f43f5e; }
+        .normal { background-color: #fefce8; border-left: 10px solid #eab308; }
+        .low { background-color: #f0f9ff; border-left: 10px solid #0ea5e9; }
+        
+        #alarm-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.98); z-index: 3000; color: white; flex-direction: column; justify-content: center; align-items: center; text-align: center; backdrop-filter: blur(15px); }
+        .alarm-anim { animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body id="body" class="default">
+
+<div id="alarm-overlay">
+    <div class="alarm-anim">
+        <i class="fas fa-bell" style="font-size: 80px; color: #f59e0b; margin-bottom: 20px;"></i>
+        <h1 style="font-size: 48px;">HALİL BEY, VAKİT GELDİ!</h1>
+        <p id="alarm-desc" style="font-size: 32px; margin: 30px 0; font-family: 'Montserrat', sans-serif;"></p>
+        <button onclick="stopAlarm()" style="padding: 20px 80px; border-radius: 50px; cursor: pointer; background:var(--accent); color:white; border:none; font-weight:900; font-size: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.3);">ANLADIM, KAPAT</button>
+    </div>
+</div>
+
+<div class="c">
+    <div class="top-controls">
+        <button class="sort-btn" onclick="sortByDate()"><i class="fas fa-calendar-alt"></i> Tarihe Göre Diz</button>
+        <div class="theme-panel">
+            <div class="t-btn" style="background:#f8fafc" onclick="setTheme('default')"></div>
+            <div class="t-btn" style="background:#1e293b" onclick="setTheme('dark-mode')"></div>
+            <div class="t-btn" style="background:#22c55e" onclick="setTheme('soft-mint')"></div>
+            <div class="t-btn" style="background:#f43f5e" onclick="setTheme('soft-rose')"></div>
+            <div class="t-btn" style="background:#0ea5e9" onclick="setTheme('soft-sky')"></div>
+            <div class="t-btn" style="background:#f59e0b" onclick="setTheme('soft-amber')"></div>
+        </div>
+        <div class="pro-settings-btn" onclick="toggleSettings()"><i class="fas fa-sliders-h"></i></div>
+
+        <div class="settings-panel" id="s-panel">
+            <h3 style="margin:0 0 20px 0; border-bottom:1px solid var(--border); padding-bottom:10px;">Tasarım Paneli</h3>
+            <label style="font-size:12px; font-weight:800; display:block; margin-bottom:5px;">BAŞLIK METNİ</label>
+            <input type="text" id="set-title-text" oninput="updateSettings()" style="margin-bottom:15px">
+            
+            <label style="font-size:12px; font-weight:800; display:block; margin-bottom:5px;">YAZI TİPİ</label>
+            <select id="set-head-font" onchange="updateSettings()" style="margin-bottom:15px">
+                <optgroup label="Kurumsal & Modern">
+                    <option value="'Montserrat', sans-serif">Modern Montserrat</option>
+                    <option value="'Comfortaa', cursive">Yuvarlak Modern</option>
+                    <option value="'Playfair Display', serif">Klasik Playfair</option>
+                </optgroup>
+                <optgroup label="El Yazısı & Estetik">
+                    <option value="'Great Vibes', cursive">Zarif (Great Vibes)</option>
+                    <option value="'Satisfy', cursive">Modern El Yazısı</option>
+                    <option value="'Pacifico', cursive">Retro (Pacifico)</option>
+                    <option value="'Dancing Script', cursive">Dans Eden Yazı</option>
+                </optgroup>
+                <optgroup label="Not Defteri Stili">
+                    <option value="'Caveat', cursive">Günlük Not (Caveat)</option>
+                    <option value="'Kalam', cursive">Kalem Yazısı (Kalam)</option>
+                    <option value="'Shadows Into Light', cursive">Post-it (Shadows)</option>
+                    <option value="'Permanent Marker', cursive">Markör Kalem</option>
+                </optgroup>
+            </select>
+
+            <label style="font-size:12px; font-weight:800; display:block; margin-bottom:5px;">BAŞLIK PUNTO</label>
+            <input type="range" id="set-title-size" min="20" max="80" oninput="updateSettings()" style="width:100%; margin-bottom:20px">
+            
+            <button onclick="toggleSettings()" style="width:100%; background:var(--accent); color:white; border:none; padding:12px; border-radius:12px; cursor:pointer; font-weight:bold">AYARLARI KAPAT</button>
+        </div>
+    </div>
+
+    <h1 id="t-head"></h1>
+    
+    <div class="panel">
+        <input type="text" id="t-in" oninput="autoCap(this)" placeholder="Yeni görevinizi buraya yazın...">
+        <input type="datetime-local" id="d-in">
+        <select id="p-in"></select>
+        <button class="btn-add" id="b-ad" onclick="add()">KAYDET</button>
+    </div>
+
+    <div class="grid" id="g"></div>
+</div>
+
+<script>
+    function cleanTurkish(str) { return str ? str.replace(/\\u([0-9a-fA-F]{4})/g, (match, grp) => String.fromCharCode(parseInt(grp, 16))) : ""; }
+
+    let config = JSON.parse(localStorage.getItem('h_config')) || { title: "HALİL BEY MASTER REMINDER", size: 36, fontHead: "'Playfair Display', serif" };
+    let db = JSON.parse(localStorage.getItem('halil_v9_db')) || [];
+    let editingId = null;
+    let alarmSoundInterval = null;
+
+    const gridEl = document.getElementById('g');
+    const sortable = new Sortable(gridEl, {
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        onEnd: function() {
+            let newOrder = [];
+            document.querySelectorAll('.note').forEach(el => {
+                const id = parseInt(el.getAttribute('data-id'));
+                const note = db.find(n => n.id === id);
+                if(note) newOrder.push(note);
+            });
+            db = newOrder;
+            localStorage.setItem('halil_v9_db', JSON.stringify(db));
+        }
+    });
+
+    function updateSettings() {
+        config.title = document.getElementById('set-title-text').value;
+        config.size = document.getElementById('set-title-size').value;
+        config.fontHead = document.getElementById('set-head-font').value;
+        document.documentElement.style.setProperty('--title-size', config.size + 'px');
+        document.documentElement.style.setProperty('--font-head', config.fontHead);
+        document.getElementById('t-head').innerText = config.title;
+        localStorage.setItem('h_config', JSON.stringify(config));
+    }
+
+    function toggleSettings() { const p = document.getElementById('s-panel'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; }
+    function setTheme(t) { document.getElementById('body').className = t; localStorage.setItem('h_theme_v23', t); }
+    setTheme(localStorage.getItem('h_theme_v23') || 'default');
+
+    function autoCap(el) { el.value = el.value.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '); }
+
+    const sel = document.getElementById('p-in');
+    const opts = {normal: "Normal (Sarı)", high: "Acil (Kırmızı)", low: "Bilgi (Mavi)"};
+    for(let k in opts) { let o = new Option(opts[k], k); sel.add(o); }
+
+    function add() {
+        const val = cleanTurkish(document.getElementById('t-in').value);
+        const dat = document.getElementById('d-in').value;
+        const pri = document.getElementById('p-in').value;
+        if(!val) return;
+
+        if(editingId) {
+            const index = db.findIndex(x => x.id === editingId);
+            db[index] = { ...db[index], txt: val, dt: dat, pr: pri, warned: false };
+            editingId = null;
+            document.getElementById('b-ad').innerText = "KAYDET";
+        } else {
+            db.unshift({id: Date.now(), txt: val, dt: dat, pr: pri, ok: false, warned: false});
+        }
+        saveAndRender();
+        document.getElementById('t-in').value = '';
+        document.getElementById('d-in').value = '';
+    }
+
+    function edit(id) {
+        const n = db.find(x => x.id === id);
+        if(n) {
+            document.getElementById('t-in').value = n.txt;
+            document.getElementById('d-in').value = n.dt;
+            document.getElementById('p-in').value = n.pr;
+            editingId = id;
+            document.getElementById('b-ad').innerText = "GÜNCELLE";
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
+
+    function sortByDate() {
+        db.sort((a, b) => {
+            if (!a.dt) return 1;
+            if (!b.dt) return -1;
+            return new Date(a.dt) - new Date(b.dt);
+        });
+        saveAndRender();
+    }
+
+    function saveAndRender() {
+        localStorage.setItem('halil_v9_db', JSON.stringify(db));
+        render();
+    }
+
+    function render() {
+        const g = document.getElementById('g'); 
+        g.innerHTML = '';
+        db.forEach((n) => {
+            const d = document.createElement('div');
+            d.className = `note ${n.pr} ${n.ok ? 'done' : ''}`;
+            d.setAttribute('data-id', n.id);
+            d.innerHTML = `
+                <div class="stamp">TAMAMLANDI</div> 
+                <div class="note-pencil" title="Düzenle" onclick="edit(${n.id}); event.stopPropagation();"><i class="fas fa-pencil-alt"></i></div>
+                <div style="font-size:12px; font-weight:800; opacity:0.5; margin-bottom:12px;"><i class="far fa-clock"></i> ${n.dt ? n.dt.replace('T',' | ') : 'SÜRESİZ'}</div>
+                <div style="font-size: 22px; font-family: 'Kalam', cursive; flex-grow: 1;">${n.txt}</div>
+                <div style="display: flex; justify-content: flex-end; gap: 20px; margin-top: 20px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 15px;">
+                    <button onclick="check(${n.id})" style="background:none; border:none; cursor:pointer; font-size:20px; color:var(--accent)"><i class="fas fa-check-double"></i></button>
+                    <button onclick="del(${n.id})" style="background:none; border:none; cursor:pointer; font-size:20px; color:#ef4444"><i class="fas fa-trash-alt"></i></button>
+                </div>
+            `;
+            g.appendChild(d);
+        });
+    }
+
+    function checkAlarms() {
+        const now = new Date();
+        db.forEach(n => {
+            if (n.dt && !n.ok && !n.warned) {
+                const target = new Date(n.dt);
+                if (now >= target) {
+                    n.warned = true;
+                    saveAndRender();
+                    showAlarmOverlay(n.txt);
+                }
+            }
+        });
+    }
+
+    function showAlarmOverlay(text) {
+        document.getElementById('alarm-desc').innerText = text;
+        document.getElementById('alarm-overlay').style.display = 'flex';
+        if(!alarmSoundInterval) {
+            const playSound = () => { new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play().catch(e => {}); };
+            playSound();
+            alarmSoundInterval = setInterval(playSound, 2000);
+        }
+    }
+
+    function stopAlarm() {
+        document.getElementById('alarm-overlay').style.display = 'none';
+        if(alarmSoundInterval) { clearInterval(alarmSoundInterval); alarmSoundInterval = null; }
+    }
+
+    setInterval(checkAlarms, 10000);
+
+    function del(id) { if(confirm('Siliyoruz Halil Bey?')) { db = db.filter(x => x.id !== id); saveAndRender(); } }
+    
+    function check(id) { 
+        const n = db.find(x => x.id === id); 
+        if(n) {
+            n.ok = !n.ok; 
+            if(n.ok) n.warned = true; 
+            saveAndRender(); 
+        } 
+    }
+
+    document.getElementById('set-title-text').value = config.title;
+    document.getElementById('set-title-size').value = config.size;
+    document.getElementById('set-head-font').value = config.fontHead;
+    updateSettings();
+    render();
+</script>
+</body>
+</html>

@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title> DEPO STOK ANALİZ RAPORU| v54.0</title>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { 
+            --bg: #0f172a; --card: #1e293b; --text: #f1f5f9;
+            --danger: #ef4444; --warning: #f59e0b; --info: #3b82f6; --success: #10b981;
+            --accent: #38bdf8; --archive: #a855f7;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        body.mode-CENCORA { --accent: #38bdf8; --theme-dark: #003a66; --row-total-bg: #1e40af; }
+        body.mode-SELCUK { --accent: #ff8c00; --theme-dark: #451a03; --row-total-bg: #9a3412; }
+		body.mode-VERI { --accent: #10b981; --theme-dark: #064e3b; --row-total-bg: #065f46; }
+
+        .header-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 10px 20px; }
+        .group-btn { background: var(--card); padding: 12px; border-radius: 12px; border: 3px solid transparent; cursor: pointer; text-align: center; opacity: 0.5; transition: 0.4s; }
+        #btn-CENCORA.active { border-color: #005596; background: var(--theme-dark); opacity: 1; }
+        #btn-SELCUK.active { border-color: #ff6600; background: #5a2e17; opacity: 1; }
+
+        .dash-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px 20px; }
+        .dash-card { padding: 15px; border-radius: 12px; background: var(--card); border-bottom: 4px solid #fff; text-align: center; cursor: pointer; transition: 0.2s; position: relative; }
+        .dash-card.active { border-bottom-width: 8px; filter: brightness(1.2); }
+
+        .row-out { border-left: 6px solid var(--danger) !important; }
+        .row-kritik { border-left: 6px solid var(--warning) !important; }
+        .row-safe { border-left: 6px solid var(--success) !important; }
+
+        .archive-trigger-btn { position: absolute; top: 8px; right: 8px; background: var(--archive); color: white; border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 5; transition: 0.3s; }
+
+        .diff-up { color: #4ade80; font-size: 11px; font-weight: 800; display: block; line-height: 1; }
+        .diff-down { color: #f87171; font-size: 11px; font-weight: 800; display: block; line-height: 1; }
+
+        #visual-toast { 
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5);
+            background: rgba(168, 85, 247, 0.95); color: white; padding: 30px 50px; 
+            border-radius: 25px; z-index: 10000; text-align: center; display: none;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5); border: 3px solid #fff;
+        }
+        #visual-toast.show { display: block; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes popIn { to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+
+        .slicer-container { padding: 0 20px 10px 20px; }
+        .slicer-box { background: rgba(30, 41, 59, 0.5); padding: 10px; border-radius: 10px; display: flex; flex-wrap: wrap; gap: 8px; max-height: 85px; overflow-y: auto; }
+        .slicer-item { padding: 6px 14px; border-radius: 20px; background: #334155; font-size: 11px; cursor: pointer; color: #cbd5e1; }
+        .slicer-item.active { background: var(--accent) !important; color: #000 !important; font-weight: 800; }
+
+        .wrapper { display: flex; flex: 1; overflow: hidden; border-top: 1px solid rgba(255,255,255,0.1); }
+        .sidebar { width: 320px; background: rgba(15, 23, 42, 0.9); padding: 15px; display: flex; flex-direction: column; gap: 12px; }
+        .product-slicer-list { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 10px; padding: 8px; }
+        .product-item { padding: 10px; border-radius: 6px; font-size: 11px; cursor: pointer; margin-bottom: 4px; color: rgba(255,255,255,0.6); }
+        .product-item.active { background: var(--accent); color: #000; font-weight: 800; }
+
+        .main { flex: 1; display: flex; flex-direction: column; background: #0f172a; position: relative; }
+        .table-area { flex: 1; overflow: auto; padding: 10px 20px; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0 4px; }
+		th {position: sticky;top: 0;background: #0f172a !important; /* Arka plan rengini kesinleştirdik */padding: 14px 12px; font-size: 11px; color: var(--accent); z-index: 20; /* Arkadaki verilerin üstte kalmasını kesin olarak engeller */text-transform: uppercase; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); /* Hafif bir gölgeyle altındaki verilerden ayırdık */}
+		td { background: var(--card); padding: 10px; font-size: 12px; text-align: center; }
+
+        .row-total td { background: var(--row-total-bg) !important; color: #fff !important; font-weight: 900; border-left: none !important; }
+        .order-input { width: 60px; padding: 8px; border-radius: 6px; background: #020617; color: var(--accent); text-align: center; border: 1px solid #475569; }
+
+        .archive-sidebar { width: 340px; background: #1e1b4b; border-left: 2px solid var(--archive); display: none; flex-direction: column; padding: 15px; }
+        .arc-search-box { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 12px; margin-bottom: 15px; border: 1px solid var(--archive); color: white; width: 100%; }
+
+        #cart-trigger { position: fixed; bottom: 30px; right: 30px; background: var(--success); color: white; width: 65px; height: 65px; border-radius: 50%; display: none; align-items: center; justify-content: center; cursor: pointer; z-index: 1000; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 2000; }
+        .modal-content { background: var(--card); width: 600px; max-height: 85vh; border-radius: 20px; padding: 25px; border: 2px solid var(--accent); display: flex; flex-direction: column; }
+        
+        #rescue-alert { 
+            background: var(--warning); color: #000; padding: 10px; text-align: center; 
+            font-size: 12px; font-weight: 800; display: none; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        /* Yeni Eklenen Akıllı Doldurma Buton Stili */
+        .auto-fill-btn {
+            background: var(--success); color: #000; border: none; padding: 4px 8px;
+            border-radius: 6px; font-size: 10px; font-weight: 800; cursor: pointer;
+            margin-left: 6px; display: inline-flex; align-items: center; gap: 4px;
+            transition: 0.2s; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+        .auto-fill-btn:hover { filter: brightness(1.2); transform: scale(1.05); }
+        .suggest-clickable { cursor: pointer; transition: 0.15s; display: inline-block; padding: 2px 6px; border-radius: 4px; }
+        .suggest-clickable:hover { background: rgba(16, 185, 129, 0.2); transform: scale(1.15); }
+    
+
+/* Modlara göre renk temaları */
+.mode-CENCORA { --active-color: #3b82f6; --active-color-rgb: 59, 130, 246; } 
+.mode-SELCUK  { --active-color: #f59e0b; --active-color-rgb: 245, 158, 11; } 
+.mode-VERI    { --active-color: #10b981; --active-color-rgb: 16, 185, 129; } 
+
+/* Aktif buton ve başlık vurgusu */
+.group-btn.active {
+    border-color: var(--active-color) !important;
+    color: var(--active-color) !important;
+    background: rgba(var(--active-color-rgb), 0.15) !important;
+}
+
+thead th {
+    border-bottom: 3px solid var(--active-color) !important;
+    color: var(--active-color) !important;
+}
+
+/* ... (önceki mod renkleri kodları burada) ... */
+
+/* Geçişleri yumuşatmak için */
+body, .group-btn, thead, .slicer-item, .product-item {
+    transition: all 0.3s ease !important;
+}
+
+/* Filtre Modu Renkleri */
+.mode-out { border-top: 5px solid var(--danger) !important; background-color: rgba(239, 68, 68, 0.05); }
+.mode-kritik { border-top: 5px solid var(--warning) !important; background-color: rgba(245, 158, 11, 0.05); }
+.mode-safe { border-top: 5px solid var(--success) !important; background-color: rgba(16, 185, 129, 0.05); }
+
+/* Tablo Başlığını da renklendirelim */
+.table-header-active { border-bottom: 3px solid currentColor; }
+
+/* Kutucuk tıklanınca parlaması için */
+.active-card { 
+    border-bottom-width: 8px !important; 
+    filter: brightness(1.5) !important; 
+    transform: scale(1.02);
+}
+
+/* Tablo alanının mod renkleri */
+.table-wrapper { transition: all 0.3s ease; border-top: 3px solid transparent; }
+.mode-out { border-top-color: var(--danger) !important; background: rgba(239, 68, 68, 0.05); }
+.mode-kritik { border-top-color: var(--warning) !important; background: rgba(245, 158, 11, 0.05); }
+.mode-safe { border-top-color: var(--success) !important; background: rgba(16, 185, 129, 0.05); }
+
+
+/* --- OTOMATİK MOD RENKLERİ --- */
+.mode-CENCORA { --active-color: #3b82f6; }
+.mode-SELCUK  { --active-color: #f59e0b; }
+.mode-VERI    { --active-color: #10b981; }
+
+/* Dashboard kutusu seçildiğinde parlaması */
+.active-card { border-bottom-width: 8px !important; filter: brightness(1.5) !important; transform: scale(1.02); }
+
+/* Tablo üst çizgisi ve arka plan renk geçişleri (otomatik) */
+.table-wrapper.mode-out { border-top: 5px solid var(--danger) !important; background: rgba(239, 68, 68, 0.05); }
+.table-wrapper.mode-kritik { border-top: 5px solid var(--warning) !important; background: rgba(245, 158, 11, 0.05); }
+.table-wrapper.mode-safe { border-top: 5px solid var(--success) !important; background: rgba(16, 185, 129, 0.05); }
+
+
+/* Dashboard Sayı Renklendirme */
+.num-out    { color: var(--danger) !important; font-size: 24px; display: block; margin-top: 5px; }
+.num-kritik { color: var(--warning) !important; font-size: 24px; display: block; margin-top: 5px; }
+.num-safe   { color: var(--success) !important; font-size: 24px; display: block; margin-top: 5px; }
+
+/* Dashboard kartları için hover etkisi */
+.dash-card:hover { filter: brightness(1.3); cursor: pointer; }
+
+/* Tablo Hücre Renklendirmeleri */
+
+/* Stok sıfır olduğunda kırmızı vurgu */
+.cell-stok-out { color: var(--danger) !important; font-weight: bold; }
+
+/* Hız 0.00 ise gri/sönük, hareket varsa normal */
+.cell-hiz-low  { color: #666; }
+.cell-hiz-high { color: var(--accent); }
+
+/* Gün sayısı azaldıkça uyarı veren renkler */
+.cell-gun-kritik { color: var(--danger) !important; font-weight: bold; } /* 0-15 gün arası */
+.cell-gun-safe    { color: var(--success) !important; }               /* 30+ gün */
+
+
+</style>
+</head>
+<body class="mode-CENCORA" onload="init()">
+
+<div id="rescue-alert" onclick="SessionManager.loadSession()">
+    ⚠️ DİKKAT: TARAYICI KAPANDIĞI İÇİN YARIM KALAN VERİLERİNİZ KURTARILMAYI BEKLİYOR. YÜKLEMEK İÇİN TIKLAYIN!
+</div>
+
+<div id="visual-toast">
+    <i class="fa-solid fa-circle-check" style="font-size: 60px; margin-bottom: 15px;"></i>
+    <h2 id="visual-msg">İŞLEM BAŞARILI!</h2>
+    <p style="margin-top: 10px; opacity: 0.8;">Her şey yolunda hocam 😊 🧿</p>
+</div>
+
+<div class="header-nav" style="display: flex; gap: 10px; width: 100%;">
+    <div id="btn-CENCORA" class="group-btn active" onclick="setGroup('CENCORA')" style="flex: 1; padding: 10px; font-size: 13px; white-space: nowrap; cursor: pointer; text-align: center;">
+        🧿 CENCORA (MAVİ)
+    </div>
+    <div id="btn-SELCUK" class="group-btn" onclick="setGroup('SELCUK')" style="flex: 1; padding: 10px; font-size: 13px; white-space: nowrap; cursor: pointer; text-align: center;">
+        🧿 SELÇUK (TURUNCU)
+    </div>
+    <div id="btn-VERI" class="group-btn" onclick="setGroup('VERI')" style="flex: 1; padding: 10px; font-size: 13px; white-space: nowrap; cursor: pointer; text-align: center; border-color: #10b981;">
+        📥 VERİ HAZIRLIK
+    </div>
+</div>
+
+<div class="dash-row">
+    <div id="card-OUT" class="dash-card" onclick="toggleFilter('OUT')" style="border-color:var(--danger)">
+        <h3>STOK OUT</h3><b id="v-out" class="num-out">0</b>
+    </div>
+    <div id="card-KRITIK" class="dash-card" onclick="toggleFilter('KRITIK')" style="border-color:var(--warning)">
+        <h3>KRİTİK (15G)</h3><b id="v-kritik" class="num-kritik">0</b>
+    </div>
+    <div id="card-SAFE" class="dash-card" onclick="toggleFilter('SAFE')" style="border-color:var(--success)">
+        <h3>GÜVENLİ</h3><b id="v-safe" class="num-safe">0</b>
+    </div>
+    <div class="dash-card" style="border-color:var(--info);">
+        <h3>SİSTEM GÜNÜ</h3><b id="v-day-num">-- ---</b>
+        <button class="archive-trigger-btn" onclick="Archive.togglePanel()"><i class="fa-solid fa-history"></i></button>
+    </div>
+</div>
+
+<div class="slicer-container" style="display: flex; align-items: center; gap: 20px;">
+    <div class="slicer-box" id="branch-slicer" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>
+    
+    <div style="background: var(--card); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--accent); display: flex; align-items: center; gap: 10px;">
+        <label style="font-size: 12px; font-weight: bold; color: var(--accent);">HEDEF GÜN:</label>
+        <input type="number" id="target-days" value="30" onchange="refreshUI()" 
+               style="width: 50px; background: transparent; border: 1px solid #444; color: white; padding: 2px; border-radius: 4px; text-align: center;">
+    </div>
+</div>
+
+<div class="wrapper">
+    <div class="sidebar">
+        <label style="background:var(--accent); color:#000; padding:12px; border-radius:10px; text-align:center; font-weight:800; cursor:pointer; display:block;">📂 EXCEL YÜKLE <input type="file" id="fileInp" hidden onchange="handleUpload(this)"></label>
+        <button id="btn-archive-save" onclick="Archive.save()" style="display:none; background:var(--archive); color:white; padding:12px; border-radius:10px; border:none; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-stamp"></i> ARŞİVE MÜHÜRLE</button>
+        <input type="text" id="src" placeholder="Ürünlerde ara..." oninput="filterSlicer()" style="width:100%; padding:10px; border-radius:8px; background:var(--card); color:white; border:1px solid rgba(255,255,255,0.1);">
+        <div class="product-slicer-list" id="product-slicer"></div>
+    </div>
+
+    <div class="main">
+    <div id="arc-banner" style="display:none; background:var(--accent); padding:10px; margin-bottom:15px; border-radius:8px; text-align:center; color:white; box-shadow: 0 4px 6px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1);">
+        📦 ARŞİV MUKAYESE MODU: <span id="arc-date-label"></span> | 
+        <button onclick="Archive.exit()" style="cursor:pointer; background:white; color:var(--accent); border:none; padding:5px 10px; border-radius:3px; margin-left:10px;">CANLIYA DÖN</button>
+    </div>
+    
+    <div id="table-container" class="table-area">
+        <table>
+            <thead>
+                <tr>
+                    <th style="text-align: left; width: 10%;">Kod</th>
+                    <th style="text-align: left; width: 35%;">Ürün Adı</th>
+                    <th style="text-align: center; width: 15%;">Şube</th>
+                    <th style="text-align: center; width: 8%;">Stok</th>
+                    <th id="th-cikis" style="text-align: center; width: 8%;">Çıkış</th> 
+                    <th style="text-align: center; width: 8%;">Hız</th>
+                    <th style="text-align: center; width: 8%;">Gün</th>
+                    <th style="text-align: center; width: 8%; color: var(--success);">Öneri</th>
+                    <th style="text-align: center; width: 12%;">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                            SİPARİŞ
+                            <button class="auto-fill-btn" onclick="autoFillFilteredOrders()" title="Ekranda listelenen tüm önerileri siparişe aktar">
+                                <i class="fa-solid fa-bolt"></i> DOLDUR
+                            </button>
+                        </div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+        </table>
+    </div>
+</div>
+
+    <div class="archive-sidebar" id="arc-panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h3 style="color:var(--archive);"><i class="fa-solid fa-box-archive"></i> ARŞİV MOTORU</h3>
+            <button onclick="Archive.togglePanel()" style="background:none; border:none; color:white; cursor:pointer;"><i class="fa-solid fa-xmark fa-xl"></i></button>
+        </div>
+        <input type="text" id="arc-search" class="arc-search-box" placeholder="Tarih veya isim ara..." oninput="Archive.renderList()">
+        <div id="arc-list" style="overflow-y:auto; flex:1;"></div>
+    </div>
+</div>
+
+<div id="cart-trigger" onclick="openCartModal()"><i class="fa-solid fa-cart-shopping fa-xl"></i><div id="cart-count" style="position:absolute; top:-5px; right:-5px; background:var(--danger); width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid #fff; font-size:11px; font-weight:900;">0</div></div>
+
+<div class="modal" id="cartModal" onclick="if(event.target==this) closeCartModal()">
+    <div class="modal-content">
+        <h2 style="color:var(--accent); border-bottom: 1px solid var(--accent); padding-bottom:10px;">SİPARİŞ ÖZETİ</h2>
+        <div id="cart-items" style="flex:1; overflow-y:auto; margin:15px 0;"></div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+            <button onclick="closeCartModal()" style="padding:15px; border-radius:12px; background:#475569; color:white; border:none; cursor:pointer;">KAPAT</button>
+            <button onclick="clearCart(true)" style="padding:15px; border-radius:12px; background:var(--danger); color:white; border:none; cursor:pointer;">TEMİZLE</button>
+            <button onclick="exportCart()" style="padding:15px; border-radius:12px; background:var(--success); color:white; border:none; cursor:pointer;">EXCEL AL</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let masterPool = [], cart = {}, activeGroup = 'CENCORA', activeStatus = 'ALL', activeBranch = 'ALL', activeProductName = 'ALL', arcMode = false, arcComp = null;
+    const currentDay = new Date().getDate();
+
+    function init() {
+        const d = new Date();
+        const m = ["OCAK", "ŞUBAT", "MART", "NİSAN", "MAYIS", "HAZİRAN", "TEMMUZ", "AĞUSTOS", "EYLÜL", "EKİM", "KASIM", "ARALIK"][d.getMonth()];
+        document.getElementById('v-day-num').innerText = `${d.getDate()} ${m}`;
+        SessionManager.checkSession();
+    }
+
+    const SessionManager = {
+        saveSession: () => {
+            if(masterPool.length > 0) {
+                localStorage.setItem('GEN_POOL_RESQUE', JSON.stringify(masterPool));
+                localStorage.setItem('GEN_CART_RESQUE', JSON.stringify(cart));
+            }
+        },
+        checkSession: () => {
+            if(localStorage.getItem('GEN_POOL_RESQUE')) {
+                document.getElementById('rescue-alert').style.display = 'block';
+            }
+        },
+        loadSession: () => {
+            masterPool = JSON.parse(localStorage.getItem('GEN_POOL_RESQUE')) || [];
+            cart = JSON.parse(localStorage.getItem('GEN_CART_RESQUE')) || {};
+            document.getElementById('rescue-alert').style.display = 'none';
+            document.getElementById('btn-archive-save').style.display = 'block';
+            let c=Object.keys(cart).length; 
+            document.getElementById('cart-count').innerText=c; 
+            document.getElementById('cart-trigger').style.display=c>0?'flex':'none';
+            refreshUI();
+            showVisualToast("VERİLER KURTARILDI!");
+        }
+    };
+
+    function handleUpload(input) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
+        let newData = [];
+        const todayNum = new Date().getDate();
+
+        // 1. DURUM: SELCUK
+        if(rows[0] && rows[0].some(h => String(h).toLowerCase().includes("ilackodu"))) {
+            const head = rows[0].map(h => String(h).toLowerCase().trim());
+            rows.slice(1).forEach(r => {
+                if(!r[0]) return;
+                head.forEach((col, idx) => {
+                    if(col.endsWith("_stok") || col === "toplam_stok") {
+                        let b = col.replace("_stok","").toUpperCase().replace("TOPLAM","TÜM ŞUBELER");
+                        let s = parseInt(r[idx]) || 0;
+                        let exitColName = col.replace("_stok","_cikan_kutu");
+                        if(col === "toplam_stok") exitColName = head.find(h => h.includes("toplam") && h.includes("cikan"));
+                        let roIdx = head.indexOf(exitColName);
+                        let ro = roIdx !== -1 ? (parseInt(r[roIdx]) || 0) : 0;
+                        
+                        let mtdHiz = ro / todayNum;
+                        let gun = mtdHiz > 0 ? Math.round(s / mtdHiz) : (s > 0 ? 999 : 0);
+                        let suggest = Math.max(0, Math.round((mtdHiz * 30) - s));
+
+                        newData.push({ 
+    type:'SELCUK', code: r[0], urun: r[head.indexOf("ilacadi")], 
+    depo: b, stok: s, rawOut: ro, mtdHiz: mtdHiz.toFixed(2), 
+    gun: gun // suggest: ... satırını buradan silebilirsiniz
+});
+                    }
+                });
+            });
+        } 
+        // 2. DURUM: VERI HAZIRLIK (YENİ SEKME)
+        // 2. DURUM: VERI HAZIRLIK (GÜNCELLENMİŞ VERSİYON)
+else if(activeGroup === 'VERI') {
+    // 1. Başlık satırını bul (Excel'in kaçıncı satırda olduğu fark etmez)
+    let headerRowIndex = rows.findIndex(r => r.some(c => String(c).toUpperCase().includes("KOD")));
+    if (headerRowIndex === -1) {
+        alert("VERI HAZIRLIK sayfasında 'KOD' başlıklı bir sütun bulunamadı!");
+        return;
+    }
+
+    const head = rows[headerRowIndex].map(h => String(h).toUpperCase().trim());
+    
+    // 2. Sütun indekslerini başlık isimlerine göre dinamik bul
+    const iKod = head.findIndex(h => h.includes("KOD"));
+    const iUrun = head.findIndex(h => h.includes("ÜRÜN") || h.includes("İLAÇ"));
+    const iSube = head.findIndex(h => h.includes("ŞUBE") || h.includes("DEPO"));
+    const iSiparis = head.findIndex(h => h.includes("SİPARİŞ") || h.includes("ADET"));
+
+    // 3. Verileri işle
+    rows.slice(headerRowIndex + 1).forEach(r => {
+        if (!r[iKod]) return; // Kod boşsa satırı atla
+
+        let kod = String(r[iKod] || "").trim();
+        let urun = String(r[iUrun] || "").trim();
+        let sube = String(r[iSube] || "MERKEZ").trim();
+        let siparisAdet = parseInt(String(r[iSiparis] || "0").replace(/[^0-9]/g, '')) || 0;
+
+        // masterPool'da bu ürün/şube için stok var mı kontrol et
+        const bulunanStokKaydi = masterPool.find(item => 
+            item.code === kod || 
+            (item.urun.toLowerCase().includes(urun.toLowerCase()) && item.depo.toLowerCase().includes(sube.toLowerCase()))
+        );
+
+        let stok = bulunanStokKaydi ? bulunanStokKaydi.stok : 0;
+        let mevcutCikisHizi = bulunanStokKaydi ? parseFloat(bulunanStokKaydi.mtdHiz) : 0;
+        
+        let toplamStok = stok + siparisAdet;
+        let gunlukTuketim = mevcutCikisHizi > 0 ? mevcutCikisHizi : (siparisAdet / todayNum);
+        let gun = gunlukTuketim > 0 ? Math.round(toplamStok / gunlukTuketim) : (toplamStok > 0 ? 999 : 0);
+        let hedefStok = gunlukTuketim * 30;
+        let suggest = Math.max(0, Math.round(hedefStok - toplamStok));
+
+        newData.push({ 
+            type: 'VERI', 
+            code: kod, 
+            urun: urun, 
+            depo: sube, 
+            stok: stok, 
+            rawOut: siparisAdet, 
+            mtdHiz: gunlukTuketim.toFixed(2), 
+            gun: gun, 
+            suggest: suggest 
+        });
+    });
+    showVisualToast("VERİ HAZIRLIK ANALİZİ TAMAMLANDI!");
+}
+        // 3. DURUM: CENCORA
+        else { 
+            let cencoraRaw = rows.filter((r,i) => i>2 && r[2]).map(r => {
+                let s = parseInt(r[5]) || 0;
+                let ro = parseInt(r[9]) || 0;
+                let mtdHiz = ro / todayNum;
+                let gun = mtdHiz > 0 ? Math.round(s / mtdHiz) : (s > 0 ? 999 : 0);
+                let suggest = Math.max(0, Math.round((mtdHiz * 30) - s));
+
+                return { 
+                    type:'CENCORA', code: r[1]||'--', urun: r[2]||"BİLİNMEYEN", 
+                    depo: r[3]||"MERKEZ", stok: s, rawOut: ro, mtdHiz: mtdHiz.toFixed(2), 
+                    gun: gun, suggest: suggest 
+                };
+            });
+
+            let productGroups = {};
+            cencoraRaw.forEach(item => {
+                if (!productGroups[item.urun]) {
+                    productGroups[item.urun] = { code: item.code, urun: item.urun, stokTotal: 0, outTotal: 0, items: [] };
+                }
+                productGroups[item.urun].stokTotal += item.stok;
+                productGroups[item.urun].outTotal += item.rawOut;
+                productGroups[item.urun].items.push(item);
+            });
+
+            Object.values(productGroups).forEach(group => {
+                newData = newData.concat(group.items);
+                let tMtdHiz = group.outTotal / todayNum;
+                let tGun = tMtdHiz > 0 ? Math.round(group.stokTotal / tMtdHiz) : (group.stokTotal > 0 ? 999 : 0);
+                let tSuggest = Math.max(0, Math.round((tMtdHiz * 30) - group.stokTotal));
+
+                newData.push({
+                    type: 'CENCORA', code: group.code, urun: group.urun, depo: 'TÜM ŞUBELER',
+                    stok: group.stokTotal, rawOut: group.outTotal, mtdHiz: tMtdHiz.toFixed(2),
+                    gun: tGun, suggest: tSuggest
+                });
+            });
+        }
+        
+        masterPool = masterPool.filter(x => x.type !== (newData[0]?.type || activeGroup)).concat(newData);
+        SessionManager.saveSession();
+        document.getElementById('btn-archive-save').style.display = 'block';
+        refreshUI();
+    };
+    reader.readAsArrayBuffer(input.files[0]);
+}
+	
+    function updateCart(code, u, d, v, stok, cikis) { 
+    // Anahtarımız (k) hala benzersiz olmalı (kod + şube)
+    let k = code + '_' + d; 
+    
+    if(v > 0) {
+        // HATA BURADAYDI: kod bilgisini parametreden (code) kesin olarak alıyoruz
+        cart[k] = { 
+            kod: code, 
+            urun: u, 
+            depo: d, 
+            miktar: parseInt(v), 
+            stok: stok, 
+            cikis: cikis 
+        }; 
+    } else {
+        delete cart[k];
+    }
+    
+    let c = Object.keys(cart).length; 
+    document.getElementById('cart-count').innerText = c; 
+    document.getElementById('cart-trigger').style.display = c > 0 ? 'flex' : 'none';
+    SessionManager.saveSession();
+}
+
+    // YENİ EKLEMELER: AKILLI ÖNERİ DOLDURMA MOTORU FONKSİYONLARI
+    function getFilteredData() {
+        let data = masterPool.filter(x => x.type === activeGroup);
+        if(activeBranch !== 'ALL') data = data.filter(x => x.depo === activeBranch);
+        if(activeStatus === 'OUT') data = data.filter(x => x.stok === 0);
+        else if(activeStatus === 'KRITIK') data = data.filter(x => x.gun > 0 && x.gun <= 15);
+        else if(activeStatus === 'SAFE') data = data.filter(x => x.gun > 15);
+        if(activeProductName !== 'ALL') data = data.filter(x => x.urun === activeProductName);
+        return data.filter(x => !x.depo.includes("TÜM") && !x.urun.includes("TOPLAM")); // Toplam satırlarını hariç tut
+    }
+
+    function autoFillFilteredOrders() {
+    const inputElement = document.getElementById('target-days');
+    let targetDays = (inputElement && inputElement.value !== "") ? parseInt(inputElement.value) : 30;
+    
+    const activeItems = getFilteredData();
+    let fillCount = 0;
+
+    activeItems.forEach(i => {
+        const stok = i.stok || 0;
+        const mevcutSiparis = i.rawOut || 0;
+        const hiz = parseFloat(i.mtdHiz) || 0;
+        let miktarToOrder = 0;
+
+        if (activeGroup === 'VERI') {
+            miktarToOrder = stok + mevcutSiparis;
+        } else {
+            let hedefStok = Math.round(hiz * targetDays);
+            miktarToOrder = Math.max(0, hedefStok - stok);
+        }
+        
+        // --- BURASI KRİTİK: Eğer sipariş miktarı 0 ise sepete ekleme, varsa sil ---
+        const key = i.code + '_' + i.depo;
+        if (miktarToOrder > 0) {
+            cart[key] = { 
+                kod: i.code, 
+                urun: i.urun.replace(/'/g,""), 
+                depo: i.depo, 
+                miktar: miktarToOrder, 
+                stok: stok, 
+                cikis: mevcutSiparis 
+            };
+            fillCount++;
+        } else {
+            // Eğer daha önce sepete eklenmiş ama şimdi 0'a düşmüşse, sepetten temizle
+            if (cart[key]) delete cart[key];
+        }
+    });
+
+    const cartTrigger = document.getElementById('cart-trigger');
+    if(cartTrigger) cartTrigger.style.display = Object.keys(cart).length > 0 ? 'flex' : 'none';
+
+    // Sadece işlem yapıldıysa kayıt ve render yap
+    SessionManager.saveSession();
+    render(); 
+    showVisualToast(`ÖNERİLER GÜNCELLENDİ (0 OLANLAR SİSTEMDEN ARINDIRILDI)! 🧿`);
+}
+    function fillSingleSuggest(code, depo, urun, suggestValue) {
+        if(suggestValue <= 0) return;
+        const key = code + '_' + depo;
+        updateCart(key, urun, depo, suggestValue);
+        render();
+    }
+
+    function refreshUI() {
+    // 1. O anki moda (activeGroup) ait verileri filtrele
+    const gData = masterPool.filter(x => x.type === activeGroup);
+    
+    // 2. Şube (Branch) filtresini oluştur
+    const branches = [...new Set(gData.map(x => x.depo))].sort();
+    document.getElementById('branch-slicer').innerHTML = 
+        `<div class="slicer-item ${activeBranch==='ALL'?'active':''}" onclick="setBranch('ALL')">TÜMÜ</div>` + 
+        branches.map(b => `<div class="slicer-item ${activeBranch===b?'active':''}" onclick="setBranch('${b}')">${b}</div>`).join('');
+    
+    // 3. Başlık dinamik güncelleme
+    document.getElementById('th-cikis').innerText = (activeGroup === 'VERI') ? 'Sipariş' : 'Çıkış';
+
+    // 4. Dashboard sayılarını güncelle (Kritik nokta burası)
+    updateDashboardNumbers(gData);
+
+    renderSlicer(); 
+    render();
+}
+
+    function render() {
+    // 1. Hedef Günü kutucuktan güvenli şekilde al
+    const inputElement = document.getElementById('target-days');
+    let targetDays = 30; // Varsayılan
+
+    if (inputElement && inputElement.value !== "") {
+        targetDays = parseInt(inputElement.value);
+    }
+    if (isNaN(targetDays)) targetDays = 30;
+
+    let data = masterPool.filter(x => x.type === activeGroup);
+
+    // --- DASHBOARD FİLTRELEME MANTIĞI ---
+    if (activeStatus === 'OUT') data = data.filter(x => x.stok === 0);
+    else if (activeStatus === 'KRITIK') data = data.filter(x => x.gun > 0 && x.gun <= 15);
+    else if (activeStatus === 'SAFE') data = data.filter(x => x.gun > 15);
+
+    const container = document.getElementById('table-container'); 
+    if(container) {
+        container.classList.remove('mode-out', 'mode-kritik', 'mode-safe');
+        if(activeStatus !== 'ALL') container.classList.add('mode-' + activeStatus.toLowerCase());
+    }
+
+    if(activeBranch !== 'ALL') data = data.filter(x => x.depo === activeBranch);
+    if(activeProductName !== 'ALL') data = data.filter(x => x.urun === activeProductName);
+
+    document.getElementById('tbody').innerHTML = data.map(i => {
+        const isTotal = i.depo.includes("TÜM") || i.urun.includes("TOPLAM");
+        
+        // --- RENKLENDİRME MANTIĞI ---
+        let stokClass = (i.stok === 0) ? 'cell-stok-out' : '';
+        let gunClass = (i.gun > 0 && i.gun <= 15) ? 'cell-gun-kritik' : (i.gun > 15 ? 'cell-gun-safe' : '');
+        let hizClass = (parseFloat(i.mtdHiz) === 0) ? 'cell-hiz-low' : 'cell-hiz-high';
+        
+        // --- MUKAYESE MANTIĞI ---
+        let stokFarkHTML = "";
+        let cikisFarkHTML = "";
+        if (arcMode && arcComp) {
+            const oldItem = arcComp.find(x => x.code === i.code && x.depo === i.depo);
+            if (oldItem) {
+                let sDiff = i.stok - oldItem.stok;
+                let cDiff = i.rawOut - oldItem.rawOut;
+                if (sDiff !== 0) stokFarkHTML = `<div style="font-size:10px; color:${sDiff > 0 ? 'var(--success)' : 'var(--danger)'}">${sDiff > 0 ? '▲' : '▼'}${Math.abs(sDiff)}</div>`;
+                if (cDiff !== 0) cikisFarkHTML = `<div style="font-size:10px; color:${cDiff > 0 ? 'var(--success)' : 'var(--danger)'}">${cDiff > 0 ? '▲' : '▼'}${Math.abs(cDiff)}</div>`;
+            }
+        }
+
+        let borderStyle = "";
+        if (activeStatus === 'OUT' && i.stok === 0) borderStyle = "border-left: 5px solid var(--danger);";
+        else if (activeStatus === 'KRITIK' && (i.gun > 0 && i.gun <= 15)) borderStyle = "border-left: 5px solid var(--warning);";
+        else if (activeStatus === 'SAFE' && i.gun > 15) borderStyle = "border-left: 5px solid var(--success);";
+
+        // --- HESAPLAMA ---
+        const mtdHiz = parseFloat(i.mtdHiz) || 0;
+        // Eğer targetDays 0 ise suggest 0 olur, aksi halde hesapla
+        const suggest = (targetDays === 0) ? 0 : Math.max(0, Math.round((mtdHiz * targetDays) - i.stok));
+        
+        return `<tr style="${borderStyle}" class="${isTotal ? 'row-total' : ''}">
+            <td style="font-size:10px; opacity:0.6;">${i.code}</td>
+            <td style="text-align:left">${i.urun}</td>
+            <td>${isTotal ? `<b style="color:var(--accent)">${i.urun} [TOPLAM]</b>` : i.depo}</td>
+            <td class="${stokClass}" style="font-weight:bold;">${i.stok}${stokFarkHTML}</td>
+            <td style="font-weight:bold;">${i.rawOut}${cikisFarkHTML}</td>
+            <td class="${hizClass}" style="font-weight:600;">${i.mtdHiz}</td>
+            <td class="${gunClass}" style="font-weight:bold;">${i.gun >= 999 ? '∞' : i.gun + ' G'}</td>
+            <td>${isTotal ? '-' : (suggest > 0 ? `<b class="suggest-clickable" onclick="fillSingleSuggest('${i.code}', '${i.depo}', '${i.urun.replace(/'/g,"")}', ${suggest})">${suggest}</b>` : `<span style="opacity:0.3; color:var(--success)">✓</span>`)}</td>
+            <td>${isTotal ? 'Σ' : `<input type="number" class="order-input" value="${cart[i.code+'_'+i.depo]?.miktar || ''}" oninput="updateCart('${i.code}', '${i.urun.replace(/'/g,"")}', '${i.depo}', this.value, ${i.stok}, ${i.rawOut})">`}</td>
+        </tr>`;
+    }).join('');
+}
+
+    const Archive = {
+        save: () => {
+            const currentData = masterPool.filter(x => x.type === activeGroup);
+            if(currentData.length === 0) return alert("Veri yok!");
+            let n = prompt("Arşiv ismi:", new Date().toLocaleString('tr-TR'));
+            if(!n) return;
+            let db = JSON.parse(localStorage.getItem('GEN_ARC_V52')) || [];
+            db.unshift({ id: Date.now(), date: n, group: activeGroup, data: currentData });
+            localStorage.setItem('GEN_ARC_V52', JSON.stringify(db.slice(0, 50)));
+            showVisualToast("MÜHÜRLENDİ!");
+        },
+        togglePanel: () => { 
+            const p = document.getElementById('arc-panel'); 
+            p.style.display = p.style.display === 'flex' ? 'none' : 'flex'; 
+            if(p.style.display==='flex') Archive.renderList(); 
+        },
+        renderList: () => {
+            const db = JSON.parse(localStorage.getItem('GEN_ARC_V52')) || [];
+            const search = document.getElementById('arc-search').value.toLowerCase();
+            const filtered = db.filter(i => i.date.toLowerCase().includes(search) || i.group.toLowerCase().includes(search));
+            
+            document.getElementById('arc-list').innerHTML = filtered.map(i => `
+                <div class="arc-item" style="padding:10px; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center;">
+                    <div onclick="Archive.load(${i.id})" style="cursor:pointer; flex:1">
+                        <b>${i.date}</b><br><small style="opacity:0.6">${i.group}</small>
+                    </div>
+                    <div style="display:flex; gap:5px;">
+                        <button onclick="Archive.rename(${i.id})" style="background:var(--warning); border:none; color:black; padding:5px 8px; border-radius:5px; cursor:pointer;"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="Archive.delete(${i.id})" style="background:var(--danger); border:none; color:white; padding:5px 8px; border-radius:5px; cursor:pointer;"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>`).join('');
+        },
+        rename: (id) => {
+            let db = JSON.parse(localStorage.getItem('GEN_ARC_V52')) || [];
+            let item = db.find(x => x.id === id);
+            let newName = prompt("Arşiv ismini düzenle:", item.date);
+            if(newName) {
+                item.date = newName;
+                localStorage.setItem('GEN_ARC_V52', JSON.stringify(db));
+                Archive.renderList();
+                showVisualToast("İSİM GÜNCELLENDİ");
+            }
+        },
+        load: (id) => {
+            const db = JSON.parse(localStorage.getItem('GEN_ARC_V52')) || [];
+            const entry = db.find(x => x.id === id);
+            if(entry) {
+                if(entry.group) setGroup(entry.group); 
+                arcMode = true; 
+                arcComp = entry.data;
+                document.getElementById('arc-banner').style.display = 'block';
+                document.getElementById('arc-date-label').innerText = entry.date;
+                Archive.togglePanel();
+                render(); 
+            }
+        },
+        delete: (id) => {
+            if(confirm("Bu arşiv kaydı kalıcı olarak silinsin mi?")) {
+                let db = JSON.parse(localStorage.getItem('GEN_ARC_V52')) || [];
+                localStorage.setItem('GEN_ARC_V52', JSON.stringify(db.filter(x => x.id !== id)));
+                Archive.renderList();
+                showVisualToast("ARŞİV SİLİNDİ");
+            }
+        },
+        exit: () => { 
+            arcMode = false; 
+            arcComp = null;
+            document.getElementById('arc-banner').style.display = 'none'; 
+            render(); 
+        }
+    };
+
+    function setBranch(b) { activeBranch = b; render(); refreshUI(); }
+    function setGroup(g) { 
+    activeGroup = g; 
+    activeBranch = 'ALL'; 
+    activeProductName = 'ALL'; 
+    
+    // Body'ye modu bildir
+    document.body.className = 'mode-' + g; 
+    
+    // Butonların aktiflik durumunu temizle ve ata
+    document.querySelectorAll('.group-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById('btn-' + g)?.classList.add('active');
+    
+    refreshUI(); 
+}
+    function toggleFilter(s) { 
+    activeStatus = (activeStatus === s) ? 'ALL' : s; 
+    
+    // Görsel vurgu: Seçilen kutucuğa 'active' sınıfı ekle
+    document.querySelectorAll('.dash-card').forEach(el => el.classList.remove('active-card'));
+    if(activeStatus !== 'ALL') {
+        document.getElementById('card-' + s)?.classList.add('active-card');
+    }
+    
+    render(); 
+}
+    function showVisualToast(msg) { const t = document.getElementById('visual-toast'); document.getElementById('visual-msg').innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); }
+    function openCartModal() { document.getElementById('cart-items').innerHTML = Object.values(cart).map(i => `<div style="padding:10px; border-bottom:1px solid #334155; display:flex; justify-content:space-between;"><span><b>${i.urun}</b><br><small>${i.depo}</small></span><b style="color:var(--success)">${i.miktar} ADET</b></div>`).join(''); document.getElementById('cartModal').style.display='flex'; }
+    function closeCartModal() { document.getElementById('cartModal').style.display='none'; }
+    function clearCart(confirmFirst) { if(confirmFirst && !confirm("Temizlensin mi?")) return; cart={}; document.getElementById('cart-count').innerText='0'; document.getElementById('cart-trigger').style.display='none'; closeCartModal(); render(); SessionManager.saveSession(); }
+    
+	function exportCart() { 
+    // Hedef gün değerini alalım
+    const inputElement = document.getElementById('target-days');
+    const hedefGun = (inputElement && inputElement.value !== "") ? inputElement.value : "30";
+
+    const d = Object.values(cart).map(i => {
+        let bulunanKod = i.kod;
+        if (!bulunanKod) {
+            const masterItem = masterPool.find(x => x.urun === i.urun && x.depo === i.depo);
+            bulunanKod = masterItem ? masterItem.code : "KOD YOK";
+        }
+        
+        // Önerilen miktar (artık sadece net ihtiyaç)
+        let onerilen = i.miktar; 
+        
+        if (activeGroup === 'VERI') {
+            return {
+                "KOD": bulunanKod, 
+                "ÜRÜN ADI": i.urun,
+                "ŞUBE": i.depo,
+                "STOK": i.stok,
+                "SİPARİŞ": i.cikis,
+                "İHTİYAÇ (SİPARİŞ)": onerilen,
+                "HEDEF GÜN": hedefGun + " GÜN" // Buraya ekledik
+            };
+        }
+        else {
+            return {
+                "KOD": bulunanKod, 
+                "ÜRÜN ADI": i.urun,
+                "ŞUBE": i.depo,
+                "STOK": i.stok,
+                "ÇIKIŞ": i.cikis,
+                "SİPARİŞ": i.miktar,
+                "HEDEF GÜN": hedefGun + " GÜN" // Buraya ekledik
+            };
+        }
+    }); 
+    
+    // Başlıkları da güncelledik
+    const headers = (activeGroup === 'VERI') 
+        ? ["KOD", "ÜRÜN ADI", "ŞUBE", "STOK", "SİPARİŞ", "İHTİYAÇ (SİPARİŞ)", "HEDEF GÜN"]
+        : ["KOD", "ÜRÜN ADI", "ŞUBE", "STOK", "ÇIKIŞ", "SİPARİŞ", "HEDEF GÜN"];
+
+    const ws = XLSX.utils.json_to_sheet(d, { header: headers }); 
+    const wb = XLSX.utils.book_new(); 
+    XLSX.utils.book_append_sheet(wb, ws, "Siparis"); 
+    XLSX.writeFile(wb, `Siparis_Listesi_${activeGroup}_${hedefGun}Gun_${new Date().toLocaleDateString()}.xlsx`); 
+}
+    function renderSlicer() {
+        const gData = masterPool.filter(x => x.type === activeGroup);
+        const products = [...new Set(gData.map(x => x.urun))].sort();
+        document.getElementById('product-slicer').innerHTML = `<div class="product-item ${activeProductName==='ALL'?'active':''}" onclick="selectP('ALL')">TÜMÜ</div>` + products.map(p => `<div class="product-item ${activeProductName===p?'active':''}" onclick="selectP('${p.replace(/'/g,"")}')">${p}</div>`).join('');
+    }
+    function selectP(p) { activeProductName = p; render(); renderSlicer(); }
+    function filterSlicer() { const t=document.getElementById('src').value.toLowerCase(); document.querySelectorAll('.product-item').forEach(el=>el.style.display=el.innerText.toLowerCase().includes(t)?'block':'none'); }
+
+function updateDashboardNumbers(data) {
+    // Sadece "TÜM ŞUBELER" veya "MERKEZ" gibi toplam satırlarını hariç tutarak hesapla
+    const filteredForDash = data.filter(x => !x.depo.includes("TÜM") && !x.urun.includes("TOPLAM"));
+    
+    const out = filteredForDash.filter(x => x.stok === 0).length;
+    const kritik = filteredForDash.filter(x => x.gun > 0 && x.gun <= 15).length;
+    const safe = filteredForDash.filter(x => x.gun > 15).length;
+
+    document.getElementById('v-out').innerText = out;
+    document.getElementById('v-kritik').innerText = kritik;
+    document.getElementById('v-safe').innerText = safe;
+}
+
+</script>
+</body>
+</html>

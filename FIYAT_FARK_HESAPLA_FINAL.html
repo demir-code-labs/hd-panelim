@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEN Finans | Fiyat Farkı Takip V3.2</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --sidebar-bg: #0f172a; --primary: #2563eb; --secondary: #64748b;
+            --success: #10b981; --danger: #ef4444; --bg: #f8fafc;
+            --card: #ffffff; --text: #1e293b; --accent: #f59e0b;
+        }
+        * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        .sidebar { width: 300px; background: var(--sidebar-bg); color: white; padding: 2rem; display: flex; flex-direction: column; box-shadow: 4px 0 10px rgba(0,0,0,0.1); }
+        .sidebar h2 { font-weight: 800; letter-spacing: -1px; margin-bottom: 5px; }
+        .sidebar p { font-size: 0.75rem; color: #94a3b8; margin-bottom: 2rem; border-bottom: 1px solid #334155; padding-bottom: 1rem; }
+        
+        .main-content { flex: 1; padding: 2rem; overflow-y: auto; }
+        .card { background: var(--card); border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 2rem; border: 1px solid #e2e8f0; }
+        .card h3 { margin-top: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 10px; color: var(--sidebar-bg); }
+
+        .grid-form { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+        .span-2 { grid-column: span 2; }
+        
+        .input-group { display: flex; flex-direction: column; gap: 0.3rem; }
+        label { font-size: 0.65rem; font-weight: 700; color: var(--secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+        input { padding: 0.6rem; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.9rem; transition: 0.2s; background: #fff; font-weight: 600; }
+        input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+        input[readonly] { background-color: #f8fafc; color: #475569; border-style: dashed; }
+        
+        .summary-panel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1.5rem; }
+        .summary-box { padding: 1rem; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        .status-positive { background: #10b981; border-color: #059669; color: white !important; transform: scale(1.02); }
+        .status-negative { background: #ef4444; border-color: #dc2626; color: white !important; transform: scale(1.02); }
+        .status-neutral { background: #f8fafc; color: var(--sidebar-bg); }
+
+        .sum-label { font-size: 0.7rem; font-weight: 700; display: block; margin-bottom: 5px; opacity: 0.9; }
+        .sum-val { font-size: 1.6rem; font-weight: 900; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th { background: #f1f5f9; padding: 0.8rem; text-align: left; font-size: 0.6rem; text-transform: uppercase; color: var(--secondary); font-weight: 800; border-bottom: 2px solid #e2e8f0; }
+        td { padding: 1rem 0.8rem; border-bottom: 1px solid #f1f5f9; font-size: 0.75rem; font-weight: 500; }
+        
+        .id-badge { background: #334155; padding: 4px 8px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 0.7rem; color: #f8fafc; font-weight: 700; letter-spacing: 1px; }
+        .btn { padding: 0.8rem 1.5rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 700; transition: 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+        .btn-primary { background: var(--primary); color: white; width: 100%; justify-content: center; }
+        .btn-success { background: var(--success); color: white; width: 100%; }
+        .btn-danger { background: transparent; color: var(--danger); border: 1px solid #fee2e2; }
+
+        .live-clock { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-top: 1rem; font-family: monospace; font-size: 0.85rem; text-align: center; color: #60a5fa; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <h2><i class="fas fa-microchip"></i> GEN <span style="color:#60a5fa">PRO Fiyat Fark Hesapla</span></h2>
+    <p>V3.2 | PROFESYONEL FINANSAL ANALIZ</p>
+    
+    <div style="margin-top: 1rem;">
+        <button class="btn btn-success" onclick="exportRecords()"><i class="fas fa-file-excel"></i> EXCEL RAPORU AL</button>
+        <button class="btn btn-danger" style="width: 100%; margin-top: 10px;" onclick="clearAllData()"><i class="fas fa-trash-alt"></i> VERI TABANINI SIFIRLA</button>
+    </div>
+    <div class="live-clock" id="clock">00:00:00</div>
+</div>
+
+<div class="main-content">
+    <div class="card">
+        <h3><i class="fas fa-calculator" style="color: var(--primary)"></i> PARAMETRE GIRISI</h3>
+        <div class="grid-form">
+            <div class="input-group span-2"><label>DEPO ADI</label><input type="text" id="depo" placeholder="Örn: Lütfen depo adını giriniz...!" oninput="this.value = this.value.toUpperCase()"></div>
+            <div class="input-group span-2"><label>ŞUBE ADI</label><input type="text" id="sube" placeholder="Örn: Lütfen şube adını giriniz...!" oninput="this.value = this.value.toUpperCase()"></div>
+            <div class="input-group span-2"><label>ÜRÜN ADI / AÇIKLAMA</label><input type="text" id="urun" placeholder="Örn: Lütfen ürün adını giriniz...!" oninput="this.value = this.value.toUpperCase()"></div>
+            <div class="input-group"><label>İŞLEM TARİHİ</label><input type="date" id="tarih" onchange="calculate()"></div>
+            <div class="input-group"><label>ADET</label><input type="number" id="adet" value="1" oninput="calculate()"></div>
+            <div class="input-group"><label>İSKONTO (%)</label><input type="number" id="isk" value="28" step="0.01" oninput="calculate()"></div>
+            <div class="input-group"><label>KDV (%)</label><input type="number" id="kdvOran" value="10" oninput="calculate()"></div>
+            <div class="input-group"><label>ESKİ İ.S.F.</label><input type="number" id="eBrut" placeholder="0.00" oninput="calculate()"></div>
+            <div class="input-group"><label>ESKİ NET</label><input type="number" id="eNetDisplay" readonly></div>
+            <div class="input-group"><label>YENİ İ.S.F.</label><input type="number" id="yBrut" placeholder="0.00" oninput="calculate()"></div>
+            <div class="input-group"><label>YENİ NET</label><input type="number" id="yNetDisplay" readonly></div>
+            <div class="input-group"><label>BİRİM FARK</label><input type="text" id="bFarkDisplay" readonly></div>
+            <div class="input-group"><label>İŞLEM</label><button class="btn btn-primary" onclick="addToList()"><i class="fas fa-plus-circle"></i> LISTEYE KAYDET</button></div>
+        </div>
+
+        <div class="summary-panel">
+            <div class="summary-box status-neutral" id="boxNet">
+                <span class="sum-label">ARA TOPLAM (NET)</span>
+                <div class="sum-val" id="netFark">0,00 TL</div>
+            </div>
+            <div class="summary-box status-neutral" id="boxKdv">
+                <span class="sum-label" id="kdvLabel">KDV TUTARI (%10)</span>
+                <div class="sum-val" id="kdvTutari">0,00 TL</div>
+            </div>
+            <div class="summary-box status-neutral" id="boxGenel">
+                <span class="sum-label">ÖDENECEK / ALACAK TOPLAM</span>
+                <div class="sum-val" id="genelToplam">0,00 TL</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3><i class="fas fa-database" style="color: var(--accent)"></i> ISLEM GECMISI</h3>
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>SISTEM ID / TARIH</th>
+                        <th>LOKASYON (DEPO-SUBE)</th>
+                        <th>ÜRÜN DETAYI</th>
+                        <th>ADET</th>
+                        <th>NET FARK</th>
+                        <th>KDV</th>
+                        <th>G. TOPLAM</th>
+                        <th>EYLEM</th>
+                    </tr>
+                </thead>
+                <tbody id="listBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    let db = JSON.parse(localStorage.getItem('gen_v32_db')) || [];
+
+    setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleString('tr-TR'); }, 1000);
+    document.getElementById('tarih').valueAsDate = new Date();
+
+    function calculate() {
+        const adet = parseFloat(document.getElementById('adet').value) || 0;
+        const isk = (parseFloat(document.getElementById('isk').value) || 0) / 100;
+        const kdvYuzde = parseFloat(document.getElementById('kdvOran').value) || 0;
+        const eBrut = parseFloat(document.getElementById('eBrut').value) || 0;
+        const yBrut = parseFloat(document.getElementById('yBrut').value) || 0;
+
+        const eNet = eBrut - (eBrut * isk);
+        const yNet = yBrut - (yBrut * isk);
+        const netFark = (yNet - eNet) * adet;
+        const kdvTutari = netFark * (kdvYuzde / 100);
+        const gToplam = netFark + kdvTutari;
+
+        document.getElementById('eNetDisplay').value = eNet.toFixed(2);
+        document.getElementById('yNetDisplay').value = yNet.toFixed(2);
+        document.getElementById('bFarkDisplay').value = (yNet - eNet).toFixed(2) + " TL";
+        document.getElementById('kdvLabel').innerText = `KDV TUTARI (%${kdvYuzde})`;
+        
+        document.getElementById('netFark').innerText = netFark.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + " TL";
+        document.getElementById('kdvTutari').innerText = kdvTutari.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + " TL";
+        document.getElementById('genelToplam').innerText = gToplam.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + " TL";
+
+        const boxes = ['boxNet', 'boxKdv', 'boxGenel'];
+        boxes.forEach(id => {
+            const el = document.getElementById(id);
+            el.classList.remove('status-positive', 'status-negative', 'status-neutral');
+            if (gToplam > 0.01) el.classList.add('status-positive');
+            else if (gToplam < -0.01) el.classList.add('status-negative');
+            else el.classList.add('status-neutral');
+        });
+
+        return { netFark, kdvTutari, gToplam, kdvYuzde };
+    }
+
+    // Profesyonel Sessiz Harf ID Algoritması
+    function getProfessionalCode(text) {
+        if(!text) return "X";
+        const trMap = {'Ç':'C','Ğ':'G','İ':'I','Ö':'O','Ş':'S','Ü':'U'};
+        let clean = text.toUpperCase().replace(/[ÇĞİÖŞÜ]/g, m => trMap[m]);
+        let consonants = clean.replace(/[AEIOU\s]/g, '');
+        if(consonants.length >= 3) return consonants.substring(0,3);
+        if(consonants.length > 0) return (consonants + "XX").substring(0,3);
+        return clean.substring(0,3);
+    }
+
+    function generateProID() {
+        const t = new Date(document.getElementById('tarih').value);
+        const dateStr = `${t.getDate().toString().padStart(2,'0')}${(t.getMonth()+1).toString().padStart(2,'0')}${t.getFullYear().toString().substr(-2)}`;
+        
+        const dCode = getProfessionalCode(document.getElementById('depo').value);
+        const sCode = getProfessionalCode(document.getElementById('sube').value);
+        const uCode = getProfessionalCode(document.getElementById('urun').value);
+
+        return `${dateStr}-${dCode}-${sCode}-${uCode}`;
+    }
+
+    function addToList() {
+        const urun = document.getElementById('urun').value;
+        const depo = document.getElementById('depo').value;
+        if(!urun || !depo) { alert("Sistem: Depo ve Ürün bilgisi olmadan kayıt yapılamaz."); return; }
+
+        const res = calculate();
+        const baseID = generateProID();
+        
+        const item = {
+            id: baseID + "-" + Math.floor(Math.random()*99), 
+            tarih: new Date(document.getElementById('tarih').value).toLocaleDateString('tr-TR'),
+            depo, sube: document.getElementById('sube').value, urun,
+            adet: document.getElementById('adet').value,
+            netFark: res.netFark,
+            kdvTutari: res.kdvTutari,
+            gToplam: res.gToplam
+        };
+
+        db.unshift(item);
+        saveAndRender();
+        
+        // Formu sıfırla (Depo ve Şube kalsın)
+        document.getElementById('urun').value = "";
+        document.getElementById('eBrut').value = "";
+        document.getElementById('yBrut').value = "";
+        calculate();
+    }
+
+    function saveAndRender() {
+        localStorage.setItem('gen_v32_db', JSON.stringify(db));
+        render();
+    }
+
+    function render() {
+        const body = document.getElementById('listBody');
+        body.innerHTML = "";
+        db.forEach(i => {
+            const color = i.gToplam > 0.01 ? 'var(--success)' : (i.gToplam < -0.01 ? 'var(--danger)' : 'inherit');
+            body.innerHTML += `
+                <tr>
+                    <td><span class="id-badge">${i.id}</span><br><small style="color:var(--secondary)">${i.tarih}</small></td>
+                    <td><small>${i.depo}</small><br><b>${i.sube}</b></td>
+                    <td><b>${i.urun}</b></td>
+                    <td><span class="id-badge" style="background:#e2e8f0; color:#334155">${i.adet}</span></td>
+                    <td style="color:${color}; font-weight:600">${i.netFark.toLocaleString('tr-TR',{minimumFractionDigits:2})}</td>
+                    <td style="color:${color}">${i.kdvTutari.toLocaleString('tr-TR',{minimumFractionDigits:2})}</td>
+                    <td style="font-weight:900; color:${color}">${i.gToplam.toLocaleString('tr-TR',{minimumFractionDigits:2})} TL</td>
+                    <td><button class="btn btn-danger" style="padding:5px 12px" onclick="deleteItem('${i.id}')"><i class="fas fa-trash-alt"></i></button></td>
+                </tr>`;
+        });
+    }
+
+    function deleteItem(id) { if(confirm("Kaydı siliyorsunuz?")) { db = db.filter(x => x.id !== id); saveAndRender(); } }
+    function clearAllData() { if(confirm("Tüm veri tabanı sıfırlanacak! Emin misiniz?")) { db = []; saveAndRender(); } }
+    
+    function exportRecords() {
+        const ws = XLSX.utils.json_to_sheet(db);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "GEN_FINANS_REPORT");
+        XLSX.writeFile(wb, `GEN_PRO_REPORT_${new Date().getTime()}.xlsx`);
+    }
+
+    render();
+</script>
+</body>
+</html>

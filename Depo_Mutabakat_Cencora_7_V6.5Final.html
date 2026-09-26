@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>GEN İLAÇ | Fatura ve MF Yönetim Merkezi v6.9.15 🧿</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Flatpickr CSS ve JS (Datepicker için) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/l10n/tr.js"></script>
+    <style>
+        :root { 
+            --bg-color: #f8fafc; 
+            --card-bg: #ffffff; 
+            --text-color: #1e293b; 
+            --text-muted: #64748b;
+            --accent: #4c1d95; 
+            --accent-light: #f3e8ff;
+            --border-color: #cbd5e1;
+            --nav-height: 75px;
+        }
+        body { margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-color); color: var(--text-color); }
+        
+        nav { 
+            display: flex; align-items: center; justify-content: space-between; 
+            padding: 0 40px; background: #ffffff; 
+            border-bottom: 1px solid var(--border-color); position: fixed; top: 0; left: 0; right: 0; height: var(--nav-height); z-index: 5000; box-sizing: border-box;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        .storage-status { display: flex; flex-direction: column; width: 140px; }
+        .storage-bar-bg { background: #e2e8f0; height: 4px; border-radius: 2px; overflow: hidden; margin-top: 4px; }
+        #storageBar { height: 100%; width: 100%; background: #22c55e; transition: 0.5s; }
+
+        .action-btn-group { display: flex; gap: 12px; align-items: center; }
+        
+        .manual-save-btn {
+            background: #f1f5f9; border: 1px solid var(--border-color);
+            color: var(--text-color); padding: 9px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; transition: 0.2s; font-weight: 600;
+        }
+        .manual-save-btn:hover { background: #e2e8f0; }
+
+        .main-wrapper { padding: calc(var(--nav-height) + 30px) 40px 40px 40px; max-width: 1700px; margin: 0 auto; }
+
+        .tabs-header { display: flex; gap: 15px; margin-bottom: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
+        .tab-btn {
+            background: #ffffff; border: 1px solid var(--border-color);
+            color: var(--text-muted); padding: 12px 24px; border-radius: 10px; cursor: pointer; font-weight: 700; transition: 0.2s;
+        }
+        .tab-btn.active { background: var(--accent-light); color: var(--accent); border-color: #d8b4fe; box-shadow: 0 2px 8px rgba(76,29,149,0.1); }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .card-box { 
+            background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 25px; margin-bottom: 30px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02); display: inline-block; width: auto; max-width: 100%; overflow-x: auto; 
+        }
+        
+        table { width: auto; border-collapse: collapse; margin-top: 15px; font-size: 13px; table-layout: auto; }
+        th, td { padding: 8px 16px; border: 1px solid var(--border-color); white-space: nowrap; }
+        
+        th { background: #4c1d95; color: #ffffff; font-weight: 700; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px; text-align: left; }
+        td { text-align: left; }
+        td.num, th.num { text-align: right; }
+        
+        tr:hover td { background: #f8fafc; }
+
+        .btn-action {
+            background: var(--accent); color: #ffffff; border: none; padding: 10px 20px;
+            border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; font-size: 14px;
+        }
+        .btn-action:hover { opacity: 0.9; transform: translateY(-1px); }
+        
+        .icon-btn { background: #f1f5f9; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 10px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+        .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .del-btn { background: transparent; border: none; color: #ef4444; cursor: pointer; font-weight: bold; padding: 6px; }
+        .del-btn:hover { opacity: 0.7; }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(4px);
+            display: none; justify-content: center; align-items: center; z-index: 9999;
+        }
+        .modal-content {
+            background: #ffffff; border: 1px solid var(--border-color);
+            width: 650px; max-width: 90%; border-radius: 16px; padding: 30px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            max-height: 90vh; overflow-y: auto;
+        }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        .form-group.full { grid-column: span 2; }
+        .form-group label { font-size: 12px; font-weight: 700; color: var(--text-muted); }
+        .form-group input, .form-group select {
+            background: #f8fafc; border: 1px solid var(--border-color);
+            padding: 10px; border-radius: 8px; color: var(--text-color); font-size: 14px; outline: none;
+        }
+        .form-group input:focus, .form-group select:focus { border-color: var(--accent); background: #ffffff; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; }
+        
+        .top-settings-box {
+            background: #f8fafc; border: 1px solid var(--border-color); padding: 15px 20px; border-radius: 12px; margin-bottom: 20px;
+            display: flex; gap: 20px; align-items: flex-end; flex-wrap: wrap;
+        }
+        .top-settings-box label { font-size: 12px; font-weight: 700; color: var(--text-muted); display: flex; flex-direction: column; gap: 4px; }
+        .top-settings-box input, .top-settings-box select { padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 13px; width: 220px; background: #fff; }
+
+        .price-list-modal { width: 850px; max-width: 95%; }
+        .price-search-input { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 15px; box-sizing: border-box; margin-bottom: 15px; outline: none; }
+        .price-search-input:focus { border-color: var(--accent); background: #fff; }
+        .price-table-container { max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; }
+        .price-table { width: 100%; border-collapse: collapse; }
+        .price-table th { position: sticky; top: 0; background: var(--accent); color: #fff; z-index: 10; }
+        .price-table tr { cursor: pointer; }
+        .price-table tr:hover td { background: var(--accent-light); color: var(--accent); font-weight: 600; }
+        .clickable-product { color: var(--accent); cursor: pointer; text-decoration: underline; text-decoration-style: dotted; }
+        .clickable-product:hover { font-weight: bold; background: #f3e8ff; }
+        
+        .badge-done { background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; }
+        .badge-pending { background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; transition: 0.2s; }
+        .badge-pending:hover { background: #fecaca; transform: scale(1.02); }
+        .badge-none { background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; border: 1px dashed var(--border-color); transition: 0.2s; }
+        .badge-none:hover { background: #e2e8f0; }
+
+        .filter-chip-group { display: flex; gap: 8px; margin-bottom: 15px; align-items: center; }
+        .filter-chip { background: #f1f5f9; border: 1px solid var(--border-color); padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; color: var(--text-muted); transition: 0.2s; }
+        .filter-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+        .table-search-input {
+            padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; width: 280px; outline: none; background: #fff;
+        }
+        .table-search-input:focus { border-color: var(--accent); }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div style="font-weight: 800; font-size: 20px; letter-spacing: -0.5px; color: var(--text-color);">GEN İLAÇ <span style="color:var(--accent)">FATURA & MF MERKEZİ 🧿</span></div>
+    
+    <div class="action-btn-group">
+        <button class="manual-save-btn" onclick="manualSaveTrigger()" title="Tarayıcı Belleğine (IndexedDB) Kalıcı Kaydeder ve Arşive Ekler">💾 Hafızaya Al</button>
+        <button class="manual-save-btn" onclick="exportAllTabsToExcel()" style="background:#15803d; color:#fff; border:none;" title="Excel Sekmelerine Bölerek İndir">📥 Tüm Sekmeleri Excel İndir</button>
+        <div class="storage-status">
+            <span style="font-size: 9px; font-weight: 700; color: var(--text-muted);" id="autoBackupStatus">💾 OTO-YEDEK: AKTİF</span>
+            <div class="storage-bar-bg"><div id="storageBar"></div></div>
+        </div>
+        <div id="dateTimeDisplay" style="color:var(--accent); font-weight:700; font-size: 13px; margin-left: 10px; border-left: 2px solid var(--border-color); padding-left: 12px;"></div>
+    </div>
+</nav>
+
+<div class="main-wrapper">
+    
+    <div class="tabs-header">
+        <button class="tab-btn active" onclick="switchTab('donemMfTab', event)">📊 DÖNEM MF</button>
+        <button class="tab-btn" onclick="switchTab('mfDetayTab', event)">📦 MF DETAY</button>
+        <button class="tab-btn" onclick="switchTab('faturaTab', event)">📄 FATURA RAPORU</button>
+        <button class="tab-btn" onclick="switchTab('cikislarTab', event)">🏥 ECZANE ÇIKIŞLARI</button>
+    </div>
+
+    <!-- 1. DÖNEM MF -->
+    <div id="donemMfTab" class="tab-content active">
+        <div class="top-settings-box">
+            <h4 style="margin:0 0 5px 0; width:100%; color:var(--accent); font-size:14px;">⚙️ Dönem MF Üst Bilgi Ayarları ve Arşiv</h4>
+            <label>Firma Adı <input type="text" id="metaFirmaAdi" value="" placeholder="Firma adını yazın..." oninput="renderAll()"></label>
+            <label>Fatura Tarihi / Dönem <input type="text" id="metaFaturaTarihi" value="" placeholder="Tarih veya Dönem seçin..." oninput="renderAll()"></label>
+            <label>Kod <input type="text" id="metaKod" value="" placeholder="Kod yazın..." oninput="renderAll()"></label>
+            
+            <label>📂 Kayıtlı Arşivden Seç
+                <select id="arşivSelect" onchange="arşivdenYukle(this.value)">
+                    <option value="">-- Geçmiş Arşiv (Seçiniz) --</option>
+                </select>
+            </label>
+            <button class="icon-btn" onclick="arsivKaydiSil()" title="Seçili Arşiv Kaydını Sil" style="height:35px; background:#ffeeef; color:#ef4444; border-color:#fca5a5;">🗑️ Arşivden Sil</button>
+        </div>
+
+        <div class="card-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; flex-wrap:wrap; gap:10px;">
+                <div>
+                    <h2 style="margin:0 0 5px 0; color:var(--text-color); font-size: 18px;">Dönem Mal Fazlası (MF) Takip Tablosu (Fatura Raporu Senkronize)</h2>
+                    <p style="margin:0; color:var(--text-muted); font-size:13px;" id="mutabakatOzetText">Tamamlanan Mutabakat: 0 / 20 Şube</p>
+                </div>
+                <div class="filter-chip-group" style="margin:0;">
+                    <span style="font-size:12px; font-weight:700; color:var(--text-muted);">Filtrele:</span>
+                    <button class="filter-chip active" onclick="setDonemFilter('ALL', event)">Tümü (20)</button>
+                    <button class="filter-chip" onclick="setDonemFilter('DONE', event)">✅ Tutarı Olanlar</button>
+                    <button class="filter-chip" onclick="setDonemFilter('PENDING', event)">⏳ Eksik Kalanlar</button>
+                </div>
+            </div>
+
+            <table id="tableDonemMf">
+                <thead>
+                    <tr>
+                        <th style="background:#4c1d95; color:#fff; text-align:left;" id="thHeadFirmaLabel">FİRMA ADI :</th>
+                        <th style="background:#3b82f6; color:#fff; text-align:left;" id="thHeadFirmaVal" colspan="3">Firma adı girilmedi...</th>
+                    </tr>
+                    <tr>
+                        <th style="background:#4c1d95; color:#fff; text-align:left;">Fatura Tarihi :</th>
+                        <th style="background:#4c1d95; color:#fff; text-align:left;" id="thHeadTarihVal" colspan="3">Dönem girilmedi...</th>
+                    </tr>
+                    <tr>
+                        <th style="background:#4c1d95; color:#fff; text-align:left;">KOD :</th>
+                        <th style="background:#4c1d95; color:#fff; text-align:left;" id="thHeadKodVal" colspan="3"></th>
+                    </tr>
+                    <tr>
+                        <th style="background:#4c1d95; color:#fff; text-align:left;">DEPO ADI</th>
+                        <th class="num" style="background:#4c1d95; color:#fff; text-align:right;">KDV HARİÇ KESİLECEK TUTAR</th>
+                        <th style="background:#4c1d95; color:#fff; text-align:left;">KDV ORANI</th>
+                        <th style="background:#4c1d95; color:#fff; text-align:center;">MUTABAKAT & ONAY</th>
+                    </tr>
+                </thead>
+                <tbody id="donemMfTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 2. MF DETAY -->
+    <div id="mfDetayTab" class="tab-content">
+        <div class="card-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px; flex-wrap:wrap; gap:15px;">
+                <h2 style="margin:0; color:var(--text-color); font-size: 18px;">Şube ve Ürün Bazlı Mal Fazlası Detayları (Eczane Çıkışları Senkronize)</h2>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <label style="font-size:12px; font-weight:700; color:var(--text-muted);">Dönem/Ay Filtresi:</label>
+                    <input type="text" id="mfDetayAyFiltre" class="table-search-input" style="width:200px;" placeholder="Tüm Dönemler (Seçiniz)...">
+                    <button class="manual-save-btn" onclick="clearMfDetayFilter()" style="padding:8px 12px; font-size:12px;">Filtreyi Temizle</button>
+                </div>
+            </div>
+            <table id="tableMfDetay">
+                <thead>
+                    <tr>
+                        <th style="background:#4c1d95; color:#fff; text-align:left;">ŞUBE / DEPO</th>
+                        <th style="background:#4c1d95; color:#fff; text-align:left;">ÜRÜN</th>
+                        <th class="num" style="background:#4c1d95; color:#fff; text-align:right;">ADET MF</th>
+                    </tr>
+                </thead>
+                <tbody id="mfDetayTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 3. FATURA RAPORU -->
+    <div id="faturaTab" class="tab-content">
+        <div class="card-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px; flex-wrap:wrap; gap:10px;">
+                <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+                    <h2 style="margin:0; color:var(--text-color); font-size: 18px;">Fatura Raporu Kayıtları</h2>
+                    <input type="text" id="faturaSearchInput" class="table-search-input" placeholder="🔍 Depo, Şehir, Müşteri veya Ürün Ara..." oninput="renderAll()">
+                </div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <label style="font-size:12px; font-weight:700; color:var(--text-muted);">Dönem/Ay Filtresi:</label>
+                    <input type="text" id="faturaAyFiltre" class="table-search-input" style="width:180px;" placeholder="Tüm Dönemler (Seçiniz)...">
+                    <button class="manual-save-btn" onclick="clearFaturaFilter()" style="padding:8px 12px; font-size:12px;">Temizle</button>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <label class="manual-save-btn" style="background:#f3e8ff; color:var(--accent); border-color:#d8b4fe; cursor:pointer; margin:0; display:inline-flex; align-items:center; gap:6px;">
+                        📂 Excel'den Yükle <input type="file" id="faturaExcelInput" accept=".xlsx, .xls, .csv" style="display:none;" onchange="importFaturaExcel(event)">
+                    </label>
+                    <button class="btn-action" onclick="openAddFaturaModal()">+ Yeni Fatura Kaydı</button>
+                </div>
+            </div>
+            <table id="tableFaturaRaporu">
+                <thead>
+                    <tr>
+                        <th style="background:#4c1d95; color:#fff; text-align:left;">TARİH</th>
+                        <th style="background:#4c1d95; color:#fff; text-align:left;">DEPO</th>
+                        <th style="background:#4c1d95; color:#fff; text-align:left;">ŞEHİR</th>
+                        <th style="background:#4c1d95; color:#fff; text-align:left;">MÜŞTERİ</th>
+                        <th style="background:#4c1d95; color:#fff; text-align:left;">İLÇE/İL</th>
+                        <th style="background:#4c1d95; color:#fff; text-align:left; cursor:pointer;" onclick="openPriceListModal('fatura')" title="Fiyat listesinden seçmek için tıklayın">ÜRÜN (FİYAT LİSTESİNDEN SEÇMEK İÇİN TIKLAYIN) 🔍</th>
+                        <th class="num" style="background:#4c1d95; color:#fff; text-align:right;">İ.S.F.</th>
+                        <th class="num" style="background:#4c1d95; color:#fff; text-align:right;">ANA</th>
+                        <th class="num" style="background:#4c1d95; color:#fff; text-align:right;">MF</th>
+                        <th class="num" style="background:#4c1d95; color:#fff; text-align:right;">ADET</th>
+                        <th class="num" style="background:#4c1d95; color:#fff; text-align:right;">KKİ %</th>
+                        <th class="num" style="background:#4c1d95; color:#fff; text-align:right;">KDV %</th>
+                        <th class="num" style="background:#4c1d95; color:#fff; text-align:right;">BİRİM MALİYET</th>
+                        <th class="num" style="background:#4c1d95; color:#fff; text-align:right;">TOPLAM (KDV'SİZ)</th>
+                        <th class="num" style="background:#4c1d95; color:#fff; text-align:right;">FATURA TOPLAM</th>
+                        <th style="background:#4c1d95; color:#fff; text-align:right;">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody id="faturaTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 4. ECZANE ÇIKIŞLARI -->
+    <div id="cikislarTab" class="tab-content">
+        <div class="card-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px; flex-wrap:wrap; gap:10px;">
+                <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+                    <h2 style="margin:0; color:var(--text-color); font-size: 18px;">Eczane Çıkışları ve MF Takibi</h2>
+                    <input type="text" id="cikisSearchInput" class="table-search-input" placeholder="🔍 Şube, Eczane, Fatura No veya Ürün Ara..." oninput="renderAll()">
+                </div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <label style="font-size:12px; font-weight:700; color:var(--text-muted);">Dönem/Ay Filtresi:</label>
+                    <input type="text" id="cikisAyFiltre" class="table-search-input" style="width:180px;" placeholder="Tüm Dönemler (Seçiniz)..." onchange="syncCikisFilterToOthers()">
+                    <button class="manual-save-btn" onclick="clearCikisFilter()" style="padding:8px 12px; font-size:12px;">Temizle</button>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <label class="manual-save-btn" style="background:#fef9c3; color:#854d0e; border-color:#fde047; cursor:pointer; margin:0; display:inline-flex; align-items:center; gap:6px;">
+                        📂 Excel'den Yükle <input type="file" id="cikisExcelInput" accept=".xlsx, .xls, .csv" style="display:none;" onchange="importCikisExcel(event)">
+                    </label>
+                    <button class="btn-action" onclick="openAddCikisModal()">+ Yeni Çıkış Ekle</button>
+                </div>
+            </div>
+            <table id="tableEczaneCikis">
+                <thead>
+                    <tr>
+                        <th style="background:#eab308; color:#000; text-align:left;">Şube</th>
+                        <th style="background:#eab308; color:#000; text-align:left;">Tarih</th>
+                        <th style="background:#eab308; color:#000; text-align:left;">Fatura No</th>
+                        <th style="background:#eab308; color:#000; text-align:left;">Eczane</th>
+                        <th style="background:#eab308; color:#000; text-align:left;">İlçe</th>
+                        <th style="background:#eab308; color:#000; text-align:left;">İL</th>
+                        <th style="background:#eab308; color:#000; text-align:left; cursor:pointer;" onclick="openPriceListModal('cikis')" title="Fiyat listesinden seçmek için tıklayın">ÜRÜN (FİYAT LİSTESİNDEN SEÇMEK İÇİN TIKLAYIN) 🔍</th>
+                        <th class="num" style="background:#eab308; color:#000; text-align:right;">Ekran Şartı Ana</th>
+                        <th class="num" style="background:#eab308; color:#000; text-align:right;">Ekran Şartı Mf</th>
+                        <th class="num" style="background:#eab308; color:#000; text-align:right;">Satış Ana</th>
+                        <th class="num" style="background:#eab308; color:#000; text-align:right;">Satış MF</th>
+                        <th class="num" style="background:#eab308; color:#000; text-align:right;">Ekstra Mf</th>
+                        <th style="text-align:right; background:#eab308; color:#000;">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody id="cikisTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- FATURA MODAL -->
+<div id="faturaModal" class="modal-overlay">
+    <div class="modal-content">
+        <h3 id="modalTitle" style="margin-top:0; color:var(--text-color); border-bottom:1px solid var(--border-color); padding-bottom:10px;">📄 Fatura Kaydı</h3>
+        <input type="hidden" id="editFaturaIndex">
+        <div class="form-grid" id="faturaFormGrid">
+            <div class="form-group"><label>Fatura Tarihi</label><input type="date" id="fTarih" class="focusable"></div>
+            <div class="form-group"><label>Depo Adı</label><input type="text" id="fDepo" placeholder="Örn: Cencora" class="focusable"></div>
+            <div class="form-group"><label>Şehir (Örn: ADANA, ANTALYA)</label><input type="text" id="fSehir" placeholder="ANTALYA" oninput="autoCapitalize(this)" class="focusable"></div>
+            <div class="form-group"><label>Müşteri (Eczane) Adı</label><input type="text" id="fMusteri" oninput="autoCapitalize(this)" class="focusable"></div>
+            <div class="form-group"><label>İlçe / İl</label><input type="text" id="fIlce" oninput="autoCapitalize(this)" class="focusable"></div>
+            <div class="form-group full">
+                <label>Ürün Adı (Fiyat Listesinden Seçmek İçin Tıklayın)</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="fUrun" oninput="autoCapitalize(this)" class="focusable" style="flex:1; cursor:pointer;" placeholder="Fiyat listesinden seçmek için tıklayın..." onclick="openPriceListModal('fatura')" readonly title="Fiyat listesinden seçmek için tıklayın">
+                    <button type="button" class="btn-action" style="padding: 8px 14px; font-size: 13px;" onclick="openPriceListModal('fatura')">🔍 Fiyat Listesi</button>
+                </div>
+            </div>
+            <div class="form-group"><label>İ.S.F.</label><input type="number" step="0.01" id="fIsf" value="0" oninput="hesaplaFatura()" class="focusable"></div>
+            <div class="form-group"><label>Ana Mal Adedi (Alış)</label><input type="number" id="fAna" value="0" oninput="hesaplaFatura()" class="focusable"></div>
+            <div class="form-group"><label>MF Adedi (Alış/Ekran Şartı MF)</label><input type="number" id="fMf" value="0" oninput="hesaplaFatura()" class="focusable"></div>
+            <div class="form-group"><label>Toplam Adet (Adet)</label><input type="number" id="fAdet" value="0" oninput="hesaplaFatura()" class="focusable"></div>
+            <div class="form-group"><label>KKI %</label><input type="number" step="0.01" id="fKki" value="0" oninput="hesaplaFatura()" class="focusable"></div>
+            <div class="form-group"><label>KDV %</label><input type="number" step="0.01" id="fKdvOrani" value="10" oninput="hesaplaFatura()" class="focusable"></div>
+            <div class="form-group"><label>Birim Maliyet (TL)</label><input type="number" step="0.01" id="fBirimMaliyet" readonly style="background:#e2e8f0; font-weight:700;"></div>
+            <div class="form-group"><label>Toplam KDV'siz Tutar (TL)</label><input type="number" step="0.01" id="fKdvsiz" readonly style="background:#e2e8f0; font-weight:700;"></div>
+            <div class="form-group full"><label>Fatura Toplam (KDV Dahil) (TL)</label><input type="number" step="0.01" id="fToplam" readonly style="background:#e2e8f0; font-weight:700; color:var(--accent);"></div>
+        </div>
+        <div class="modal-actions">
+            <button class="manual-save-btn" onclick="closeFaturaModal()">İptal</button>
+            <button class="btn-action" id="faturaSaveBtn" onclick="saveFaturaData()">Kaydet</button>
+        </div>
+    </div>
+</div>
+
+<!-- ÇIKIŞ MODAL -->
+<div id="cikisModal" class="modal-overlay">
+    <div class="modal-content">
+        <h3 id="cikisModalTitle" style="margin-top:0; color:var(--text-color); border-bottom:1px solid var(--border-color); padding-bottom:10px;">🏥 Eczane Çıkış Kaydı</h3>
+        <input type="hidden" id="editCikisIndex">
+        <div class="form-grid" id="cikisFormGrid">
+            <div class="form-group"><label>Şube Adı</label><input type="text" id="cSube" placeholder="Örn: CENCORA ANTALYA" oninput="autoCapitalize(this)" class="c-focusable"></div>
+            <div class="form-group"><label>Tarih</label><input type="date" id="cTarih" class="c-focusable"></div>
+            <div class="form-group"><label>Fatura No</label><input type="text" id="cFaturaNo" class="c-focusable"></div>
+            <div class="form-group"><label>Eczane Adı</label><input type="text" id="cEczane" oninput="autoCapitalize(this)" class="c-focusable"></div>
+            <div class="form-group"><label>İlçe</label><input type="text" id="cIlce" oninput="autoCapitalize(this)" class="c-focusable"></div>
+            <div class="form-group"><label>İl</label><input type="text" id="cIl" placeholder="ANTALYA" oninput="autoCapitalize(this)" class="c-focusable"></div>
+            <div class="form-group full">
+                <label>Ürün Adı (Fiyat Listesinden Seçmek İçin Tıklayın)</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="cUrun" oninput="autoCapitalize(this)" class="c-focusable" style="flex:1; cursor:pointer;" placeholder="Fiyat listesinden seçmek için tıklayın..." onclick="openPriceListModal('cikis')" readonly title="Fiyat listesinden seçmek için tıklayın">
+                    <button type="button" class="btn-action" style="padding: 8px 14px; font-size: 13px;" onclick="openPriceListModal('cikis')">🔍 Fiyat Listesi</button>
+                </div>
+            </div>
+            <div class="form-group"><label>Ekran Şartı - Ana Mal</label><input type="number" id="cEkranAna" value="7" class="c-focusable"></div>
+            <div class="form-group"><label>Ekran Şartı - Mf</label><input type="number" id="cEkranMf" value="0" class="c-focusable"></div>
+            <div class="form-group"><label>Satış - Ana Mal</label><input type="number" id="cSatisAna" value="7" class="c-focusable"></div>
+            <div class="form-group"><label>Satış - MF</label><input type="number" id="cSatisMf" value="0" class="c-focusable"></div>
+            <div class="form-group full"><label>Satış - Ekstra Mf (MF Detaya Yansır)</label><input type="number" id="cSatisEkstra" value="1" class="c-focusable"></div>
+        </div>
+        <div class="modal-actions">
+            <button class="manual-save-btn" onclick="closeCikisModal()">İptal</button>
+            <button class="btn-action" id="cikisSaveBtn" onclick="saveCikisData()">Kaydet</button>
+        </div>
+    </div>
+</div>
+
+<!-- FIYAT LISTESI SECIM MODALI -->
+<div id="priceListModal" class="modal-overlay">
+    <div class="modal-content price-list-modal">
+        <h3 style="margin-top:0; color:var(--accent); border-bottom:1px solid var(--border-color); padding-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+            <span>📋 Ürün Fiyat Listesi</span>
+            <button class="manual-save-btn" onclick="closePriceListModal()" style="padding:4px 10px; font-size:12px;">✕ Kapat</button>
+        </h3>
+        <input type="text" id="priceSearchInput" class="price-search-input" placeholder="Ürün adında arama yapın..." oninput="filterPriceList()">
+        <div class="price-table-container">
+            <table class="price-table" id="priceTable">
+                <thead>
+                    <tr>
+                        <th style="text-align:left;">İLAÇ ADI</th>
+                        <th class="num" style="text-align:right;">İ.S.F. (TL)</th>
+                        <th class="num" style="text-align:right;">K.K.İ. %</th>
+                        <th style="text-align:center;">İşlem</th>
+                    </tr>
+                </thead>
+                <tbody id="priceTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const DB_NAME = 'GenFaturaDB_v6_9_15';
+    const STORE_NAME = 'storage';
+    let currentDonemFilter = 'ALL';
+    let activePriceModalTarget = 'fatura';
+    let mfDetayPicker = null;
+    let cikisPicker = null;
+    let faturaPicker = null;
+
+    const FIYAT_LISTESI = [
+        {"ILAC ADI": "B-SYNC NOW", "ISF": 412.25, "KKI": 0.0},
+        {"ILAC ADI": "B-SYNC ON", "ISF": 278.52, "KKI": 0.0},
+        {"ILAC ADI": "CABOMETYX 20 MG FILM KAPLI TABLET", "ISF": 156274.58, "KKI": 50.0},
+        {"ILAC ADI": "CABOMETYX 40 MG FILM KAPLI TABLET", "ISF": 156274.58, "KKI": 50.0},
+        {"ILAC ADI": "CABOMETYX 60 MG FILM KAPLI TABLET", "ISF": 156274.58, "KKI": 50.0},
+        {"ILAC ADI": "CAJEX 1 MCG/ML IV ENJ. COZ. ICEREN 25 AMPUL", "ISF": 2042.36, "KKI": 30.0},
+        {"ILAC ADI": "CAJEX 2 MCG/ML IV ENJ. COZ. ICEREN 25 AMPUL", "ISF": 3574.03, "KKI": 28.0},
+        {"ILAC ADI": "CARBAGLU 200 MG DAGILABILIR TABLET(60 TABLET)", "ISF": 73108.69, "KKI": 45.0},
+        {"ILAC ADI": "CONTRA-K 880 MG/G GRANUL", "ISF": 1018.77, "KKI": 28.0},
+        {"ILAC ADI": "DYSPORT 500 U ENJEKSIYONLUK COZELTI ICIN TOZ ICEREN FLAKON", "ISF": 5131.05, "KKI": 41.0},
+        {"ILAC ADI": "EPAMOR 20 MG/2 ML ENJEKSIYONLUK COZELTI ICEREN AMPUL (5 AMPUL)", "ISF": 494.04, "KKI": 28.0},
+        {"ILAC ADI": "EPAMOR 30 MG/3ML ENJEKSİYONLUK ÇÖZELTİ (5 KARTUŞ)", "ISF": 2512.0, "KKI": 28.0},
+        {"ILAC ADI": "EPAMOR 50 MG/5 ML ENJEKSIYONLUK COZELTI ICEREN AMPUL (5 AMPUL)", "ISF": 1889.07, "KKI": 28.0},
+        {"ILAC ADI": "FERINT 100 MG/5 ML İV AMPUL (5 AMPUL)", "ISF": 737.95, "KKI": 49.0},
+        {"ILAC ADI": "GADOVİGEN 10MMOL/20ML ENJ. ÇÖZ. 1FLKN", "ISF": 770.84, "KKI": 28.0},
+        {"ILAC ADI": "GADOVİGEN 5MMOL/10ML ENJ. ÇÖZ. 1FLKN", "ISF": 405.01, "KKI": 28.0},
+        {"ILAC ADI": "GADOVİGEN 7,5MMOL/15ML ENJ. ÇÖZ. 1FLKN", "ISF": 601.88, "KKI": 28.0},
+        {"ILAC ADI": "GALAFOLD 123 MG SERT KAPSUL (14 ADET)", "ISF": 449961.87, "KKI": 41.0},
+        {"ILAC ADI": "GEN IVIG", "ISF": 36662.35, "KKI": 11.0},
+        {"ILAC ADI": "GENBUTROL 15 MMOL/15 ML ENJEKSIYONLUK COZELTI", "ISF": 2295.41, "KKI": 28.0},
+        {"ILAC ADI": "GENBUTROL 30 MMOL/30 ML ENJEKSIYONLUK COZELTI", "ISF": 4453.0, "KKI": 28.0},
+        {"ILAC ADI": "GENBUTROL 7,5 MMOL/7,5 ML ENJEKSİYONLUK ÇÖZELTİ", "ISF": 1150.83, "KKI": 28.0},
+        {"ILAC ADI": "GENIUM 40MG. IV INFUZYON VE ENJEKSIYON ICIN LIYOFILIZE TOZ ICEREN 1 FLAKON", "ISF": 92.47, "KKI": 10.0},
+        {"ILAC ADI": "GENKORT 10 MG 60 TABLET", "ISF": 464.68, "KKI": 28.0},
+        {"ILAC ADI": "GENKORT 10 MG TABLET (30 TABLET)", "ISF": 401.11, "KKI": 11.0},
+        {"ILAC ADI": "GENODYUM 500 MG GASTRO REZISTAN TABLET (100 TABLET)", "ISF": 703.6, "KKI": 0.0},
+        {"ILAC ADI": "ILOPERA 10 MCG/ML NEBULAZYON ICIN COZELTI ICEREN 30 AMPUL", "ISF": 7542.17, "KKI": 28.0},
+        {"ILAC ADI": "ILOPERA 20 MCG/ML IV INF. ICIN COZ. ICEREN 5 AMPUL", "ISF": 3884.99, "KKI": 28.0},
+        {"ILAC ADI": "INTRAFEN 400 MG/ML 4 ML IV INFUZYONLUK COZELTI ICEREN 1 FLAKON", "ISF": 138.0, "KKI": 70.0},
+        {"ILAC ADI": "INTRAFEN 800 MG/ML 8 ML IV INFUZYONLUK COZELTI ICEREN 1 FLAKON", "ISF": 268.25, "KKI": 70.0},
+        {"ILAC ADI": "KFIBROGEN 300 MG/4 ML NEBULIZASYON COZELTISI", "ISF": 30739.57, "KKI": 28.0},
+        {"ILAC ADI": "KUVAN 100 MG ÇÖZÜNEBİLİR 30 TABLET", "ISF": 11351.27, "KKI": 41.0},
+        {"ILAC ADI": "LIPIODOL ULTRA-FLUID 480 MG / 10 ML ENJEKSIYONLUK COZELTI 10 ML1 AMPUL", "ISF": 14048.55, "KKI": 39.27},
+        {"ILAC ADI": "MODIOGEN 100 MG TABLET 30TB PAZARLAMASI FARMATEK FİRMASINDA", "ISF": 456.13, "KKI": 28.0},
+        {"ILAC ADI": "MODİOGEN TABLET 200MG 30TB PAZARLAMASI FARMATEK FİRMASINDA", "ISF": 937.31, "KKI": 28.0},
+        {"ILAC ADI": "NEOMİDANTAN SERT KAPSÜL 100 MG 50 KAPSÜL", "ISF": 553.63, "KKI": 31.0},
+        {"ILAC ADI": "NOVILS SERT KAPSÜL 250 MG KAPSUL 100 KAPSÜL", "ISF": 85543.18, "KKI": 89.18},
+        {"ILAC ADI": "PANOLİMUS 1 MG 50 KAPSÜL", "ISF": 1392.26, "KKI": 28.0},
+        {"ILAC ADI": "PARIGEN 10 MCG/2ML IV ENJEKSIYONLUK COZELTI ICEREN 5 AMPUL", "ISF": 2317.87, "KKI": 28.0},
+        {"ILAC ADI": "PARIGEN 5 MCG/ML IV ENJEKSIYONLUK COZELTI ICEREN 5 AMPUL", "ISF": 719.55, "KKI": 28.0},
+        {"ILAC ADI": "PLEKSOR 24 MG/12 ML S.C. ENJEKSIYONLUK COZELTI", "ISF": 96343.15, "KKI": 28.0},
+        {"ILAC ADI": "REGEN-D 150 MCG JEL", "ISF": 1308.0, "KKI": 11.0},
+        {"ILAC ADI": "SIGNIFOR 0,3 MG/1ML ENJEKSIYONLUK COZELTI (60 AMPUL)", "ISF": 79506.56, "KKI": 41.0},
+        {"ILAC ADI": "SIGNIFOR 0,6 MG/1ML ENJEKSIYONLUK COZELTI (60 AMPUL)", "ISF": 85994.09, "KKI": 41.0},
+        {"ILAC ADI": "SIGNIFOR 0,9 MG/1ML ENJEKSIYONLUK COZELTI (60 AMPUL)", "ISF": 86498.98, "KKI": 41.0},
+        {"ILAC ADI": "SOMATULINE AUTOGEL 120 MG UZATILMIS SALIMLI ENJEKSIYONLUK COZELTI ICEREN KULLANIMA HAZIR SIRINGA", "ISF": 15600.95, "KKI": 32.5},
+        {"ILAC ADI": "SOMATULINE AUTOGEL 60 MG UZATILMIS SALIMLI ENJEKSIYONLUK COZELTI ICEREN KULLANIMA HAZIR SIRINGA", "ISF": 9364.18, "KKI": 32.5},
+        {"ILAC ADI": "SOMATULINE AUTOGEL 90 MG UZATILMIS SALIMLI ENJEKSIYONLUK COZELTI ICEREN KULLANIMA HAZIR SIRINGA", "ISF": 12503.97, "KKI": 32.5},
+        {"ILAC ADI": "SPINRAZA 12 MG/5 ML INTRATEKAL ENJEKSIYONLUK COZELTI", "ISF": 1892566.0, "KKI": 0.0},
+        {"ILAC ADI": "TEPADİNA 100 MG IV İNFÜZYONLUK ÇÖZELTİ HAZIRL KONSANTRE İÇİN TOZ", "ISF": 24952.7, "KKI": 11.0},
+        {"ILAC ADI": "TYSABRI 300 MG I.V. INFUZYON ICIN KONSANTRE COZELTI ICEREN 1 FLAKON", "ISF": 62062.84, "KKI": 55.0},
+        {"ILAC ADI": "VORIGEN 200 MG IV INFUZYON COZELTISI ICIN TOZ", "ISF": 1726.2, "KKI": 28.0}
+    ];
+
+    let appData = {
+        metaFirma: "",
+        metaTarih: "",
+        metaKod: "",
+        arsivListesi: [],
+        hakEdisYokturMap: {}, 
+        donemMfDepolar: [
+            "AH ADANA", "AH ANKARA", "AH ANTALYA", "AH AYDIN", "AH BEYLİKDÜZÜ", 
+            "AH BURSA", "AH DİYARBAKIR", "AH ERZURUM", "AH GAZİANTEP", "AH İSTANBUL", "AH İZMİR", "AH KAYSERİ",
+            "AH KONYA", "AH MALATYA", "AH MARMARA", "AH ORDU", "AH SAKARYA", "AH SAMSUN", "AH SEYRANTEPE", "AH TRABZON"
+        ],
+        fatura: [],
+        cikislar: [],
+        mfDetay: []
+    };
+
+    // Flatpickr Entegrasyonları
+    document.addEventListener("DOMContentLoaded", function() {
+        flatpickr("#metaFaturaTarihi", {
+            locale: "tr",
+            altInput: true,
+            altFormat: "F Y", 
+            dateFormat: "Y-m-d",
+            defaultDate: null,
+            onChange: function(selectedDates, dateStr, instance) {
+                renderAll();
+            }
+        });
+
+        mfDetayPicker = flatpickr("#mfDetayAyFiltre", {
+            locale: "tr",
+            altInput: true,
+            altFormat: "F Y",
+            dateFormat: "Y-m",
+            allowInput: true,
+            defaultDate: null,
+            onChange: function(selectedDates, dateStr, instance) {
+                renderAll();
+            },
+            onClear: function() {
+                renderAll();
+            }
+        });
+
+        cikisPicker = flatpickr("#cikisAyFiltre", {
+            locale: "tr",
+            altInput: true,
+            altFormat: "F Y",
+            dateFormat: "Y-m",
+            allowInput: true,
+            defaultDate: null,
+            onChange: function(selectedDates, dateStr, instance) {
+                syncCikisFilterToOthers();
+                renderAll();
+            },
+            onClear: function() {
+                syncCikisFilterToOthers();
+                renderAll();
+            }
+        });
+
+        faturaPicker = flatpickr("#faturaAyFiltre", {
+            locale: "tr",
+            altInput: true,
+            altFormat: "F Y",
+            dateFormat: "Y-m",
+            allowInput: true,
+            defaultDate: null,
+            onChange: function(selectedDates, dateStr, instance) {
+                renderAll();
+            },
+            onClear: function() {
+                renderAll();
+            }
+        });
+    });
+
+    // Senkronizasyon Prosedürü: Eczane Çıkışları Dönem Filtresi Değiştiğinde MF Detay ve Fatura Raporu Dönem Filtrelerini Otomatik Senkronize Et
+    function syncCikisFilterToOthers() {
+        let cikisVal = document.getElementById('cikisAyFiltre').value;
+        
+        // 1. MF Detay Senkronizasyonu
+        if (mfDetayPicker) {
+            if (cikisVal) mfDetayPicker.setDate(cikisVal, true);
+            else mfDetayPicker.clear();
+        }
+        document.getElementById('mfDetayAyFiltre').value = cikisVal;
+
+        // 2. Fatura Raporu Senkronizasyonu
+        if (faturaPicker) {
+            if (cikisVal) faturaPicker.setDate(cikisVal, true);
+            else faturaPicker.clear();
+        }
+        document.getElementById('faturaAyFiltre').value = cikisVal;
+    }
+
+    function clearMfDetayFilter() {
+        if (mfDetayPicker) mfDetayPicker.clear();
+        document.getElementById('mfDetayAyFiltre').value = "";
+        renderAll();
+    }
+
+    function clearCikisFilter() {
+        if (cikisPicker) cikisPicker.clear();
+        document.getElementById('cikisAyFiltre').value = "";
+        syncCikisFilterToOthers();
+        renderAll();
+    }
+
+    function clearFaturaFilter() {
+        if (faturaPicker) faturaPicker.clear();
+        document.getElementById('faturaAyFiltre').value = "";
+        renderAll();
+    }
+
+    function autoCapitalize(input) {
+        let val = input.value;
+        input.value = val.replace(/(^|\s)\S/g, l => l.toUpperCase());
+    }
+
+    function formatTR(val, decimals = 2) {
+        if (val === null || val === undefined || isNaN(val)) return "-";
+        return Number(val).toLocaleString('tr-TR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    }
+
+    function temizleMetin(txt) {
+        if (!txt) return "";
+        return txt.toString().toUpperCase()
+            .replace(/İ/g, 'I').replace(/ı/g, 'I').replace(/i/g, 'I')
+            .replace(/Ş/g, 'S').replace(/ş/g, 'S')
+            .replace(/Ğ/g, 'G').replace(/ğ/g, 'G')
+            .replace(/Ü/g, 'U').replace(/ü/g, 'U')
+            .replace(/Ö/g, 'O').replace(/ö/g, 'O')
+            .replace(/Ç/g, 'C').replace(/ç/g, 'C')
+            .replace(/["']/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function hesaplaFatura() {
+        let isf = parseFloat(document.getElementById('fIsf').value) || 0;
+        let kki = parseFloat(document.getElementById('fKki').value) || 0;
+        let ana = parseFloat(document.getElementById('fAna').value) || 0;
+        let mf = parseFloat(document.getElementById('fMf').value) || 0;
+        let adet = parseFloat(document.getElementById('fAdet').value) || 0;
+        let kdvOrani = parseFloat(document.getElementById('fKdvOrani').value) || 10;
+
+        let baseMaliyet = isf - (isf * (kki / 100));
+        let birimMaliyet = baseMaliyet;
+        
+        if (ana > 0 && (ana + mf) > 0) {
+            birimMaliyet = baseMaliyet * (ana / (ana + mf));
+        }
+
+        let kdvsizToplam = birimMaliyet * adet;
+        let kdvTutari = kdvsizToplam * (kdvOrani / 100);
+        let faturaToplam = kdvsizToplam + kdvTutari;
+
+        document.getElementById('fBirimMaliyet').value = birimMaliyet.toFixed(2);
+        document.getElementById('fKdvsiz').value = kdvsizToplam.toFixed(2);
+        document.getElementById('fToplam').value = faturaToplam.toFixed(2);
+    }
+
+    function setupGridNavigation(selector, saveBtnId) {
+        const inputs = document.querySelectorAll(selector);
+        inputs.forEach((input, index) => {
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (index < inputs.length - 1) {
+                        inputs[index + 1].focus();
+                        inputs[index + 1].select();
+                    } else {
+                        document.getElementById(saveBtnId).focus();
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (index > 0) {
+                        inputs[index - 1].focus();
+                        inputs[index - 1].select();
+                    }
+                }
+            });
+        });
+    }
+
+    function openPriceListModal(target = 'fatura') {
+        activePriceModalTarget = target;
+        document.getElementById('priceListModal').style.display = 'flex';
+        document.getElementById('priceSearchInput').value = '';
+        renderPriceTable(FIYAT_LISTESI);
+        setTimeout(() => document.getElementById('priceSearchInput').focus(), 100);
+    }
+
+    function closePriceListModal() {
+        document.getElementById('priceListModal').style.display = 'none';
+    }
+
+    function renderPriceTable(list) {
+        let tbody = document.getElementById('priceTableBody');
+        tbody.innerHTML = '';
+        if(list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94a3b8;">Aranan kriterde ürün bulunamadı.</td></tr>`;
+            return;
+        }
+        list.forEach(item => {
+            let tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="font-weight:600;">${item['ILAC ADI']}</td>
+                <td class="num" style="color:var(--accent); font-weight:700;">${formatTR(item.ISF, 2)} ₺</td>
+                <td class="num">${formatTR(item.KKI, 2)} %</td>
+                <td style="text-align:center;"><button type="button" class="btn-action" style="padding:4px 12px; font-size:12px;" onclick="selectProductFromPriceList('${item['ILAC ADI'].replace(/'/g, "\\'")}', ${item.ISF}, ${item.KKI})">Seç ve Ekle</button></td>
+            `;
+            tr.ondblclick = () => selectProductFromPriceList(item['ILAC ADI'], item.ISF, item.KKI);
+            tbody.appendChild(tr);
+        });
+    }
+
+    function filterPriceList() {
+        let query = temizleMetin(document.getElementById('priceSearchInput').value);
+        let filtered = FIYAT_LISTESI.filter(item => temizleMetin(item['ILAC ADI']).includes(query));
+        renderPriceTable(filtered);
+    }
+
+    function selectProductFromPriceList(ilacAdi, isf, kki) {
+        closePriceListModal();
+        if (activePriceModalTarget === 'cikis') {
+            document.getElementById('cUrun').value = ilacAdi;
+            document.getElementById('cEkranAna').focus();
+            document.getElementById('cEkranAna').select();
+        } else {
+            document.getElementById('fUrun').value = ilacAdi;
+            document.getElementById('fIsf').value = isf;
+            document.getElementById('fKki').value = kki;
+            hesaplaFatura();
+            document.getElementById('fAna').focus();
+            document.getElementById('fAna').select();
+        }
+    }
+
+    function onTableProductClick(faturaIdx) {
+        openEditFaturaModal(faturaIdx);
+        openPriceListModal('fatura');
+    }
+
+    function onCikisTableProductClick(cikisIdx) {
+        openEditCikisModal(cikisIdx);
+        openPriceListModal('cikis');
+    }
+
+    function setDonemFilter(filterType, evt) {
+        currentDonemFilter = filterType;
+        document.querySelectorAll('.filter-chip').forEach(el => el.classList.remove('active'));
+        if(evt) evt.currentTarget.classList.add('active');
+        renderAll();
+    }
+
+    function toggleHakEdisYoktur(depoAdi) {
+        if (!appData.hakEdisYokturMap) appData.hakEdisYokturMap = {};
+        appData.hakEdisYokturMap[depoAdi] = !appData.hakEdisYokturMap[depoAdi];
+        syncAndCalculate();
+    }
+
+    function syncAndCalculate() {
+        if (appData.fatura && appData.fatura.length > 0) {
+            appData.fatura.sort((a, b) => {
+                let resTarih = (a.tarih || "").localeCompare(b.tarih || "", 'tr');
+                if (resTarih !== 0) return resTarih;
+                let resSehir = (a.sehir || "").localeCompare(b.sehir || "", 'tr');
+                if (resSehir !== 0) return resSehir;
+                let resMusteri = (a.musteri || "").localeCompare(b.musteri || "", 'tr');
+                if (resMusteri !== 0) return resMusteri;
+                return (a.urun || "").localeCompare(b.urun || "", 'tr');
+            });
+        }
+
+        if (appData.cikislar && appData.cikislar.length > 0) {
+            appData.cikislar.sort((a, b) => {
+                let resSube = (a.sube || "").localeCompare(b.sube || "", 'tr');
+                if (resSube !== 0) return resSube;
+                let resEczane = (a.eczane || "").localeCompare(b.eczane || "", 'tr');
+                if (resEczane !== 0) return resEczane;
+                return (a.urun || "").localeCompare(b.urun || "", 'tr');
+            });
+        }
+
+        dbSet('app_data_snapshot_v6_9_15', appData);
+        renderAll();
+    }
+
+    function openDB() {
+        return new Promise((resolve, reject) => {
+            let request = indexedDB.open(DB_NAME, 1);
+            request.onupgradeneeded = (e) => {
+                let db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
+            };
+            request.onsuccess = (e) => resolve(e.target.result);
+            request.onerror = (e) => reject(e.target.error);
+        });
+    }
+
+    async function dbGet(key) {
+        let db = await openDB();
+        return new Promise((resolve, reject) => {
+            let tx = db.transaction(STORE_NAME, 'readonly');
+            let store = tx.objectStore(STORE_NAME);
+            let req = store.get(key);
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    async function dbSet(key, value) {
+        let db = await openDB();
+        return new Promise((resolve, reject) => {
+            let tx = db.transaction(STORE_NAME, 'readwrite');
+            let store = tx.objectStore(STORE_NAME);
+            let req = store.put(value, key);
+            req.onsuccess = () => { resolve(); triggerAutoBackup(); };
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    async function triggerAutoBackup() {
+        let timeStr = new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+        const statusEl = document.getElementById('autoBackupStatus');
+        if(statusEl) {
+            statusEl.innerText = `💾 OTO-YEDEK: (${timeStr})`;
+            statusEl.style.color = '#22c55e';
+        }
+    }
+
+    async function manualSaveTrigger() {
+        appData.metaFirma = document.getElementById('metaFirmaAdi').value;
+        appData.metaTarih = document.getElementById('metaFaturaTarihi').value;
+        appData.metaKod = document.getElementById('metaKod').value;
+
+        if (!appData.arsivListesi) appData.arsivListesi = [];
+        let yeniKayit = {
+            firma: appData.metaFirma,
+            tarih: appData.metaTarih,
+            kod: appData.metaKod,
+            etiket: `${appData.metaFirma || 'Firma Yok'} - ${appData.metaTarih || 'Dönem Yok'} (Kod: ${appData.metaKod || '-'})`
+        };
+        
+        let varMi = appData.arsivListesi.some(item => item.firma === yeniKayit.firma && item.tarih === yeniKayit.tarih && item.kod === yeniKayit.kod);
+        if (!varMi && (yeniKayit.firma || yeniKayit.tarih)) {
+            appData.arsivListesi.push(yeniKayit);
+        }
+
+        await dbSet('app_data_snapshot_v6_9_15', appData);
+        arsivSelectGuncelle();
+
+        const statusEl = document.getElementById('autoBackupStatus');
+        let orig = statusEl.innerText;
+        statusEl.innerText = "✨ HAFIZAYA ALINDI!";
+        statusEl.style.color = '#4c1d95';
+        setTimeout(() => { statusEl.innerText = orig; statusEl.style.color = '#22c55e'; }, 2000);
+    }
+
+    function arsivSelectGuncelle() {
+        let select = document.getElementById('arşivSelect');
+        select.innerHTML = '<option value="">-- Geçmiş Arşivden Seç --</option>';
+        if (appData.arsivListesi) {
+            appData.arsivListesi.forEach((item, idx) => {
+                let opt = document.createElement('option');
+                opt.value = idx;
+                opt.innerText = item.etiket;
+                select.appendChild(opt);
+            });
+        }
+    }
+
+    function arşivdenYukle(idx) {
+        if (idx === "") return;
+        let secilen = appData.arsivListesi[idx];
+        if (secilen) {
+            document.getElementById('metaFirmaAdi').value = secilen.firma || "";
+            document.getElementById('metaFaturaTarihi').value = secilen.tarih || "";
+            document.getElementById('metaKod').value = secilen.kod || "";
+            renderAll();
+        }
+    }
+
+    function arsivKaydiSil() {
+        let select = document.getElementById('arşivSelect');
+        let idx = select.value;
+        if (idx === "") {
+            alert("Lütfen silmek için arşivden bir kayıt seçin.");
+            return;
+        }
+        if (confirm("Bu arşiv kaydını silmek istediğinize emin misiniz?")) {
+            appData.arsivListesi.splice(parseInt(idx), 1);
+            dbSet('app_data_snapshot_v6_9_15', appData);
+            arsivSelectGuncelle();
+            document.getElementById('arşivSelect').value = "";
+        }
+    }
+
+    async function initApp() {
+        let saved = await dbGet('app_data_snapshot_v6_9_15');
+        if(!saved) saved = await dbGet('app_data_snapshot_v6_9_14');
+        if(!saved) saved = await dbGet('app_data_snapshot_v6_9_13');
+        
+        if(saved) { 
+            appData = saved; 
+            if(appData.metaFirma !== undefined) document.getElementById('metaFirmaAdi').value = appData.metaFirma;
+            if(appData.metaTarih !== undefined) document.getElementById('metaFaturaTarihi').value = appData.metaTarih;
+            if(appData.metaKod !== undefined) document.getElementById('metaKod').value = appData.metaKod;
+            if(!appData.arsivListesi) appData.arsivListesi = [];
+            if(!appData.hakEdisYokturMap) appData.hakEdisYokturMap = {};
+        }
+        arsivSelectGuncelle();
+        syncAndCalculate();
+        renderAll();
+    }
+
+    function switchTab(tabId, evt) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        evt.currentTarget.classList.add('active');
+    }
+
+    function importFaturaExcel(event) {
+        let file = event.target.files[0];
+        if (!file) return;
+        let reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                let data = new Uint8Array(e.target.result);
+                let workbook = XLSX.read(data, { type: 'array' });
+                let firstSheetName = workbook.SheetNames[0];
+                let worksheet = workbook.Sheets[firstSheetName];
+                let jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                let addedCount = 0;
+                let todayStr = new Date().toISOString().split('T')[0];
+
+                for (let i = 1; i < jsonRows.length; i++) {
+                    let r = jsonRows[i];
+                    if (!r || r.length === 0) continue;
+                    let tarih = r[0] || todayStr;
+                    let depo = r[1] || "Cencora";
+                    let sehir = r[2] || "";
+                    let musteri = r[3] || "";
+                    let ilce = r[4] || "";
+                    let urun = r[5] || "";
+                    if (!urun) {
+                        // Eğer ilk sütun tarih değil de direkt depo ise (eski format uyumluluğu)
+                        tarih = todayStr;
+                        depo = r[0] || "Cencora";
+                        sehir = r[1] || "";
+                        musteri = r[2] || "";
+                        ilce = r[3] || "";
+                        urun = r[4] || "";
+                        if (!urun) continue;
+                    }
+
+                    let isf = parseFloat(r[6]) || parseFloat(r[5]) || 0;
+                    let ana = parseInt(r[7]) || parseInt(r[6]) || 0;
+                    let mf = parseInt(r[8]) || parseInt(r[7]) || 0;
+                    let adet = parseInt(r[9]) || (ana + mf);
+                    let kki = parseFloat(r[10]) || 0;
+                    let kdvOrani = parseFloat(r[11]) || 10;
+
+                    let baseMaliyet = isf - (isf * (kki / 100));
+                    let birimMaliyet = baseMaliyet;
+                    if (ana > 0 && (ana + mf) > 0) {
+                        birimMaliyet = baseMaliyet * (ana / (ana + mf));
+                    }
+                    let kdvsiz = birimMaliyet * adet;
+                    let toplam = kdvsiz * (1 + kdvOrani / 100);
+
+                    appData.fatura.push({
+                        tarih: tarih.toString(),
+                        depo: depo.toString(),
+                        sehir: sehir.toString(),
+                        musteri: musteri.toString(),
+                        ilce: ilce.toString(),
+                        urun: urun.toString(),
+                        isf: isf,
+                        ana: ana,
+                        mf: mf,
+                        adet: adet,
+                        kki: kki,
+                        kdvOrani: kdvOrani,
+                        birimMaliyet: birimMaliyet,
+                        kdvsiz: kdvsiz,
+                        toplam: toplam
+                    });
+                    addedCount++;
+                }
+                syncAndCalculate();
+                alert(`Başarıyla ${addedCount} adet fatura kaydı yüklendi.`);
+            } catch (err) {
+                console.error(err);
+                alert("Excel dosyası okunurken bir hata oluştu.");
+            }
+            event.target.value = "";
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function importCikisExcel(event) {
+        let file = event.target.files[0];
+        if (!file) return;
+        let reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                let data = new Uint8Array(e.target.result);
+                let workbook = XLSX.read(data, { type: 'array' });
+                let firstSheetName = workbook.SheetNames[0];
+                let worksheet = workbook.Sheets[firstSheetName];
+                let jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                let addedCount = 0;
+                let todayStr = new Date().toISOString().split('T')[0];
+
+                for (let i = 1; i < jsonRows.length; i++) {
+                    let r = jsonRows[i];
+                    if (!r || r.length === 0) continue;
+                    let sube = r[0] || "Cencora";
+                    let tarih = r[1] || todayStr;
+                    let fatura = r[2] || "";
+                    let eczane = r[3] || "";
+                    let ilce = r[4] || "";
+                    let il = r[5] || "";
+                    let urun = r[6] || "";
+                    if (!urun) continue;
+
+                    let ekranAna = parseInt(r[7]) || 0;
+                    let ekranMf = parseInt(r[8]) || 0;
+                    let satisAna = parseInt(r[9]) || 0;
+                    let satisMf = parseInt(r[10]) || 0;
+                    let satisEkstra = parseInt(r[11]) || 0;
+
+                    appData.cikislar.push({
+                        sube: sube.toString(),
+                        tarih: tarih.toString(),
+                        fatura: fatura.toString(),
+                        eczane: eczane.toString(),
+                        ilce: ilce.toString(),
+                        il: il.toString(),
+                        urun: urun.toString(),
+                        ekranAna: ekranAna,
+                        ekranMf: ekranMf,
+                        satisAna: satisAna,
+                        satisMf: satisMf,
+                        satisEkstra: satisEkstra
+                    });
+                    addedCount++;
+                }
+                syncAndCalculate();
+                alert(`Başarıyla ${addedCount} adet eczane çıkış kaydı yüklendi.`);
+            } catch (err) {
+                console.error(err);
+                alert("Excel dosyası okunurken bir hata oluştu.");
+            }
+            event.target.value = "";
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function renderAll() {
+        appData.metaFirma = document.getElementById('metaFirmaAdi').value;
+        appData.metaTarih = document.getElementById('metaFaturaTarihi').value;
+        appData.metaKod = document.getElementById('metaKod').value;
+
+        document.getElementById('thHeadFirmaVal').innerText = appData.metaFirma || "Firma adı girilmedi...";
+        document.getElementById('thHeadTarihVal').innerText = appData.metaTarih || "Dönem girilmedi...";
+        document.getElementById('thHeadKodVal').innerText = appData.metaKod || "";
+
+        // 1. FATURA RAPORU FİLTRELEME PROSEDÜRÜ (Dönem ve Arama Filtresi Senkronize)
+        let selectedFaturaAy = document.getElementById('faturaAyFiltre').value;
+        let faturaSearch = temizleMetin(document.getElementById('faturaSearchInput').value);
+        
+        let filtrelenmisFatura = appData.fatura.filter((item) => {
+            if (selectedFaturaAy) {
+                let itemTarih = item.tarih || "";
+                if (!itemTarih.startsWith(selectedFaturaAy)) return false;
+            }
+            if (faturaSearch) {
+                let birlesikStr = temizleMetin(`${item.tarih} ${item.depo} ${item.sehir} ${item.musteri} ${item.ilce} ${item.urun}`);
+                if (!birlesikStr.includes(faturaSearch)) return false;
+            }
+            return true;
+        });
+
+        // 2. DÖNEM MF TABLOSU HESAPLAMALARI (Filtrelenmiş Fatura Verilerine Göre Senkronize)
+        let donemBody = document.getElementById('donemMfTableBody');
+        donemBody.innerHTML = '';
+        let genelToplamTutar = 0;
+        let tamamlananSubeSayisi = 0;
+
+        appData.donemMfDepolar.forEach((depoAdi) => {
+            let temizDepo = temizleMetin(depoAdi);
+            let sehirToplam = 0;
+
+            filtrelenmisFatura.forEach(f => {
+                let temizSehir = temizleMetin(f.sehir);
+                let temizFaturaDepo = temizleMetin(f.depo);
+                if (temizSehir !== "" && (temizDepo.includes(temizSehir) || temizSehir.includes(temizDepo.replace('AH ', '')) || temizFaturaDepo.includes(temizDepo))) {
+                    sehirToplam += (parseFloat(f.kdvsiz) || 0);
+                }
+            });
+
+            genelToplamTutar += sehirToplam;
+            let hasAmount = sehirToplam > 0;
+            if (hasAmount) tamamlananSubeSayisi++;
+
+            let isHakEdisYoktur = (!hasAmount && appData.hakEdisYokturMap && appData.hakEdisYokturMap[depoAdi]);
+
+            if (currentDonemFilter === 'DONE' && !hasAmount) return;
+            if (currentDonemFilter === 'PENDING' && (hasAmount || isHakEdisYoktur)) return;
+
+            let statusCellHtml = '';
+            if (hasAmount) {
+                statusCellHtml = '<span class="badge-done"><span>✓</span> Onaylandı</span>';
+            } else if (isHakEdisYoktur) {
+                statusCellHtml = `<span class="badge-none" onclick="toggleHakEdisYoktur('${depoAdi}')" title="Durumu değiştirmek için tıklayın"><span>🚫</span> Hak Ediş Yoktur</span>`;
+            } else {
+                statusCellHtml = `<span class="badge-pending" onclick="toggleHakEdisYoktur('${depoAdi}')" title="Tıklayarak 'Hak Ediş Yoktur' olarak işaretle"><span>⏳</span> Bekliyor (Eksik)</span>`;
+            }
+
+            donemBody.innerHTML += `
+                <tr>
+                    <td style="text-align:left;"><strong>${depoAdi}</strong></td>
+                    <td class="num" style="text-align:right;">${hasAmount ? formatTR(sehirToplam, 2) + ' ₺' : '<span style="color:#94a3b8;">-</span>'}</td>
+                    <td style="text-align:left;">+KDV (%10)</td>
+                    <td style="text-align:center;">
+                        ${statusCellHtml}
+                    </td>
+                </tr>`;
+        });
+
+        document.getElementById('mutabakatOzetText').innerText = `Tamamlanan Mutabakat: ${tamamlananSubeSayisi} / 20 Şube`;
+
+        donemBody.innerHTML += `
+            <tr style="border-top: 2px solid #4c1d95; background: #f3e8ff33; font-weight:bold;">
+                <td style="text-align:left;">TOPLAM</td>
+                <td class="num" style="text-align:right;"><span style="color:#4c1d95;">${formatTR(genelToplamTutar, 2)} ₺</span></td>
+                <td style="text-align:left;"></td>
+                <td style="text-align:center;"><strong>%${((tamamlananSubeSayisi/20)*100).toFixed(0)} Tamamlandı</strong></td>
+            </tr>`;
+
+        // 3. DÖNEM/AY FİLTRELİ MF DETAY HESAPLAMA PROSEDÜRÜ (Eczane Çıkışları Senkronize)
+        let selectedAyFilter = document.getElementById('mfDetayAyFiltre').value;
+        let dictDetay = {};
+        let originalProductNames = {};
+        
+        appData.cikislar.forEach(c => {
+            let tarihVal = c.tarih || "";
+            if (selectedAyFilter && !tarihVal.startsWith(selectedAyFilter)) {
+                return;
+            }
+
+            let subeAdi = (c.sube || "").trim();
+            let urunAdi = (c.urun || "").trim();
+            if (subeAdi !== "" && urunAdi !== "") {
+                let ekstraMfAdet = parseFloat(c.satisEkstra) || 0;
+                let temizSube = temizleMetin(subeAdi);
+                let temizUrun = temizleMetin(urunAdi);
+                let anahtar = temizSube + "|" + temizUrun;
+                
+                dictDetay[anahtar] = (dictDetay[anahtar] || 0) + ekstraMfAdet;
+                if (!originalProductNames[anahtar]) {
+                    originalProductNames[anahtar] = { sube: subeAdi, urun: urunAdi.replace(/["']/g, '').trim() };
+                }
+            }
+        });
+
+        let filtrelenmisMfDetay = [];
+        for (let key in dictDetay) {
+            filtrelenmisMfDetay.push({ 
+                sube: originalProductNames[key].sube, 
+                urun: originalProductNames[key].urun, 
+                adetMf: dictDetay[key] 
+            });
+        }
+
+        filtrelenmisMfDetay.sort((a, b) => {
+            let res = a.sube.localeCompare(b.sube, 'tr');
+            if (res !== 0) return res;
+            return a.urun.localeCompare(b.urun, 'tr');
+        });
+
+        let mfDetayBody = document.getElementById('mfDetayTableBody');
+        mfDetayBody.innerHTML = '';
+        if (filtrelenmisMfDetay && filtrelenmisMfDetay.length > 0) {
+            filtrelenmisMfDetay.forEach((item) => {
+                mfDetayBody.innerHTML += `
+                    <tr>
+                        <td style="text-align:left;"><strong>${item.sube}</strong></td>
+                        <td style="text-align:left;">${item.urun}</td>
+                        <td class="num" style="text-align:right;"><strong>${formatTR(item.adetMf, 0)}</strong></td>
+                    </tr>`;
+            });
+        } else {
+            mfDetayBody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#94a3b8;">Seçilen döneme ait eczane çıkışlarında Ekstra Mf verisi bulunamadı.</td></tr>`;
+        }
+
+        // 4. FATURA TABLOSU GÜNCELLEME (Tüm Veriler üzerinden filtrelenmiş liste)
+        let faturaBody = document.getElementById('faturaTableBody');
+        faturaBody.innerHTML = '';
+        if (filtrelenmisFatura.length > 0) {
+            filtrelenmisFatura.forEach((item) => {
+                let realIdx = appData.fatura.indexOf(item);
+                faturaBody.innerHTML += `
+                    <tr>
+                        <td style="text-align:left;">${item.tarih || '-'}</td>
+                        <td style="text-align:left;">${item.depo || '-'}</td>
+                        <td style="text-align:left;"><strong style="color:var(--accent);">${item.sehir || '-'}</strong></td>
+                        <td style="text-align:left;">${item.musteri || '-'}</td>
+                        <td style="text-align:left;">${item.ilce || '-'}</td>
+                        <td style="text-align:left;"><span class="clickable-product" onclick="onTableProductClick(${realIdx})" title="Ürünü değiştirmek için tıklayın">${item.urun || '-'} 🔍</span></td>
+                        <td class="num" style="text-align:right;">${formatTR(item.isf, 2)}</td>
+                        <td class="num" style="text-align:right;">${formatTR(item.ana, 0)}</td>
+                        <td class="num" style="text-align:right;">${formatTR(item.mf, 0)}</td>
+                        <td class="num" style="text-align:right;"><strong>${formatTR(item.adet, 0)}</strong></td>
+                        <td class="num" style="text-align:right;">${formatTR(item.kki, 2)}</td>
+                        <td class="num" style="text-align:right;">${formatTR(item.kdvOrani || 10, 0)}</td>
+                        <td class="num" style="text-align:right;">${formatTR(item.birimMaliyet, 2)}</td>
+                        <td class="num" style="text-align:right; color:var(--accent); font-weight:700;">${formatTR(item.kdvsiz, 2)}</td>
+                        <td class="num" style="text-align:right;">${formatTR(item.toplam, 2)}</td>
+                        <td style="text-align:right;">
+                            <button class="icon-btn" onclick="openEditFaturaModal(${realIdx})">✏️</button>
+                            <button class="del-btn" onclick="deleteItem('fatura', ${realIdx})">Sil ✕</button>
+                        </td>
+                    </tr>`;
+            });
+        } else {
+            faturaBody.innerHTML = `<tr><td colspan="16" style="text-align:center; color:#94a3b8;">Aranan kriterde fatura kaydı bulunamadı.</td></tr>`;
+        }
+
+        // 5. ECZANE ÇIKIŞLARI FİLTRELEME PROSEDÜRÜ (Dönem ve Arama Filtresi)
+        let selectedCikisAy = document.getElementById('cikisAyFiltre').value;
+        let cikisSearch = temizleMetin(document.getElementById('cikisSearchInput').value);
+        
+        let filtrelenmisCikis = appData.cikislar.filter((item) => {
+            if (selectedCikisAy) {
+                let itemTarih = item.tarih || "";
+                if (!itemTarih.startsWith(selectedCikisAy)) return false;
+            }
+            if (cikisSearch) {
+                let birlesikStr = temizleMetin(`${item.sube} ${item.fatura} ${item.eczane} ${item.ilce} ${item.il} ${item.urun}`);
+                if (!birlesikStr.includes(cikisSearch)) return false;
+            }
+            return true;
+        });
+
+        let cikisBody = document.getElementById('cikisTableBody');
+        cikisBody.innerHTML = '';
+        if (filtrelenmisCikis.length > 0) {
+            filtrelenmisCikis.forEach((item) => {
+                let realIdx = appData.cikislar.indexOf(item);
+                cikisBody.innerHTML += `
+                    <tr>
+                        <td style="text-align:left;"><strong style="color:var(--accent);">${item.sube || '-'}</strong></td>
+                        <td style="text-align:left;">${item.tarih || '-'}</td>
+                        <td style="text-align:left;">${item.fatura || '-'}</td>
+                        <td style="text-align:left;"><strong>${item.eczane || '-'}</strong></td>
+                        <td style="text-align:left;">${item.ilce || '-'}</td>
+                        <td style="text-align:left;">${item.il || '-'}</td>
+                        <td style="text-align:left;"><span class="clickable-product" onclick="onCikisTableProductClick(${realIdx})" title="Ürünü değiştirmek için tıklayın">${item.urun || '-'} 🔍</span></td>
+                        <td class="num" style="text-align:right;">${formatTR(item.ekranAna, 0)}</td>
+                        <td class="num" style="text-align:right;">${formatTR(item.ekranMf, 0)}</td>
+                        <td class="num" style="text-align:right;">${formatTR(item.satisAna, 0)}</td>
+                        <td class="num" style="text-align:right;">${formatTR(item.satisMf, 0)}</td>
+                        <td class="num" style="text-align:right;">${formatTR(item.satisEkstra, 0)}</td>
+                        <td style="text-align:right;">
+                            <button class="icon-btn" onclick="openEditCikisModal(${realIdx})">✏️</button>
+                            <button class="del-btn" onclick="deleteItem('cikislar', ${realIdx})">Sil ✕</button>
+                        </td>
+                    </tr>`;
+            });
+        } else {
+            cikisBody.innerHTML = `<tr><td colspan="13" style="text-align:center; color:#94a3b8;">Aranan kriterde eczane çıkış kaydı bulunamadı.</td></tr>`;
+        }
+    }
+
+    function cleanHtmlToCell(htmlContent, isNumeric = false, isBold = false, isInteger = false) {
+        let tempDiv = document.createElement('div');
+        tempDiv.innerHTML = htmlContent;
+        let text = tempDiv.textContent || tempDiv.innerText || "";
+        text = text.replace('🔍', '').trim();
+        
+        let styleId;
+        if (isInteger) {
+            styleId = isBold ? "CellBoldInt" : "CellInt";
+        } else {
+            styleId = isNumeric ? (isBold ? "CellBoldNum" : "CellNum") : (isBold ? "CellBold" : "Cell");
+        }
+        
+        if (isNumeric || isInteger) {
+            let cleanNum = text.replace('₺', '').replace(/\./g, '').replace(',', '.').trim();
+            let val = parseFloat(cleanNum);
+            if (!isNaN(val)) {
+                return `<Cell ss:StyleID="${styleId}"><Data ss:Type="Number">${val}</Data></Cell>`;
+            }
+        }
+        return `<Cell ss:StyleID="${styleId}"><Data ss:Type="String">${text}</Data></Cell>`;
+    }
+
+    function exportAllTabsToExcel() {
+        function tableToExcelXML(tableElement, numericCols = [], integerCols = [], headerStyleID = "Header", isDonemMf = false) {
+            let xmlRows = '';
+            let rows = tableElement.querySelectorAll('tr');
+            
+            rows.forEach((row, rowIdx) => {
+                let xmlCells = '';
+                let cols = row.querySelectorAll('th, td');
+                let isHeaderRow = (rowIdx < (isDonemMf ? 4 : 1) || row.querySelector('th') !== null);
+                
+                cols.forEach((col, colIdx) => {
+                    if (col.innerText.includes('İşlemler') || col.querySelector('.icon-btn') || col.querySelector('.del-btn')) {
+                        return;
+                    }
+                    if (isDonemMf && rowIdx < 3) {
+                        let text = (col.textContent || col.innerText || "").trim();
+                        if (colIdx === 0) {
+                            xmlCells += `<Cell ss:StyleID="${headerStyleID}"><Data ss:Type="String">${text}</Data></Cell>`;
+                        } else if (colIdx === 1) {
+                            xmlCells += `<Cell ss:StyleID="HeaderBlueVal" ss:MergeAcross="2"><Data ss:Type="String">${text}</Data></Cell>`;
+                        }
+                    } else if (isDonemMf && rowIdx === 3) {
+                        let text = (col.textContent || col.innerText || "").trim();
+                        xmlCells += `<Cell ss:StyleID="${headerStyleID}"><Data ss:Type="String">${text}</Data></Cell>`;
+                    } else if (isHeaderRow) {
+                        let text = (col.textContent || col.innerText || "").trim();
+                        xmlCells += `<Cell ss:StyleID="${headerStyleID}"><Data ss:Type="String">${text}</Data></Cell>`;
+                    } else {
+                        let isInt = integerCols.includes(colIdx);
+                        let isNum = numericCols.includes(colIdx) || col.classList.contains('num');
+                        let isBold = col.querySelector('strong') !== null || row.style.fontWeight === 'bold';
+                        xmlCells += cleanHtmlToCell(col.innerHTML, isNum, isBold, isInt);
+                    }
+                });
+                if (xmlCells !== '') {
+                    xmlRows += `<Row>${xmlCells}</Row>\n`;
+                }
+            });
+            return xmlRows;
+        }
+
+        let xmlFatura = tableToExcelXML(document.getElementById('tableFaturaRaporu'), [6, 10, 12, 13, 14], [7, 8, 9, 11], "Header", false);
+        let xmlCikis = tableToExcelXML(document.getElementById('tableEczaneCikis'), [], [7, 8, 9, 10, 11], "HeaderYellow", false);
+        let xmlMfDetay = tableToExcelXML(document.getElementById('tableMfDetay'), [], [2], "Header", false);
+        let xmlDonem = tableToExcelXML(document.getElementById('tableDonemMf'), [1], [], "Header", true);
+
+        let spreadsheetXML = `<?xml version="1.0" encoding="UTF-8"?>
+        <?mso-application progid="Excel.Sheet"?>
+        <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+                  xmlns:o="urn:schemas-microsoft-com:office:office"
+                  xmlns:x="urn:schemas-microsoft-com:office:excel"
+                  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+                  xmlns:html="http://www.w3.org/TR/REC-html40">
+            <Styles>
+                <Style ss:ID="Default" ss:Name="Normal"><Font ss:FontName="Calibri" ss:Size="11"/></Style>
+                <Style ss:ID="Header"><Interior ss:Color="#4C1D95" ss:Pattern="Solid"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/></Style>
+                <Style ss:ID="HeaderBlueVal"><Interior ss:Color="#3B82F6" ss:Pattern="Solid"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/></Style>
+                <Style ss:ID="HeaderYellow"><Interior ss:Color="#EAB308" ss:Pattern="Solid"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#000000"/></Style>
+                <Style ss:ID="Cell"><Font ss:FontName="Calibri" ss:Size="11"/></Style>
+                <Style ss:ID="CellBold"><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1"/></Style>
+                <Style ss:ID="CellNum"><NumberFormat ss:Format="#,##0.00"/><Font ss:FontName="Calibri" ss:Size="11"/></Style>
+                <Style ss:ID="CellBoldNum"><NumberFormat ss:Format="#,##0.00"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1"/></Style>
+                <Style ss:ID="CellInt"><NumberFormat ss:Format="#,##0"/><Font ss:FontName="Calibri" ss:Size="11"/></Style>
+                <Style ss:ID="CellBoldInt"><NumberFormat ss:Format="#,##0"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1"/></Style>
+            </Styles>
+            <Worksheet ss:Name="DONEM MF"><Table>${xmlDonem}</Table></Worksheet>
+            <Worksheet ss:Name="MF DETAY"><Table>${xmlMfDetay}</Table></Worksheet>
+            <Worksheet ss:Name="FATURA RAPORU"><Table>${xmlFatura}</Table></Worksheet>
+            <Worksheet ss:Name="ECZANE CIKISLARI"><Table>${xmlCikis}</Table></Worksheet>
+        </Workbook>`;
+
+        let blob = new Blob([spreadsheetXML], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = 'Gen_Ilac_Raporlari_' + new Date().toISOString().split('T')[0] + '.xls';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    function openAddFaturaModal() {
+        document.getElementById('modalTitle').innerText = "📄 Yeni Fatura Kaydı Ekle";
+        document.getElementById('editFaturaIndex').value = "";
+        document.getElementById('fTarih').value = new Date().toISOString().split('T')[0];
+        document.getElementById('fDepo').value = "Cencora";
+        document.getElementById('fSehir').value = "";
+        document.getElementById('fMusteri').value = "";
+        document.getElementById('fIlce').value = "";
+        document.getElementById('fUrun').value = "";
+        document.getElementById('fIsf').value = "0";
+        document.getElementById('fAna').value = "4";
+        document.getElementById('fMf').value = "1";
+        document.getElementById('fAdet').value = "1";
+        document.getElementById('fKki').value = "0";
+        document.getElementById('fKdvOrani').value = "10";
+        
+        hesaplaFatura();
+        document.getElementById('faturaModal').style.display = 'flex';
+        setupGridNavigation('.focusable', 'faturaSaveBtn');
+        document.getElementById('fTarih').focus();
+    }
+
+    function openEditFaturaModal(idx) {
+        let item = appData.fatura[idx];
+        document.getElementById('modalTitle').innerText = "✏️ Fatura Kaydını Düzenle";
+        document.getElementById('editFaturaIndex').value = idx;
+        document.getElementById('fTarih').value = item.tarih || new Date().toISOString().split('T')[0];
+        document.getElementById('fDepo').value = item.depo || '';
+        document.getElementById('fSehir').value = item.sehir || '';
+        document.getElementById('fMusteri').value = item.musteri || '';
+        document.getElementById('fIlce').value = item.ilce || '';
+        document.getElementById('fUrun').value = item.urun || '';
+        document.getElementById('fIsf').value = item.isf || 0;
+        document.getElementById('fAna').value = item.ana || 0;
+        document.getElementById('fMf').value = item.mf || 0;
+        document.getElementById('fAdet').value = item.adet || 0;
+        document.getElementById('fKki').value = item.kki || 0;
+        document.getElementById('fKdvOrani').value = item.kdvOrani || 10;
+        
+        hesaplaFatura();
+        document.getElementById('faturaModal').style.display = 'flex';
+        setupGridNavigation('.focusable', 'faturaSaveBtn');
+        document.getElementById('fTarih').focus();
+    }
+
+    function closeFaturaModal() { document.getElementById('faturaModal').style.display = 'none'; }
+
+    async function saveFaturaData() {
+        let idx = document.getElementById('editFaturaIndex').value;
+        let todayStr = new Date().toISOString().split('T')[0];
+        let dataObj = {
+            tarih: document.getElementById('fTarih').value || todayStr,
+            depo: document.getElementById('fDepo').value,
+            sehir: document.getElementById('fSehir').value,
+            musteri: document.getElementById('fMusteri').value,
+            ilce: document.getElementById('fIlce').value,
+            urun: document.getElementById('fUrun').value,
+            isf: parseFloat(document.getElementById('fIsf').value) || 0,
+            ana: parseInt(document.getElementById('fAna').value) || 0,
+            mf: parseInt(document.getElementById('fMf').value) || 0,
+            adet: parseInt(document.getElementById('fAdet').value) || 0,
+            kki: parseFloat(document.getElementById('fKki').value) || 0,
+            kdvOrani: parseFloat(document.getElementById('fKdvOrani').value) || 10,
+            birimMaliyet: parseFloat(document.getElementById('fBirimMaliyet').value) || 0,
+            kdvsiz: parseFloat(document.getElementById('fKdvsiz').value) || 0,
+            toplam: parseFloat(document.getElementById('fToplam').value) || 0
+        };
+
+        if (idx === "") {
+            appData.fatura.push(dataObj);
+        } else {
+            appData.fatura[parseInt(idx)] = dataObj;
+        }
+
+        closeFaturaModal();
+        syncAndCalculate();
+    }
+
+    function openAddCikisModal() {
+        document.getElementById('cikisModalTitle').innerText = "🏥 Yeni Eczane Çıkışı Ekle";
+        document.getElementById('editCikisIndex').value = "";
+        document.getElementById('cSube').value = "Cencora";
+        document.getElementById('cTarih').value = new Date().toISOString().split('T')[0];
+        document.getElementById('cFaturaNo').value = "";
+        document.getElementById('cEczane').value = "";
+        document.getElementById('cIlce').value = "";
+        document.getElementById('cIl').value = "";
+        document.getElementById('cUrun').value = "";
+        document.getElementById('cEkranAna').value = "4";
+        document.getElementById('cEkranMf').value = "1";
+        document.getElementById('cSatisAna').value = "4";
+        document.getElementById('cSatisMf').value = "1";
+        document.getElementById('cSatisEkstra').value = "0";
+        document.getElementById('cikisModal').style.display = 'flex';
+        setupGridNavigation('.c-focusable', 'cikisSaveBtn');
+        document.getElementById('cSube').focus();
+    }
+
+    function openEditCikisModal(idx) {
+        let item = appData.cikislar[idx];
+        document.getElementById('cikisModalTitle').innerText = "✏️ Eczane Çıkışını Düzenle";
+        document.getElementById('editCikisIndex').value = idx;
+        document.getElementById('cSube').value = item.sube || '';
+        document.getElementById('cTarih').value = item.tarih || '';
+        document.getElementById('cFaturaNo').value = item.fatura || '';
+        document.getElementById('cEczane').value = item.eczane || '';
+        document.getElementById('cIlce').value = item.ilce || '';
+        document.getElementById('cIl').value = item.il || '';
+        document.getElementById('cUrun').value = item.urun || '';
+        document.getElementById('cEkranAna').value = item.ekranAna || 0;
+        document.getElementById('cEkranMf').value = item.ekranMf || 0;
+        document.getElementById('cSatisAna').value = item.satisAna || 0;
+        document.getElementById('cSatisMf').value = item.satisMf || 0;
+        document.getElementById('cSatisEkstra').value = item.satisEkstra || 0;
+        document.getElementById('cikisModal').style.display = 'flex';
+        setupGridNavigation('.c-focusable', 'cikisSaveBtn');
+        document.getElementById('cSube').focus();
+    }
+
+    function closeCikisModal() { document.getElementById('cikisModal').style.display = 'none'; }
+
+    async function saveCikisData() {
+        let idx = document.getElementById('editCikisIndex').value;
+        let dataObj = {
+            sube: document.getElementById('cSube').value,
+            tarih: document.getElementById('cTarih').value,
+            fatura: document.getElementById('cFaturaNo').value,
+            eczane: document.getElementById('cEczane').value,
+            ilce: document.getElementById('cIlce').value,
+            il: document.getElementById('cIl').value,
+            urun: document.getElementById('cUrun').value,
+            ekranAna: parseInt(document.getElementById('cEkranAna').value) || 0,
+            ekranMf: parseInt(document.getElementById('cEkranMf').value) || 0,
+            satisAna: parseInt(document.getElementById('cSatisAna').value) || 0,
+            satisMf: parseInt(document.getElementById('cSatisMf').value) || 0,
+            satisEkstra: parseInt(document.getElementById('cSatisEkstra').value) || 0
+        };
+
+        if (idx === "") {
+            appData.cikislar.push(dataObj);
+        } else {
+            appData.cikislar[parseInt(idx)] = dataObj;
+        }
+
+        closeCikisModal();
+        syncAndCalculate();
+    }
+
+    async function deleteItem(type, index) {
+        if(confirm("Bu kaydı silmek istediğinize emin misiniz?")) {
+            appData[type].splice(index, 1);
+            syncAndCalculate();
+        }
+    }
+
+    function updateClock() { 
+        document.getElementById('dateTimeDisplay').innerText = new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }); 
+    }
+    setInterval(updateClock, 1000); updateClock();
+
+    initApp();
+</script>
+</body>
+</html>

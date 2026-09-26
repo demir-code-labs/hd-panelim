@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>GEN İLAÇ | ULUSAL ECZA DEPOLARI MUTABAKAT PLATFORMU v3.4</title>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { 
+            --c-bg: #f8fafc; 
+            --c-card: #ffffff; 
+            --c-border: #e2e8f0; 
+            --c-text: #1e293b; 
+            --c-text-muted: #64748b;
+            --c-primary: #0284c7; 
+            --c-primary-dark: #0369a1;
+            --c-green: #059669; 
+            --c-extra: #7c3aed; 
+            --c-yellow-bg: #fef9c3;
+            --c-yellow-text: #854d0e;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background: var(--c-bg); color: var(--c-text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        .header { padding: 14px; background: #ffffff; border-bottom: 2px solid var(--c-border); text-align: center; font-weight: 800; font-size: 16px; color: #0f172a; letter-spacing: 0.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .main { display: flex; flex: 1; padding: 12px; gap: 12px; overflow-y: auto; flex-direction: column; }
+        .top-row { display: flex; gap: 12px; height: 50vh; }
+        .side { width: 280px; display: flex; flex-direction: column; gap: 10px; }
+        .card { background: var(--c-card); border: 1px solid var(--c-border); padding: 15px; border-radius: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+        .content { flex: 1; background: var(--c-card); border-radius: 10px; border: 1px solid var(--c-border); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+        .report-panel { display: flex; gap: 12px; height: 30vh; }
+        .report-box { flex: 1; background: var(--c-card); border-radius: 10px; border: 1px solid var(--c-border); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+        .report-box.extra { border-color: #ddd6fe; }
+        .btn { width: 100%; padding: 11px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; color: white; text-transform: uppercase; font-size: 11px; margin-bottom: 6px; transition: 0.2s; }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-up { background: var(--c-primary); } .btn-pre { background: #475569; } .btn-ex { background: var(--c-green); }
+        .table-wrap { flex: 1; overflow: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
+        th { position: sticky; top: 0; background: #f1f5f9; color: #334155; padding: 10px 8px; z-index: 10; text-align: left; font-size: 10px; font-weight: 700; border-bottom: 1px solid var(--c-border); }
+        td { padding: 9px 8px; border-bottom: 1px solid #f1f5f9; text-align: left; color: #334155; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .center { text-align: center; }
+        .action-icon { cursor: pointer; transition: 0.2s; margin: 0 4px; font-size: 13px; }
+        .edit-ic { color: #0284c7; } .del-ic { color: #ef4444; }
+        .row-has-mf { background: var(--c-yellow-bg) !important; color: var(--c-yellow-text) !important; font-weight: 600; }
+        .row-has-mf td { color: var(--c-yellow-text) !important; }
+        .row-is-extra { background: #f5f3ff !important; color: var(--c-extra) !important; font-weight: 700; }
+        .row-is-extra td { color: var(--c-extra) !important; }
+        .timestamp-box { margin-top: auto; padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--c-border); border-left: 4px solid var(--c-primary); }
+        #live-branch { color: var(--c-primary-dark); font-weight: 800; font-size: 13px; margin-bottom: 6px; text-transform: uppercase; }
+        #live-clock { font-size: 18px; font-family: 'Courier New', monospace; font-weight: bold; color: #1e293b; line-height: 1.2; }
+        
+        #pdfModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; padding: 20px; backdrop-filter: blur(4px); }
+        .pdf-paper { background: white; color: #000; width: 100%; max-width: 1100px; height: 100%; margin: 0 auto; padding: 40px; overflow-y: auto; position: relative; border-radius: 10px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+
+<div class="header">GEN İLAÇ | ULUSAL ECZA DEPOLARI MUTABAKAT PLATFORMU v3.4</div>
+
+<div class="main">
+    <div class="top-row">
+        <div class="side">
+            <div class="card">
+                <label class="btn btn-up"><i class="fa-solid fa-file-excel"></i> RAPOR YÜKLE<input type="file" id="fInp" hidden onchange="processFile(this)"></label>
+                <button class="btn btn-pre" onclick="showPDF()"><i class="fa-solid fa-file-pdf"></i> KURUMSAL PDF</button>
+                <button class="btn btn-ex" onclick="exportExcel()"><i class="fa-solid fa-file-excel"></i> EXCEL ÇIKTI</button>
+            </div>
+            <div class="card">
+                <label style="font-size:10px; font-weight:700; color:var(--c-text-muted);">EPAMOR ORAN (%)</label>
+                <input type="number" id="bEpa" class="card" style="width:100%; background:#f8fafc; color:#1e293b; padding:8px; margin-top:4px; border:1px solid var(--c-border);" value="20" oninput="render()">
+                <label style="font-size:10px; font-weight:700; color:var(--c-text-muted); margin-top:8px; display:block;">ILOPERA ORAN (%)</label>
+                <input type="number" id="bIlo" class="card" style="width:100%; background:#f8fafc; color:#1e293b; padding:8px; margin-top:4px; border:1px solid var(--c-border);" value="40" oninput="render()">
+            </div>
+            <div class="timestamp-box">
+                <div id="live-branch">ŞUBE: BEKLEMEDE...</div>
+                <div id="live-clock">--:--:--</div>
+                <div id="live-date" style="font-size:11px; color:var(--c-text-muted); margin-top:4px;">Tarih: --/--/----</div>
+            </div>
+        </div>
+        <div class="content">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:75px" class="center">Tarih</th>
+                            <th style="width:115px">Fatura No</th> 
+                            <th style="width:140px">Müşteri Adı</th>
+                            <th style="width:85px">İl</th>
+                            <th style="width:90px">Semt/İlçe</th>
+                            <th style="width:170px">Ürün Adı</th>
+                            <th style="width:55px" class="center">Ana</th>
+                            <th style="width:50px" class="center">Mf</th>
+                            <th style="width:65px" class="center">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="main-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="report-panel">
+        <div class="report-box">
+            <div style="background:#f1f5f9; color:#334155; padding:8px; font-weight:800; text-align:center; font-size:11px; border-bottom:1px solid var(--c-border);">BAZ MF LİSTESİ</div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tarih</th><th>Fatura</th><th>Müşteri Adı</th><th>İl</th><th>Semt/İlçe</th><th>Ürün Adı</th><th class="center">Ana</th><th class="center">MF</th><th class="center">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="base-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="report-box extra">
+            <div style="background:#f5f3ff; color:var(--c-extra); padding:8px; font-weight:800; text-align:center; font-size:11px; border-bottom:1px solid #ddd6fe;">EKSTRA MF LİSTESİ</div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tarih</th><th>Fatura</th><th>Müşteri Adı</th><th>İl</th><th>Semt/İlçe</th><th>Ürün Adı</th><th class="center">Ana</th><th class="center">MF</th><th class="center">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="extra-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="pdfModal">
+    <div class="pdf-paper">
+        <button onclick="document.getElementById('pdfModal').style.display='none'" style="float:right; padding:8px 16px; cursor:pointer; background:#ef4444; color:white; border:none; border-radius:6px; font-weight:700; font-size:11px;">KAPAT</button>
+        <div id="pdf-content" style="margin-top:30px;"></div>
+    </div>
+</div>
+
+<script>
+    let db = [];
+    let branchName = "BELİRTİLMEDİ";
+
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('live-clock').innerText = now.toLocaleTimeString('tr-TR');
+        document.getElementById('live-date').innerText = "Tarih: " + now.toLocaleDateString('tr-TR');
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    function processFile(inp) {
+        const file = inp.files[0]; if(!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+            const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
+            const normalize = (str) => {
+                if (!str) return "";
+                return str.toString().toLowerCase().trim()
+                    .replace(/[ıİ]/g, 'i').replace(/[şŞ]/g, 's').replace(/[çÇ]/g, 'c')
+                    .replace(/[ğĞ]/g, 'g').replace(/[üÜ]/g, 'u').replace(/[öÖ]/g, 'o')
+                    .replace(/[^a-z0-9]/g, '');
+            };
+
+            let hIdx = -1;
+            for(let i=0; i<Math.min(raw.length, 10); i++) {
+                const rowStr = raw[i].map(c => normalize(c)).join("");
+                if (rowStr.includes("tarih") && (rowStr.includes("urun") || rowStr.includes("ilac") || rowStr.includes("eczane") || rowStr.includes("belgeno"))) {
+                    hIdx = i;
+                    break;
+                }
+            }
+            if(hIdx === -1) hIdx = 0;
+            
+            const h = raw[hIdx].map(v => normalize(v));
+            const getCol = (keys) => h.findIndex(head => keys.some(k => head === normalize(k) || head.includes(normalize(k))));
+
+            const isGek = h.some(head => head.includes("musteriil"));
+
+            const col = {
+                t: getCol(["tarih", "belgetarihi", "ftrltrh", "faturatarihi", "faturatarih"]), 
+                e: h.findIndex(head => head === "eczaneadi" || head === "hesapismi" || head === "musteriadi" || head === "hesapadi") !== -1 ?
+                   h.findIndex(head => head === "eczaneadi" || head === "hesapismi" || head === "musteriadi" || head === "hesapadi") :
+                   getCol(["eczaneadi", "hesapismi", "musteriadi", "hesapadi", "eczane"]),
+                u: h.findIndex(head => head === "urunadi" || head === "ilacadi" || head === "uruntanimi") !== -1 ? 
+                   h.findIndex(head => head === "urunadi" || head === "ilacadi" || head === "uruntanimi") : 
+                   getCol(["urunadi", "ilacadi", "uruntanimi", "urun", "ilac"]),
+                a: getCol(["miktari", "miktar", "adet"]),
+                m: getCol(["malfazlasi", "mfadet", "mf"]), 
+                f: h.findIndex(head => head === "belgeno" || head === "faturano") !== -1 ?
+                   h.findIndex(head => head === "belgeno" || head === "faturano") :
+                   getCol(["belgeno", "faturano", "fatura"]),
+                il: isGek ? h.findIndex(head => head === "musteriil" && !head.includes("ilce")) : h.findIndex(head => head === "il" && !head.includes("ilce")),
+                semt: isGek ? h.findIndex(head => head === "musteriilce") : h.findIndex(head => head === "semtilce" || head === "ilce")
+            };
+
+            if (col.il === -1) col.il = getCol(["il", "sehir", "musteriil"]);
+            if (col.semt === -1) col.semt = getCol(["semtilce", "semt", "ilce", "musteriilce"]);
+
+            db = raw.slice(hIdx + 1).map((r, i) => {
+                let productName = r[col.u];
+                if (!productName || !isNaN(productName) || productName.toString().length < 2) {
+                    for (let cIdx = 0; cIdx < r.length; cIdx++) {
+                        let valStr = String(r[cIdx] || "");
+                        if (valStr.toUpperCase().includes("EPAMOR") || 
+                            valStr.toUpperCase().includes("ILOPERA") || 
+                            valStr.toUpperCase().includes("CABOMETYX") || 
+                            valStr.toUpperCase().includes("GENKORT") ||
+                            valStr.toUpperCase().includes("SOMATULIN") ||
+                            valStr.toUpperCase().includes("REGEN") ||
+                            valStr.toUpperCase().includes("NEOMIDANTAN")) {
+                            productName = valStr;
+                            break;
+                        }
+                    }
+                }
+
+                let custName = r[col.e];
+                if (!custName || !isNaN(custName)) {
+                    for (let cIdx = 0; cIdx < r.length; cIdx++) {
+                        let valStr = String(r[cIdx] || "").trim();
+                        if (valStr.toUpperCase().includes("ECZANESİ") || valStr.toUpperCase().includes("ECZANE") || valStr.toUpperCase().includes("ECZ.")) {
+                            custName = valStr;
+                            break;
+                        }
+                    }
+                }
+
+                let fatNo = r[col.f];
+                let fatFound = false;
+                if (fatNo) {
+                    let sFat = String(fatNo).trim();
+                    if (sFat.startsWith("FF") || /^[0-9]+[A-Z]\s+[0-9]+$/.test(sFat) || sFat.includes("K ") || sFat.includes("1K") || sFat.includes("3K") || sFat.length > 5) {
+                        fatFound = true;
+                    }
+                }
+                
+                if (!fatFound) {
+                    for (let cIdx = 0; cIdx < r.length; cIdx++) {
+                        let valStr = String(r[cIdx] || "").trim();
+                        if (valStr.startsWith("FF") || /^\d+[A-Z]\s+\d+$/.test(valStr) || valStr.includes("1K ") || valStr.includes("3K ") || valStr.includes("4K ")) {
+                            fatNo = valStr;
+                            fatFound = true;
+                            break;
+                        }
+                    }
+                }
+
+                let ilVal = r[col.il];
+                let semtVal = r[col.semt];
+
+                if (isGek) {
+                    ilVal = r[h.findIndex(head => head === "musteriil" && !head.includes("ilce"))];
+                    semtVal = r[h.findIndex(head => head === "musteriilce")];
+                }
+
+                if (ilVal && !isNaN(ilVal)) ilVal = "-";
+                if (semtVal && !isNaN(semtVal)) semtVal = "-";
+
+                if (!productName && !custName) return null;
+
+                const formatDate = (val) => {
+                    if (!val) return "-";
+                    if (typeof val === 'number') {
+                        const date = new Date((val - 25569) * 86400 * 1000);
+                        return date.toLocaleDateString('tr-TR');
+                    }
+                    const d = new Date(val);
+                    if (!isNaN(d.getTime())) {
+                        return d.toLocaleDateString('tr-TR');
+                    }
+                    return val.toString();
+                };
+
+                return {
+                    uid: Date.now() + i,
+                    t: formatDate(r[col.t]),
+                    e: (custName || "BILINMEYEN").toString().toUpperCase(),
+                    u: (productName || "BILINMEYEN").toString().toUpperCase(),
+                    a: Math.round(parseFloat(r[col.a])) || 0,
+                    m: Math.round(parseFloat(r[col.m])) || 0,
+                    f: (fatNo || "-").toString(),
+                    il: (ilVal || "-").toString().toUpperCase(),
+                    semt: (semtVal || "-").toString().toUpperCase(),
+                    d: (file.name.split('.')[0]).toString().toUpperCase()
+                };
+            }).filter(x => x !== null && x.u !== "BILINMEYEN");
+
+            branchName = db.length > 0 ? file.name.split('.')[0].toUpperCase() : "RAPOR";
+            document.getElementById('live-branch').innerText = `ŞUBE / DEPO: ${branchName}`;
+            render();
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function isEpamor(val) {
+        let s = val.toString().toUpperCase();
+        return s.includes("EPAMOR") || s === "156859" || s === "156860";
+    }
+
+    function isIlopera(val) {
+        let s = val.toString().toUpperCase();
+        return s.includes("ILOPERA") || s === "151978" || s === "152753";
+    }
+
+    function render() {
+        const epa = parseFloat(document.getElementById('bEpa').value) || 0;
+        const ilo = parseFloat(document.getElementById('bIlo').value) || 0;
+        let mH = "", bH = "", eH = "";
+        
+        db.forEach(i => {
+            let expectedRate = 0;
+            let isTargetProduct = false;
+
+            if (isEpamor(i.u)) {
+                expectedRate = epa;
+                isTargetProduct = true;
+            } else if (isIlopera(i.u)) {
+                expectedRate = ilo;
+                isTargetProduct = true;
+            }
+
+            const actualRate = i.a > 0 ? (i.m / i.a) * 100 : 0;
+            const isBaseMatch = isTargetProduct && Math.abs(actualRate - expectedRate) < 0.01;
+            const isEx = i.m > 0 && !isBaseMatch;
+
+            const acts = `<td class="center"><i class="fa-solid fa-pen edit-ic action-icon" onclick="editRow(${i.uid})"></i><i class="fa-solid fa-trash-can del-ic action-icon" onclick="deleteRow(${i.uid})"></i></td>`;
+            
+            mH += `<tr class="${i.m > 0 ? (isEx ? 'row-is-extra' : 'row-has-mf') : ''}">
+                <td class="center">${i.t}</td>
+                <td>${i.f}</td> 
+                <td>${i.e}</td>
+                <td>${i.il}</td>
+                <td>${i.semt}</td>
+                <td>${i.u}</td>
+                <td class="center">${i.a}</td>
+                <td class="center">${i.m}</td>
+                ${acts}
+            </tr>`;
+            
+            if(i.m > 0) {
+                const sRow = `<tr>
+                    <td>${i.t}</td>
+                    <td>${i.f}</td> 
+                    <td>${i.e}</td>
+                    <td>${i.il}</td>
+                    <td>${i.semt}</td>
+                    <td>${i.u}</td>
+                    <td class="center">${i.a}</td>
+                    <td class="center">${i.m}</td>
+                    ${acts}
+                </tr>`;
+                if(isEx) eH += sRow; else bH += sRow;
+            }
+        });
+        
+        document.getElementById('main-tbody').innerHTML = mH;
+        document.getElementById('base-tbody').innerHTML = bH;
+        document.getElementById('extra-tbody').innerHTML = eH;
+    }
+
+    function editRow(uid) {
+        const r = db.find(x => x.uid === uid);
+        const nE = prompt("Müşteri Adı:", r.e);
+        if(nE) { r.e = nE.toUpperCase(); render(); }
+    }
+    function deleteRow(uid) { db = db.filter(x => x.uid !== uid); render(); }
+
+    function showPDF() {
+        let h = `<h2 style="text-align:center; margin-bottom:20px; color:#1e293b;">${branchName} MUTABAKAT RAPORU</h2><table border="1" style="width:100%; border-collapse:collapse; font-size:11px; border-color:#cbd5e1;"><thead><tr style="background:#f1f5f9;"><th style="padding:8px;">TARIH</th><th style="padding:8px;">FATURA NO</th><th style="padding:8px;">MÜŞTERİ ADI</th><th style="padding:8px;">İL</th><th style="padding:8px;">SEMT/İLÇE</th><th style="padding:8px;">ÜRÜN ADI</th><th style="padding:8px; text-align:center;">ANA MAL</th><th style="padding:8px; text-align:center;">MF</th></tr></thead><tbody>`;
+        db.filter(x => x.m > 0).forEach(i => h += `<tr><td style="padding:6px;">${i.t}</td><td style="padding:6px;">${i.f}</td><td style="padding:6px;">${i.e}</td><td style="padding:6px;">${i.il}</td><td style="padding:6px;">${i.semt}</td><td style="padding:6px;">${i.u}</td><td style="padding:6px; text-align:center;">${i.a}</td><td style="padding:6px; text-align:center;">${i.m}</td></tr>`);
+        document.getElementById('pdf-content').innerHTML = h + "</tbody></table>";
+        document.getElementById('pdfModal').style.display = 'block';
+    }
+
+    function exportExcel() {
+        const data = db.filter(x => x.m > 0).map(i => ({
+            "Tarih": i.t.toString(),
+            "Fatura No": i.f,
+            "Müşteri Adı": i.e,
+            "İl": i.il,
+            "Semt/İlçe": i.semt,
+            "Ürün Adı": i.u,
+            "Ana Mal": i.a,
+            "Mf": i.m
+        }));
+        
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, "MUTABAKAT");
+        XLSX.writeFile(wb, `${branchName}_MUTABAKAT.xlsx`);
+    }
+</script>
+</body>
+</html>

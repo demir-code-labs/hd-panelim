@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>| Master Pro (Full Active Edition)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --brand: #0f172a; --gold: #f59e0b; --bg: #f1f5f9; --sidebar: #1e293b; --success: #10b981; --danger: #ef4444; --warning: #f97316; --info: #3b82f6; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: var(--bg); height: 100vh; display: flex; overflow: hidden; }
+        .sidebar { width: 300px; background: var(--sidebar); color: white; display: flex; flex-direction: column; box-shadow: 4px 0 15px rgba(0,0,0,0.2); }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); background: #111827; }
+        .product-scroll-list { flex: 1; overflow-y: auto; padding: 15px; }
+        .product-sum-card { background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid var(--gold); }
+        .p-sum-name { font-size: 10px; font-weight: 700; color: #cbd5e1; display: block; }
+        .p-sum-val { font-size: 14px; font-weight: 800; color: white; }
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .status-bar { padding: 15px 30px; display: flex; gap: 10px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+        .status-btn { flex: 1; padding: 12px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 10px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .status-btn.active { border-color: var(--brand); background: #f1f5f9; }
+        .icon-box { width: 35px; height: 35px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; color: white; }
+        .stat-info { display: flex; flex-direction: column; }
+        .stat-label { font-size: 9px; font-weight: 700; color: #64748b; }
+        .stat-value { font-size: 16px; font-weight: 800; }
+        .branch-dashboard { padding: 8px 30px; background: white; border-bottom: 1px solid #e2e8f0; display: flex; gap: 8px; overflow-x: auto; }
+        .branch-card { min-width: 90px; padding: 6px; border-radius: 8px; border: 2px solid #f1f5f9; cursor: pointer; text-align: center; font-size: 11px; font-weight: 600; }
+        .branch-card.active { background: var(--brand); color: white; border-color: var(--brand); }
+        .data-view { flex: 1; padding: 15px 30px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+        .tool-bar { display: flex; gap: 10px; }
+        #mainSearch { flex: 1; padding: 10px; border-radius: 8px; border: 2px solid #e2e8f0; outline: none; }
+        .btn { padding: 8px 15px; border-radius: 8px; font-weight: 700; cursor: pointer; border: none; display: flex; align-items: center; gap: 8px; font-size: 12px; transition: 0.3s; }
+        .btn:active { transform: scale(0.95); }
+        .btn-cart { background: var(--brand); color: white; position: relative; }
+        .cart-badge { position: absolute; top: -8px; right: -5px; background: var(--gold); border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center; justify-content: center; }
+        .table-wrap { background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: auto; flex: 1; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        th { position: sticky; top: 0; background: #f8fafc; padding: 10px; text-align: left; font-size: 10px; font-weight: 800; border-bottom: 2px solid #e2e8f0; z-index: 10; }
+        td { padding: 8px 10px; font-size: 12px; border-bottom: 1px solid #f1f5f9; }
+        .cart-panel { position: fixed; right: -400px; top: 0; width: 400px; height: 100%; background: white; box-shadow: -5px 0 25px rgba(0,0,0,0.1); z-index: 1500; transition: 0.4s; display: flex; flex-direction: column; }
+        .cart-panel.open { right: 0; }
+        #loader { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 2000; align-items: center; justify-content: center; flex-direction: column; }
+    </style>
+</head>
+<body>
+
+<div id="loader"><i class="fas fa-spinner fa-spin fa-2x" style="color:var(--gold)"></i><br><b>İşlem Yapılıyor...</b></div>
+
+<div class="cart-panel" id="cartPanel">
+    <div style="padding:20px; background:var(--brand); color:white; display:flex; justify-content:space-between; align-items:center;">
+        <h3><i class="fas fa-shopping-basket"></i> Sipariş Sepeti</h3>
+        <i class="fas fa-times" onclick="toggleCart()" style="cursor:pointer; font-size: 20px;"></i>
+    </div>
+    <div id="cartItems" style="flex:1; overflow-y:auto; padding:20px;"></div>
+    <div style="padding:20px; border-top:1px solid #eee; background: #f8fafc;">
+        <button class="btn" style="background:var(--success); color:white; width:100%; margin-bottom:10px; justify-content: center;" onclick="exportOrderOnly()">
+            <i class="fas fa-file-excel"></i> SİPARİŞİ EXCEL'E AKTAR
+        </button>
+        <button class="btn" style="background:var(--danger); color:white; width:100%; justify-content: center;" onclick="clearCart()">
+            <i class="fas fa-trash-alt"></i> SEPETİ TEMİZLE
+        </button>
+    </div>
+</div>
+
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <div style="font-weight: 800; color: var(--gold); font-size: 14px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-pills"></i> GENEL STOK TAKİP
+        </div>
+        <button class="btn" style="background:var(--gold); color:white; width:100%; margin-bottom: 10px;" onclick="document.getElementById('xlFile').click()">
+            <i class="fas fa-plus-circle"></i> YENİ DOSYA YÜKLE
+        </button>
+        <button class="btn" style="background:rgba(239, 68, 68, 0.2); color:#ef4444; width:100%; border: 1px solid #ef4444;" onclick="clearMemory()">
+            <i class="fas fa-history"></i> HAFIZAYI SIFIRLA
+        </button>
+        <input type="file" id="xlFile" hidden multiple onchange="processFiles(this)">
+    </div>
+    <div class="product-scroll-list" id="sideList"></div>
+</aside>
+
+<main class="main-content">
+    <div class="status-bar">
+        <div class="status-btn" id="btn-out" onclick="filterByStatus('OUT')">
+            <div class="icon-box" style="background:var(--danger)"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="stat-info"><span class="stat-label">STOK OUT</span><span class="stat-value" id="count-out">0</span></div>
+        </div>
+        <div class="status-btn" id="btn-crit" onclick="filterByStatus('CRIT')">
+            <div class="icon-box" style="background:var(--warning)"><i class="fas fa-clock"></i></div>
+            <div class="stat-info"><span class="stat-label">KRİTİK</span><span class="stat-value" id="count-crit">0</span></div>
+        </div>
+        <div class="status-btn" id="btn-safe" onclick="filterByStatus('SAFE')">
+            <div class="icon-box" style="background:var(--success)"><i class="fas fa-check-circle"></i></div>
+            <div class="stat-info"><span class="stat-label">GÜVENLİ</span><span class="stat-value" id="count-safe">0</span></div>
+        </div>
+        <div class="status-btn active" id="btn-all" onclick="filterByStatus('ALL')">
+            <div class="icon-box" style="background:var(--brand)"><i class="fas fa-list"></i></div>
+            <div class="stat-info"><span class="stat-label">TOPLAM ÜRÜN</span><span class="stat-value" id="count-all">0</span></div>
+        </div>
+    </div>
+
+    <div class="branch-dashboard" id="branchDash"></div>
+
+    <section class="data-view">
+        <div class="tool-bar">
+    <input type="text" id="mainSearch" placeholder="İlaç adı ile hızlı arama..." onkeyup="search()">
+    
+    <div style="display:flex; align-items:center; gap:5px; background:#fff; padding:0 10px; border-radius:8px; border:2px solid #e2e8f0;">
+        <span style="font-size:10px; font-weight:800; color:#64748b;">HEDEF GÜN:</span>
+        <input type="number" id="targetDays" value="15" onchange="showData()" style="width:40px; border:none; outline:none; font-weight:800; text-align:center;">
+    </div>
+    
+    <button class="btn" style="background: var(--warning); color: white;" onclick="fillRecommendedAll()">
+        <i class="fas fa-bolt"></i> TÜM ÖNERİLERİ DOLDUR
+    </button>
+
+    <button class="btn" style="background: var(--info); color: white;" onclick="exportCurrentView()">
+        <i class="fas fa-download"></i> LİSTEYİ EXCEL'E AKTAR
+    </button>
+
+    <button class="btn btn-cart" onclick="toggleCart()">
+        <i class="fas fa-shopping-cart"></i> SİPARİŞLERİM <span class="cart-badge" id="cartCount">0</span>
+    </button>
+</div>
+
+        <div class="table-wrap">
+            <table id="mainTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>İLAÇ ADI</th>
+                        <th style="color:var(--info); background: #f0f9ff;">BU AY ÇIKAN (H)</th>
+                        <th>MEVCUT STOK</th>
+                        <th>ŞUBE</th>
+                        <th>DURUM</th>
+						<th>GÜNLÜK ÇIKIŞ</th>
+                        <th style="background:#fffbeb; color: #b45309;">ÖNERİLEN</th>
+                        <th style="background:#fffbeb; color: #b45309;">SİPARİŞ ADET</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </section>
+</main>
+
+<script>
+    let db = JSON.parse(localStorage.getItem('genSapDb')) || {};
+    let orders = JSON.parse(localStorage.getItem('genSapOrders')) || {};
+    let currentView = 'ALL';
+    let currentFilter = 'ALL';
+
+    window.onload = () => { 
+    // SAYFA HER AÇILDIĞINDA ESKİ VERİLERİ SIFIRLA
+    localStorage.removeItem('genSapDb');
+    localStorage.removeItem('genSapOrders');
+    
+    // Değişkenleri de temizle
+    db = {};
+    orders = {};
+    currentView = 'ALL';
+    currentFilter = 'ALL';
+    
+    // Arayüzü boş olarak yükle
+    updateCartUI(); 
+    console.log("Sistem temizlendi: Yeni bir çalışma için hazırsınız. 🧿");
+};
+
+    async function processFiles(input) {
+        if (!input.files.length) return;
+        document.getElementById('loader').style.display = 'flex';
+        
+        for (let file of input.files) {
+            const data = await file.arrayBuffer();
+            const wb = XLSX.read(data, {type: 'array'});
+            const bName = file.name.split('.')[0].toUpperCase();
+            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1});
+
+            let ilacIdx = 0, stokIdx = 15, cikanIdx = 7, startRow = 6;
+            for(let r=4; r<10; r++) {
+                if(json[r]) {
+                    let row = json[r].map(c => String(c).toUpperCase());
+                    if(row.includes("ILAC ADI")) { 
+                        ilacIdx = row.indexOf("ILAC ADI"); 
+                        stokIdx = row.indexOf("DEPO MEVCUDU");
+                        cikanIdx = 7; startRow = r + 1; break; 
+                    }
+                }
+            }
+            db[bName] = [];
+            for(let i=startRow; i<json.length; i++) {
+                if(json[i] && json[i][ilacIdx]) {
+                    db[bName].push({ 
+                        ad: String(json[i][ilacIdx]).trim(), 
+                        stok: parseFloat(String(json[i][stokIdx] || 0).replace(/[^0-9.-]+/g,"")) || 0,
+                        cikan: parseFloat(String(json[i][cikanIdx] || 0).replace(/[^0-9.-]+/g,"")) || 0
+                    });
+                }
+            }
+        }
+        localStorage.setItem('genSapDb', JSON.stringify(db));
+        document.getElementById('loader').style.display = 'none';
+        refreshUI();
+    }
+
+    function refreshUI() { renderSidebar(); renderDash(); updateStats(); showData(); }
+
+    function updateStats() {
+        let unique = {};
+        Object.values(db).forEach(b => b.forEach(i => unique[i.ad] = (unique[i.ad] || 0) + i.stok));
+        let vals = Object.values(unique);
+        document.getElementById('count-all').innerText = vals.length;
+        document.getElementById('count-out').innerText = vals.filter(v => v === 0).length;
+        document.getElementById('count-crit').innerText = vals.filter(v => v > 0 && v <= 10).length;
+        document.getElementById('count-safe').innerText = vals.filter(v => v > 10).length;
+    }
+
+    function filterByStatus(s) {
+        currentFilter = s;
+        document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-' + s.toLowerCase()).classList.add('active');
+        showData();
+    }
+
+    function getFilteredList() {
+        let list = [];
+        if(currentView === 'ALL') {
+            let combined = {};
+            Object.entries(db).forEach(([br, items]) => items.forEach(i => {
+                if(!combined[i.ad]) combined[i.ad] = { ad: i.ad, stok: 0, cikan: 0, br: [] };
+                combined[i.ad].stok += i.stok;
+                combined[i.ad].cikan += i.cikan;
+                if(!combined[i.ad].br.includes(br)) combined[i.ad].br.push(br);
+            }));
+            list = Object.values(combined).map(x => ({...x, br: x.br.join(', ')}));
+        } else { 
+            list = db[currentView].map(x => ({...x, br: currentView})); 
+        }
+        
+        if(currentFilter === 'OUT') list = list.filter(i => i.stok === 0);
+        if(currentFilter === 'CRIT') list = list.filter(i => i.stok > 0 && i.stok <= 10);
+        if(currentFilter === 'SAFE') list = list.filter(i => i.stok > 10);
+        
+        // A-Z Sıralama Burada:
+        return list.sort((a, b) => a.ad.localeCompare(b.ad, 'tr-TR'));
+    }
+
+
+// Önerilen miktar hesaplayan yardımcı fonksiyon
+function calculateRecommended(cikan, stok) {
+    const hedefGun = parseInt(document.getElementById('targetDays').value) || 15;
+    // Günlük ortalama tüketim = cikan / 30
+    // Gereken toplam = (Günlük Tüketim * Hedef Gün)
+    let rec = Math.ceil((cikan / 30) * hedefGun) - stok;
+    return rec > 0 ? rec : 0;
+}
+
+function showData() {
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = getFilteredList().map((item, idx) => {
+        // Yeni sütun için hesaplama
+        let gunlukHiz = (item.cikan / 30).toFixed(1); 
+        
+        let recommended = calculateRecommended(item.cikan, item.stok);
+        let badge = item.stok === 0 ? 'OUT' : (item.stok <= 10 ? 'KRİTİK' : 'GÜVENLİ');
+        let badgeColor = item.stok === 0 ? 'var(--danger)' : (item.stok <= 10 ? 'var(--warning)' : 'var(--success)');
+        const orderKey = (currentView === 'ALL') ? `GENEL|${item.ad}` : `${currentView}|${item.ad}`;
+
+        return `<tr>
+            <td>${idx+1}</td>
+            <td style="font-weight:700">${item.ad}</td>
+            <td style="font-weight:900; color:var(--info); background:#f0f9ff">${item.cikan.toLocaleString('tr-TR')}</td>
+            <td style="font-weight:900">${item.stok.toLocaleString('tr-TR')}</td>
+            <td style="font-size:9px; color: #64748b;">${item.br}</td>
+            <td style="color:${badgeColor}; font-weight:800;">${badge}</td>
+            <td style="font-weight:700; color:var(--brand);">${gunlukHiz}</td>
+            <td style="font-weight:800; color:#b45309; background:#fffbeb">${recommended > 0 ? recommended : '-'}</td>
+            <td style="background: #fffbeb">
+                <input type="number" class="order-input" data-key="${orderKey}" data-rec="${recommended}"
+                style="width:85px; padding:6px; border:2px solid #e2e8f0; border-radius:6px; font-weight:800; text-align:center;" 
+                placeholder="Miktar" value="${orders[orderKey] || ''}" oninput="updateOrder('${orderKey}', this.value)">
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+    function fillRecommendedAll() {
+    document.querySelectorAll('.order-input').forEach(input => {
+        const rec = input.getAttribute('data-rec');
+        if(rec > 0) {
+            input.value = rec;
+            updateOrder(input.getAttribute('data-key'), rec);
+        }
+    });
+    alert("Tüm önerilen miktarlar güncel hedef gün baz alınarak sepete eklendi!");
+}
+
+    function exportCurrentView() { 
+    const list = getFilteredList().map(item => ({
+        "İLAÇ ADI": item.ad,
+        "BU AY ÇIKAN": item.cikan,
+        "GÜNLÜK ÇIKIŞ": (item.cikan / 30).toFixed(1),
+        "MEVCUT STOK": item.stok,
+        "ŞUBE": item.br,
+        "DURUM": item.stok === 0 ? 'OUT' : (item.stok <= 10 ? 'KRİTİK' : 'GÜVENLİ')
+    }));
+    
+    if(list.length === 0) return alert("Veri yok!"); 
+    const ws = XLSX.utils.json_to_sheet(list); 
+    const wb = XLSX.utils.book_new(); 
+    XLSX.utils.book_append_sheet(wb, ws, "Stok"); 
+    XLSX.writeFile(wb, "Stok_Listesi.xlsx"); 
+}
+	function updateOrder(key, val) { if(val <= 0 || val === "") delete orders[key]; else orders[key] = val; localStorage.setItem('genSapOrders', JSON.stringify(orders)); updateCartUI(); }
+    function updateCartUI() { const count = Object.keys(orders).length; document.getElementById('cartCount').innerText = count; document.getElementById('cartItems').innerHTML = Object.entries(orders).map(([key, q]) => `<div style="padding:10px; border-bottom:1px solid #eee;"><b>${key.split('|')[1]}</b> - ${q} Adet</div>`).join('') || "Sepet boş."; }
+    function clearMemory() { if(confirm("Tüm veriler silinecek?")) { localStorage.clear(); location.reload(); } }
+    function clearCart() { orders = {}; localStorage.setItem('genSapOrders', '{}'); updateCartUI(); showData(); }
+    function renderDash() { const dash = document.getElementById('branchDash'); dash.innerHTML = `<div class="branch-card ${currentView==='ALL'?'active':''}" onclick="viewChange('ALL')">TÜM ŞUBELER</div>` + Object.keys(db).map(n => `<div class="branch-card ${currentView===n?'active':''}" onclick="viewChange('${n}')">${n}</div>`).join(''); }
+    function renderSidebar() { let sums = {}; Object.values(db).forEach(b => b.forEach(i => sums[i.ad] = (sums[i.ad] || 0) + i.stok)); document.getElementById('sideList').innerHTML = Object.entries(sums).sort((a,b)=>b[1]-a[1]).slice(0, 50).map(([n, s]) => `<div class="product-sum-card"><span class="p-sum-name">${n}</span><div class="p-sum-val">${s.toLocaleString('tr-TR')}</div></div>`).join(''); }
+    function viewChange(v) { currentView = v; refreshUI(); }
+    function toggleCart() { document.getElementById('cartPanel').classList.toggle('open'); }
+    
+	function exportOrderOnly() { 
+    if(Object.keys(orders).length === 0) return alert("Sepet boş!"); 
+    
+    // Stok verilerini hızlıca bulmak için bir harita oluşturuyoruz
+    // (Tüm şubeler modunda olsanız bile doğru veriyi çekmek için)
+    const data = Object.entries(orders).map(([k, q]) => {
+        const parts = k.split('|'); // [Şube, İlaç Adı]
+        const branch = parts[0];
+        const productName = parts[1];
+        
+        // Bu ürünün stok ve çıkış bilgilerini veritabanından bulalım
+        let stok = 0;
+        let cikan = 0;
+        
+        if (branch === 'GENEL') {
+            // GENEL modundaysak tüm şubelerdeki toplamı al
+            Object.values(db).forEach(items => {
+                const item = items.find(i => i.ad === productName);
+                if(item) { stok += item.stok; cikan += item.cikan; }
+            });
+        } else {
+            // Şube modundaysak sadece o şubenin verisini al
+            const item = db[branch]?.find(i => i.ad === productName);
+            if(item) { stok = item.stok; cikan = item.cikan; }
+        }
+
+        return {
+            "ŞUBE": branch === 'GENEL' ? 'TÜM ŞUBELER' : branch,
+            "İLAÇ": productName,
+            "MEVCUT STOK": stok,
+            "BU AY ÇIKAN": cikan,
+            "SİPARİŞ ADEDİ": q
+        };
+    }); 
+    
+    const ws = XLSX.utils.json_to_sheet(data); 
+    const wb = XLSX.utils.book_new(); 
+    XLSX.utils.book_append_sheet(wb, ws, "Siparis"); 
+    XLSX.writeFile(wb, "Siparis_Listesi_Detayli.xlsx"); 
+}
+	
+	
+	function search() { const v = document.getElementById('mainSearch').value.toLowerCase(); document.querySelectorAll('#tableBody tr').forEach(r => r.style.display = r.innerText.toLowerCase().includes(v) ? '' : 'none'); }
+	
+</script>
+</body>
+</html>
