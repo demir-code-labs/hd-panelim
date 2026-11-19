@@ -1,0 +1,1620 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>GEN OS v12.1 - Entegre Stok & Satış Mutabakat Platformu</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root { --p: #008080; --s: #0f172a; --a: #3b82f6; --bg: #f8fafc; --sepet: #f59e0b; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        header { 
+            background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); 
+            color: #0f172a; 
+            padding: 12px 25px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-bottom: 3px solid var(--p); 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .live-clock { text-align: right; line-height: 1.2; }
+        #clock-time { font-size: 18px; font-weight: bold; color: var(--p); }
+        
+        .editable-title, .editable-subtitle {
+            outline: none;
+            border-bottom: 1px dashed transparent;
+            transition: 0.2s;
+            padding: 1px 4px;
+            border-radius: 4px;
+        }
+        .editable-title:hover, .editable-subtitle:hover {
+            background: rgba(0, 128, 128, 0.08);
+            border-bottom: 1px dashed var(--p);
+        }
+        .editable-title:focus, .editable-subtitle:focus {
+            background: white;
+            border-bottom: 2px solid var(--p);
+            box-shadow: 0 0 0 3px rgba(0, 128, 128, 0.15);
+        }
+
+        /* Sekme Barı ve Renk Tonları */
+        .tab-bar { background: #e2e8f0; display: flex; padding: 0 25px; gap: 12px; border-bottom: 2px solid #cbd5e1; }
+        .tab-btn { 
+            background: #cbd5e1; 
+            border: none; 
+            color: #334155; 
+            padding: 12px 24px; 
+            font-size: 13px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            border-bottom: 3px solid transparent; 
+            transition: 0.2s; 
+        }
+        .tab-btn:hover { filter: brightness(0.95); }
+        
+        .tab-btn[data-tab="stok"] { background: #e0f2fe; color: #0369a1; border-bottom-color: #0284c7; }
+        .tab-btn[data-tab="stok"].active { background: #0284c7; color: white; border-bottom-color: #0369a1; box-shadow: 0 -3px 10px rgba(2,132,199,0.3); }
+
+        .tab-btn[data-tab="satis"] { background: #ede9fe; color: #6d28d9; border-bottom-color: #7c3aed; }
+        .tab-btn[data-tab="satis"].active { background: #7c3aed; color: white; border-bottom-color: #5b21b6; box-shadow: 0 -3px 10px rgba(124,58,237,0.3); }
+
+        .tab-btn[data-tab="mutabakat"] { background: #fef3c7; color: #b45309; border-bottom-color: #d97706; }
+        .tab-btn[data-tab="mutabakat"].active { background: #d97706; color: white; border-bottom-color: #b45309; box-shadow: 0 -3px 10px rgba(217,119,6,0.3); }
+
+        main { display: flex; flex: 1; overflow: hidden; padding: 15px; gap: 15px; }
+        .sidebar { width: 310px; background: white; border-radius: 12px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+        .upload-area { border: 2px dashed var(--p); padding: 15px; border-radius: 10px; text-align: center; cursor: pointer; background: #f0fdfa; transition: 0.2s; }
+        
+        .filter-group { background: #f8fafc; padding: 10px; border-radius: 8px; border-left: 4px solid var(--a); position: relative; }
+        .filter-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 5px; color: #475569; }
+        
+        select, input { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 12px; outline: none; box-sizing: border-box; }
+        
+        .dropdown-multiselect { position: relative; }
+        .dropdown-select-btn { width: 100%; padding: 8px; background: white; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 12px; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; color: #334155; }
+        .dropdown-list-container { display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); z-index: 999; margin-top: 4px; padding: 8px; max-height: 250px; overflow-y: auto; }
+        .dropdown-list-container.show { display: block; }
+        .dropdown-search { margin-bottom: 6px; }
+        .dropdown-items { max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+        .dropdown-item { display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 6px 4px; cursor: pointer; border-radius: 4px; text-align: left; }
+        .dropdown-item:hover { background: #f1f5f9; }
+        .dropdown-item input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--a); cursor: pointer; margin: 0; flex-shrink: 0; }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 5px;
+            perspective: 1000px;
+        }
+
+        .btn-cube { 
+            aspect-ratio: 1; 
+            border: none; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: center; 
+            gap: 6px; 
+            color: white; 
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15), inset 0 2px 3px rgba(255, 255, 255, 0.3), inset 0 -4px 6px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            transform-style: preserve-3d;
+            position: relative;
+        }
+        .btn-cube i { font-size: 18px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
+        .btn-cube span { font-size: 9.5px; font-weight: 700; letter-spacing: 0.3px; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+
+        .btn-cube:hover { 
+            transform: translateY(-5px) scale(1.05) rotateX(8deg) rotateY(-5deg); 
+            box-shadow: 0 12px 20px rgba(0, 0, 0, 0.25), inset 0 3px 5px rgba(255, 255, 255, 0.4), inset 0 -6px 8px rgba(0, 0, 0, 0.3);
+            filter: brightness(1.1);
+        }
+        .btn-cube:active {
+            transform: translateY(-1px) scale(0.98);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn-a { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); } 
+        .btn-s { background: linear-gradient(135deg, #64748b 0%, #334155 100%); } 
+        .btn-sepet { background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%); } 
+        .btn-d { background: linear-gradient(135deg, #e11d48 0%, #9f1239 100%); }
+        .btn-kapat { background: #475569; padding: 10px 16px; border-radius: 8px; color:white; border:none; cursor:pointer; font-weight:600; }
+        .btn-excel-modal { background: linear-gradient(135deg, #10b981 0%, #047857 100%); padding: 10px 16px; border-radius: 8px; color:white; border:none; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:6px; }
+
+        .content { flex: 1; display: flex; flex-direction: column; gap: 15px; overflow: hidden; }
+        .data-card { background: white; border-radius: 12px; flex: 1; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden; }
+        .table-container { flex: 1; overflow: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { background: #f1f5f9; position: sticky; top: 0; padding: 12px; text-align: left; border-bottom: 2px solid #e2e8f0; z-index: 10; color: #1e293b; }
+        td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+        
+        .link-urun { color: var(--a); font-weight: bold; cursor: pointer; text-decoration: underline; }
+        .link-depo { color: #8b5cf6; font-weight: bold; cursor: pointer; text-decoration: underline; }
+        .link-satis-detay { color: #10b981; font-weight: bold; cursor: pointer; text-decoration: underline; }
+        .link-gunluk-detay { color: #d97706; font-weight: bold; cursor: pointer; text-decoration: underline; }
+        .link-stok-detay { color: #0284c7; font-weight: bold; cursor: pointer; text-decoration: underline; }
+        .link-iade-detay { color: #e11d48; font-weight: bold; cursor: pointer; text-decoration: underline; }
+        
+        .summary-cards-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; padding: 15px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; max-height: 220px; overflow-y: auto; }
+        .summary-product-card { background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 6px rgba(0,0,0,0.02); cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 8px; }
+        .summary-product-card:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,128,128,0.15); border-color: var(--p); }
+        .spc-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; }
+        .spc-title { font-weight: bold; font-size: 12px; color: var(--s); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+        .spc-badge { background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+        .spc-body { font-size: 11px; color: #64748b; display: flex; flex-direction: column; gap: 3px; }
+        .spc-row { display: flex; justify-content: space-between; }
+
+        .modal { display:none; position:fixed; z-index:99999; left:0; top:0; width:100%; height:100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); }
+        .modal-content { background:white; margin: 1% auto; padding:20px; width:90%; border-radius:12px; max-height: 95vh; overflow:hidden; display: flex; flex-direction: column; }
+        .modal-calendar-badge { background: #f1f5f9; padding: 5px 12px; border-radius: 6px; border-left: 4px solid var(--p); display: flex; align-items: center; gap: 8px; color: var(--s); font-weight: bold; font-size: 13px; }
+        .summary-scroll { flex: 1; overflow-y: auto; }
+        .summary-table { width: 100%; border-collapse: collapse; margin-top:10px; }
+        
+        .row-checkbox, .row-chk-satis, .row-chk-mutabakat, #selectAll, #selectAllSatis, #selectAllMutabakat { cursor: pointer; width: 16px; height: 16px; accent-color: var(--sepet); }
+        .tab-pane { display: none; flex: 1; overflow: hidden; gap: 15px; }
+        .tab-pane.active { display: flex; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div>
+        <h3 style="margin:0; color:#0f172a;">
+            <i class="fas fa-layer-group" style="color:var(--p);"></i> 
+            <span id="appMainTitle" class="editable-title" contenteditable="true" title="Düzenlemek için tıklayın">GEN OS v12.1 Entegre Stok & Satış Platformu</span>
+        </h3>
+        <span id="appSubTitle" class="editable-subtitle" contenteditable="true" style="font-size:10.5px; color:#008080; font-weight:bold; display:inline-block; margin-top:3px;" title="Düzenlemek için tıklayın">TÜM SEKMELERDE SENKRON ÜRÜN ARAMA & ÇİFT YÖNLÜ TARİH FİLTRESİ AKTİF 🧿🧿</span>
+    </div>
+    <div class="live-clock">
+        <div id="clock-time">10:48:00</div>
+        <div id="clock-date" class="editable-subtitle" contenteditable="true" style="font-size:11px; color:#475569;" title="Tarihi düzenlemek için tıklayın">19 Kasım 2026</div>
+    </div>
+</header>
+
+<div class="tab-bar">
+    <button class="tab-btn active" data-tab="stok" onclick="switchTab('stok')"><i class="fas fa-boxes"></i> Stok Sekmesi</button>
+    <button class="tab-btn" data-tab="satis" onclick="switchTab('satis')"><i class="fas fa-chart-line"></i> Satış Sekmesi</button>
+    <button class="tab-btn" data-tab="mutabakat" onclick="switchTab('mutabakat')"><i class="fas fa-handshake"></i> Özet & Mutabakat Sekmesi</button>
+</div>
+
+<!-- ================= STOK SEKMESİ ================= -->
+<div id="pane-stok" class="tab-pane active" style="flex:1; overflow:hidden; padding:15px; gap:15px;">
+    <aside class="sidebar">
+        <div class="upload-area" onclick="document.getElementById('fileGlobalInp').click()">
+            <i class="fas fa-file-excel fa-2x" style="color:var(--p)"></i>
+            <p style="margin:5px 0 0; font-size:12px; font-weight:bold">TOPLU RAPOR YÜKLE (Stok/Satış)</p>
+            <input type="file" id="fileGlobalInp" style="display:none" multiple>
+        </div>
+        
+        <div class="filter-group">
+            <label><i class="fas fa-search"></i> GENEL ARA (TÜM SEKMELER)</label>
+            <input type="text" id="globalSearchStok" placeholder="Kod / Ürün / Marka..." oninput="syncGlobalSearch(this.value)">
+        </div>
+
+        <div class="filter-group dropdown-multiselect">
+            <label>LİSANSÖR ÇOKLU SEÇ & FİLTRELE</label>
+            <div class="dropdown-select-btn" onclick="toggleDropdown(event, 'lisansorListContainer')">
+                <span id="lisansorButtonText">Tüm Lisansörler Seçili</span>
+                <i class="fas fa-chevron-down" style="font-size:10px;"></i>
+            </div>
+            <div class="dropdown-list-container" id="lisansorListContainer" onclick="event.stopPropagation()">
+                <div class="dropdown-search">
+                    <input type="text" id="lisansorSearchInput" placeholder="Lisansör ara / filtrele..." oninput="filterLisansorDropdown()">
+                </div>
+                <div style="display: flex; align-items: center; justify-content: flex-start; font-size: 11px; padding: 6px 8px; border-bottom: 1px solid #e2e8f0; margin-bottom: 6px; background: #f8fafc; border-radius: 4px;">
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px; margin: 0; text-align: left; font-weight: 600; color: #334155; width: 100%;">
+                        <input type="checkbox" id="selectAllLisansor" onclick="toggleSelectAllLisansor(this)" style="width: 14px; height: 14px; accent-color: var(--a); cursor: pointer; margin: 0;"> 
+                        <span>Tümünü Seç / Kaldır</span>
+                    </label>
+                </div>
+                <div class="dropdown-items" id="lisansorCheckboxes"></div>
+            </div>
+        </div>
+
+        <div class="filter-group">
+            <label>TARİH SEÇİMİ (STOK)</label>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px;">
+                <select id="f-yil-stok" onchange="updateMonthFilterStok()"><option value="">Yıl</option></select>
+                <select id="f-ay-stok" onchange="updateDayFilterStok()"><option value="">Ay</option></select>
+                <select id="f-gun-stok" onchange="filterStokData()"><option value="">Gün</option></select>
+            </div>
+        </div>
+
+        <div class="action-grid" style="margin-top: auto;">
+            <button class="btn-cube btn-s" onclick="resetStokFilters()" title="Filtreleri Temizle">
+                <i class="fas fa-sync-alt"></i>
+                <span>Sıfırla</span>
+            </button>
+            <button class="btn-cube btn-a" onclick="window.exportStokExcel('all')" title="Tüm Arşivi Excel'e Aktar">
+                <i class="fas fa-file-download"></i>
+                <span>Arşiv</span>
+            </button>
+            <button class="btn-cube btn-a" style="background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);" onclick="window.exportStokExcel('filtered')" title="Filtrelenmiş Listeyi Aktar">
+                <i class="fas fa-file-excel"></i>
+                <span>Filtre</span>
+            </button>
+            <button class="btn-cube btn-sepet" onclick="window.showStokCart()" title="Sepetim">
+                <i class="fas fa-shopping-basket"></i>
+                <span>(<span id="cart-count-stok">0</span>)</span>
+            </button>
+            <button class="btn-cube btn-a" style="background: linear-gradient(135deg, #10b981 0%, #047857 100%);" onclick="addSelectedToStokCart()" title="Sepete Ekle">
+                <i class="fas fa-check-square"></i>
+                <span>Ekle</span>
+            </button>
+            <button class="btn-cube btn-d" onclick="clearStokDB()" title="Veritabanını Sıfırla">
+                <i class="fas fa-trash-alt"></i>
+                <span>Temizle</span>
+            </button>
+        </div>
+    </aside>
+
+    <section class="content">
+        <div class="data-card">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr id="stokTableHeaderRow">
+                            <th>TARİH</th>
+                            <th>Malzeme Kodu</th>
+                            <th>Malzeme İsmi</th>
+                            <th>Marka</th>
+                            <th>Lisansör</th>
+                            <th>Üretici Firma</th>
+                            <th style="text-align:center">Devir Stok (Kutu)</th>
+                            <th style="text-align:center">Yıllık Satış (Kutu)</th>
+                            <th style="text-align:center">Satışa Hazır Stok (Kutu)</th>
+                            <th style="text-align:center">Günlük Satış (Kutu)</th>
+                            <th style="text-align:center">Aylık Satış (Kutu)</th>
+                            <th style="text-align:center">İade Ürün Sayısı (Kutu)</th>
+                            <th style="text-align:center; display:flex; align-items:center; justify-content:center; gap:8px; background:#f1f5f9; border:none; padding-top:15px;">
+                                <input type="checkbox" id="selectAll" onclick="toggleSelectAllStok(this)">
+                                <span style="font-size:11px; font-weight:bold; color:#475569;">SEPET</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBodyStok"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- ================= SATIŞ SEKMESİ ================= -->
+<div id="pane-satis" class="tab-pane" style="flex:1; overflow:hidden; padding:15px; gap:15px;">
+    <aside class="sidebar">
+        <div class="upload-area" onclick="document.getElementById('fileGlobalInp').click()">
+            <i class="fas fa-file-excel fa-2x" style="color:var(--p)"></i>
+            <p style="margin:5px 0 0; font-size:12px; font-weight:bold">TOPLU RAPOR YÜKLE (Stok/Satış)</p>
+        </div>
+        
+        <div class="filter-group">
+            <label><i class="fas fa-search"></i> GENEL ARA (TÜM SEKMELER)</label>
+            <input type="text" id="globalSearchSatis" placeholder="Ürün / Müşteri / Bölge..." oninput="syncGlobalSearch(this.value)">
+        </div>
+
+        <div class="filter-group">
+            <label>BÖLGE SEÇİMİ (SATIŞ)</label>
+            <select id="f-bolge-satis" onchange="filterSatisData()"><option value="">Tüm Bölgeler</option></select>
+        </div>
+
+        <div class="filter-group dropdown-multiselect">
+            <label>MÜŞTERİ ÇOKLU SEÇ</label>
+            <div class="dropdown-select-btn" onclick="toggleDropdown(event, 'customerListContainer')">
+                <span id="customerButtonText">Tüm Müşteriler Seçili</span>
+                <i class="fas fa-chevron-down" style="font-size:10px;"></i>
+            </div>
+            <div class="dropdown-list-container" id="customerListContainer" onclick="event.stopPropagation()">
+                <div class="dropdown-search">
+                    <input type="text" id="customerSearchInput" placeholder="Müşteri ara..." oninput="filterCustomerDropdown()">
+                </div>
+                <div style="display: flex; align-items: center; justify-content: flex-start; font-size: 11px; padding: 6px 8px; border-bottom: 1px solid #e2e8f0; margin-bottom: 6px; background: #f8fafc; border-radius: 4px;">
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px; margin: 0; text-align: left; font-weight: 600; color: #334155; width: 100%;">
+                        <input type="checkbox" id="selectAllCustomers" onclick="toggleSelectAllCustomers(this)" style="width: 14px; height: 14px; accent-color: var(--a); cursor: pointer; margin: 0;"> 
+                        <span>Tümünü Seç / Kaldır</span>
+                    </label>
+                </div>
+                <div class="dropdown-items" id="customerCheckboxes"></div>
+            </div>
+        </div>
+
+        <div class="filter-group">
+            <label>TARİH SEÇİMİ (SATIŞ)</label>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px;">
+                <select id="f-yil-satis" onchange="syncSatisDateFrom('satis', 'yil')"><option value="">Yıl</option></select>
+                <select id="f-ay-satis" onchange="syncSatisDateFrom('satis', 'ay')"><option value="">Ay</option></select>
+                <select id="f-gun-satis" onchange="syncSatisDateFrom('satis', 'gun')"><option value="">Gün</option></select>
+            </div>
+        </div>
+
+        <div class="action-grid" style="margin-top: auto;">
+            <button class="btn-cube btn-s" onclick="resetSatisFilters()" title="Filtreleri Temizle">
+                <i class="fas fa-sync-alt"></i>
+                <span>Sıfırla</span>
+            </button>
+            <button class="btn-cube btn-a" onclick="window.exportSatisExcel('all')" title="Tüm Arşivi Excel'e Aktar">
+                <i class="fas fa-file-download"></i>
+                <span>Arşiv</span>
+            </button>
+            <button class="btn-cube btn-a" style="background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);" onclick="window.exportSatisExcel('filtered')" title="Filtrelenmiş Listeyi Aktar">
+                <i class="fas fa-file-excel"></i>
+                <span>Filtre</span>
+            </button>
+            <button class="btn-cube btn-sepet" onclick="window.showSatisCart()" title="Sepetim">
+                <i class="fas fa-shopping-basket"></i>
+                <span>(<span id="cart-count-satis">0</span>)</span>
+            </button>
+            <button class="btn-cube btn-a" style="background: linear-gradient(135deg, #10b981 0%, #047857 100%);" onclick="addSelectedToSatisCart()" title="Sepete Ekle">
+                <i class="fas fa-check-square"></i>
+                <span>Ekle</span>
+            </button>
+            <button class="btn-cube btn-d" onclick="clearSatisDB()" title="Veritabanını Sıfırla">
+                <i class="fas fa-trash-alt"></i>
+                <span>Temizle</span>
+            </button>
+        </div>
+    </aside>
+
+    <section class="content">
+        <div class="data-card">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>TARİH</th>
+                            <th>BÖLGE</th>
+                            <th>MÜŞTERİ KODU</th>
+                            <th>MÜŞTERİ</th>
+                            <th>BELGE NO</th>
+                            <th>MALZEME KODU</th>
+                            <th>ÜRÜN</th>
+                            <th style="text-align:center">MİKTAR</th>
+                            <th>BİRİM</th>
+                            <th style="text-align:center; display:flex; align-items:center; justify-content:center; gap:8px; background:#f1f5f9; border:none; padding-top:15px;">
+                                <input type="checkbox" id="selectAllSatis" onclick="toggleSelectAllSatis(this)">
+                                <span style="font-size:11px; font-weight:bold; color:#475569;">SEPET</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBodySatis"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- ================= 3. ÖZET & MUTABAKAT SEKMESİ ================= -->
+<div id="pane-mutabakat" class="tab-pane" style="flex:1; overflow:hidden; padding:15px; gap:15px;">
+    <aside class="sidebar">
+        <div class="upload-area" onclick="document.getElementById('fileGlobalInp').click()">
+            <i class="fas fa-file-excel fa-2x" style="color:var(--p)"></i>
+            <p style="margin:5px 0 0; font-size:12px; font-weight:bold">TOPLU RAPOR YÜKLE (Stok/Satış)</p>
+        </div>
+        
+        <div class="filter-group">
+            <label><i class="fas fa-search"></i> GENEL ARA (TÜM SEKMELER)</label>
+            <input type="text" id="globalSearchMutabakat" placeholder="Malzeme İsmi / Marka..." oninput="syncGlobalSearch(this.value)">
+        </div>
+
+        <div class="filter-group" style="border-left-color: #d97706;">
+            <label><i class="fas fa-calendar-alt"></i> TARİH SEÇİMİ (SATIŞ DÖNEMİ)</label>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-bottom:6px;">
+                <select id="f-yil-mutabakat" onchange="syncSatisDateFrom('mutabakat', 'yil')"><option value="">Yıl</option></select>
+                <select id="f-ay-mutabakat" onchange="syncSatisDateFrom('mutabakat', 'ay')"><option value="">Ay</option></select>
+                <select id="f-gun-mutabakat" onchange="syncSatisDateFrom('mutabakat', 'gun')"><option value="">Gün</option></select>
+            </div>
+            <div id="mutabakatDateBadge" style="font-size:11px; font-weight:bold; color:#b45309; background:#fef3c7; padding:6px 8px; border-radius:5px;">
+                Tüm Günler Seçili
+            </div>
+        </div>
+
+        <div class="action-grid" style="margin-top: auto;">
+            <button class="btn-cube btn-s" onclick="resetMutabakatFilters()" title="Filtreyi Temizle">
+                <i class="fas fa-sync-alt"></i>
+                <span>Sıfırla</span>
+            </button>
+            <button class="btn-cube btn-a" onclick="window.exportMutabakatExcel('all')" title="Mutabakat Raporunu Aktar">
+                <i class="fas fa-file-download"></i>
+                <span>Aktar</span>
+            </button>
+            <button class="btn-cube btn-sepet" onclick="window.showMutabakatCart()" title="Sepetim">
+                <i class="fas fa-shopping-basket"></i>
+                <span>(<span id="cart-count-mutabakat">0</span>)</span>
+            </button>
+        </div>
+    </aside>
+
+    <section class="content">
+        <div class="data-card">
+            <!-- Ürünlerin Depo Dağılım Kartları Alanı -->
+            <div id="summaryCardsContainer" class="summary-cards-container"></div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Malzeme İsmi</th>
+                            <th>Marka</th>
+                            <th>Lisansör</th>
+                            <th style="text-align:center">Satışa Hazır Stok (Kutu)</th>
+                            <th style="text-align:center">SATIŞ ADEDİ (TOPLAM)</th>
+                            <th style="text-align:center">
+                                GÜNLÜK SATIŞ ADEDİ
+                                <div id="gunlukSatisSubHeader" style="font-size:10px; font-weight:600; color:#b45309; margin-top:2px;">Tüm Günler</div>
+                            </th>
+                            <th style="text-align:center">Aylık Satış (Kutu)</th>
+                            <th style="text-align:center">Yıllık Satış (Kutu)</th>
+                            <th style="text-align:center; display:flex; align-items:center; justify-content:center; gap:8px; background:#f1f5f9; border:none; padding-top:15px;">
+                                <input type="checkbox" id="selectAllMutabakat" onclick="toggleSelectAllMutabakat(this)">
+                                <span style="font-size:11px; font-weight:bold; color:#475569;">SEPET</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBodyMutabakat"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- ================= MODAL ================= -->
+<div id="mainModal" class="modal">
+    <div class="modal-content">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid var(--p); padding-bottom:10px;">
+            <div>
+                <div id="modalCalendar" class="modal-calendar-badge"></div>
+                <h3 id="modalTitle" style="margin:10px 0 0 0; color:var(--s)"></h3>
+            </div>
+            <span onclick="window.closeModal()" style="cursor:pointer; font-size:40px; line-height: 0.8;">×</span>
+        </div>
+        <div class="summary-scroll" id="modalBody"></div>
+        <div id="modalFooter" style="padding-top:15px; display:flex; gap:10px; justify-content: flex-end;"></div>
+    </div>
+</div>
+
+<script>
+    let dbStok = JSON.parse(localStorage.getItem('GENOS_V117_STOK_DB') || '[]');
+    let cartStok = JSON.parse(localStorage.getItem('GENOS_V117_STOK_CART') || '[]');
+    let filteredStokData = [];
+
+    let dbSatis = JSON.parse(localStorage.getItem('GENOS_V117_SATIS_DB') || '[]');
+    let cartSatis = JSON.parse(localStorage.getItem('GENOS_V117_SATIS_CART') || '[]');
+    let filteredSatisData = [];
+
+    let cartMutabakat = JSON.parse(localStorage.getItem('GENOS_V117_MUTABAKAT_CART') || '[]');
+    let filteredMutabakatData = [];
+
+    let currentModalData = [];
+    let currentStokHeaders = ["Malzeme Kodu", "Malzeme İsmi", "Marka", "Lisansör", "Üretici Firma", "Devir Stok (Kutu)", "Yıllık Satış (Kutu)", "Satışa Hazır Stok (Kutu)", "Günlük Satış (Kutu)", "Aylık Satış (Kutu)", "İade Ürün Sayısı (Kutu)"];
+    
+    const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+
+    function syncGlobalSearch(val) {
+        const inputs = ['globalSearchStok', 'globalSearchSatis', 'globalSearchMutabakat'];
+        inputs.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && el.value !== val) {
+                el.value = val;
+            }
+        });
+        filterStokData();
+        filterSatisData();
+        filterMutabakatData();
+    }
+
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        
+        const targetBtn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+        if(targetBtn) targetBtn.classList.add('active');
+
+        if(tabName === 'stok') {
+            document.getElementById('pane-stok').classList.add('active');
+            filterStokData();
+        } else if(tabName === 'satis') {
+            document.getElementById('pane-satis').classList.add('active');
+            filterSatisData();
+        } else if(tabName === 'mutabakat') {
+            document.getElementById('pane-mutabakat').classList.add('active');
+            filterMutabakatData();
+        }
+    }
+
+    window.closeModal = () => document.getElementById('mainModal').style.display = "none";
+
+    function toggleDropdown(e, containerId) {
+        e.stopPropagation();
+        const container = document.getElementById(containerId);
+        container.classList.toggle('show');
+    }
+    window.addEventListener('click', (e) => {
+        if (!e.target.closest('.dropdown-multiselect')) {
+            document.querySelectorAll('.dropdown-list-container').forEach(c => c.classList.remove('show'));
+        }
+    });
+
+    function trLower(str) {
+        return (str || "").toString().replace(/İ/g, 'i').replace(/I/g, 'ı').toLowerCase().trim();
+    }
+
+    function parseNumCell(val) {
+        if (val === undefined || val === null || val === "") return 0;
+        if (typeof val === "number") return isNaN(val) ? 0 : val;
+        let cleaned = String(val).replace(/\u00a0/g, '').replace(/\s+/g, '').trim();
+        if (/^-?\d{1,3}(\.\d{3})+$/.test(cleaned)) {
+            cleaned = cleaned.replace(/\./g, '');
+        } else if (cleaned.includes('.') && cleaned.includes(',')) {
+            cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+        } else if (cleaned.includes(',')) {
+            cleaned = cleaned.replace(',', '.');
+        }
+        const num = parseFloat(cleaned);
+        return isNaN(num) ? 0 : num;
+    }
+
+    window.exportModalDataToExcel = function(titleName) {
+        if(!currentModalData || currentModalData.length === 0) {
+            alert("Aktarılacak veri bulunamadı!");
+            return;
+        }
+        const cleanData = currentModalData.map(({id, ...rest}) => rest);
+        const ws = XLSX.utils.json_to_sheet(cleanData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "DETAY_RAPORU");
+        const safeTitle = (titleName || "DETAY").replace(/[\/\\?%*:|"<>]/g, '_');
+        XLSX.writeFile(wb, `${safeTitle}_DETAY_${Date.now()}.xlsx`);
+    };
+
+    // ================= SAĞLAM TOPLU DOSYA YÜKLEME =================
+    document.getElementById('fileGlobalInp').addEventListener('change', async (e) => {
+        let addedSatisCount = 0;
+        let addedStokCount = 0;
+
+        for (let file of e.target.files) {
+            let fName = file.name;
+            let dateMatch = fName.match(/(\d{2})(\d{2})(\d{2})/);
+            let defaultTarihStr = "19.11.2026";
+            let defaultY = "2026", defaultA = "11", defaultG = "19";
+            if (dateMatch) {
+                let [, day, month, yr] = dateMatch;
+                defaultY = "20" + yr; defaultA = month; defaultG = day;
+                defaultTarihStr = `${defaultG}.${defaultA}.${defaultY}`;
+            }
+
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data, { cellDates: true });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ""});
+            
+            let isSatis = false;
+            let startRow = 2;
+
+            for (let i = 0; i < Math.min(rows.length, 6); i++) {
+                let rowStr = (rows[i] || []).map(c => trLower(c)).join(" ");
+                if (rowStr.includes('malzeme ismi') || rowStr.includes('satışa hazır stok') || rowStr.includes('lisansör')) {
+                    isSatis = false;
+                    startRow = i + 1;
+                    break;
+                } else if ((rowStr.includes('müşteri') || rowStr.includes('müsteri')) && (rowStr.includes('belge no') || rowStr.includes('miktar') || rowStr.includes('ürün'))) {
+                    isSatis = true;
+                    startRow = i + 1;
+                    break;
+                }
+            }
+
+            if (!isSatis && (fName.toLowerCase().includes('satis') || fName.toLowerCase().includes('satış') || fName.toLowerCase().includes('sts'))) {
+                const headerCheckStr = (rows[1] || []).map(c => trLower(c)).join(" ");
+                if (!headerCheckStr.includes('malzeme ismi')) {
+                    isSatis = true;
+                    startRow = 2;
+                }
+            }
+
+            if (isSatis) {
+                for (let i = startRow; i < rows.length; i++) {
+                    let r = rows[i];
+                    if (!r || r.length < 7) continue;
+
+                    let tarihStr = defaultTarihStr;
+                    let y = defaultY, a = defaultA, g = defaultG;
+
+                    let rawTarih = r[0];
+                    if (rawTarih instanceof Date && !isNaN(rawTarih.getTime())) {
+                        g = String(rawTarih.getDate()).padStart(2, '0');
+                        a = String(rawTarih.getMonth() + 1).padStart(2, '0');
+                        y = String(rawTarih.getFullYear());
+                        tarihStr = `${g}.${a}.${y}`;
+                    } else if (rawTarih) {
+                        let tStr = String(rawTarih).split('T')[0].split(' ')[0].trim();
+                        let tParts = tStr.split('-');
+                        if (tParts.length === 3 && tParts[0].length === 4) {
+                            y = tParts[0]; a = tParts[1].padStart(2, '0'); g = tParts[2].padStart(2, '0');
+                            tarihStr = `${g}.${a}.${y}`;
+                        } else if (tStr.includes('.')) {
+                            let p = tStr.split('.');
+                            if (p.length === 3) {
+                                g = p[0].padStart(2, '0'); a = p[1].padStart(2, '0');
+                                y = p[2].length === 2 ? "20" + p[2] : p[2];
+                                tarihStr = `${g}.${a}.${y}`;
+                            }
+                        }
+                    }
+
+                    let bolgeVal = r[1] ? String(r[1]).trim() : "Merkez";
+                    if (!bolgeVal) bolgeVal = "Merkez";
+                    let musteriKodVal = r[2] !== undefined ? String(r[2]).trim() : "";
+                    let musteriVal = r[3] ? String(r[3]).trim() : "";
+                    if (!musteriVal) continue;
+
+                    const mLow = trLower(musteriVal);
+                    if (
+                        mLow === 'müşteri' || mLow === 'müsteri' ||
+                        mLow.startsWith('genel toplam') || mLow.startsWith('toplam')
+                    ) continue;
+
+                    let bNoVal = r[4] !== undefined ? String(r[4]).trim() : "-";
+                    let mKodVal = r[5] !== undefined ? String(r[5]).trim() : "";
+                    let urunVal = r[6] ? String(r[6]).trim() : "";
+                    if (!urunVal) continue;
+
+                    let miktarVal = parseNumCell(r[7]);
+                    let birimVal = r[8] ? String(r[8]).trim() : "KTU";
+
+                    let isDuplicate = dbSatis.some(item => 
+                        item.tarih === tarihStr &&
+                        trLower(item.bolge) === trLower(bolgeVal) &&
+                        trLower(item.musteri) === trLower(musteriVal) &&
+                        trLower(item.bNo) === trLower(bNoVal) &&
+                        trLower(item.urun) === trLower(urunVal) &&
+                        item.miktar === miktarVal
+                    );
+
+                    if (!isDuplicate) {
+                        dbSatis.push({
+                            id: 's_' + Math.random().toString(36).substr(2, 9),
+                            tarih: tarihStr, y: y, a: a, g: g,
+                            bolge: bolgeVal,
+                            musteriKod: musteriKodVal,
+                            musteri: musteriVal,
+                            bNo: bNoVal,
+                            mKod: mKodVal,
+                            urun: urunVal,
+                            miktar: miktarVal,
+                            birim: birimVal
+                        });
+                        addedSatisCount++;
+                    }
+                }
+                dbSatis.sort((A, B) => A.urun.localeCompare(B.urun, 'tr'));
+                localStorage.setItem('GENOS_V117_SATIS_DB', JSON.stringify(dbSatis));
+                finalizeSatisUI();
+            } else {
+                let hRow = rows[startRow - 1] || [];
+                currentStokHeaders = hRow.filter(h => h !== undefined && String(h).trim() !== "");
+
+                let map = {};
+                hRow.forEach((h, idx) => {
+                    let hl = trLower(h);
+                    if (!hl) return;
+                    if (hl.includes('malzeme kodu')) map.mKod = idx;
+                    else if (hl.includes('malzeme ismi')) map.urun = idx;
+                    else if (hl.includes('marka')) map.marka = idx;
+                    else if (hl.includes('lisansör')) map.lisansor = idx;
+                    else if (hl.includes('üretici firma')) map.uretici = idx;
+                    else if (hl.includes('devir stok')) map.devirStok = idx;
+                    else if (hl.includes('yıllık satış')) map.yillikSatis = idx;
+                    else if (hl.includes('satışa hazır stok') || hl === 'stok') map.stok = idx;
+                    else if (hl.includes('günlük satış')) map.gunlukSatis = idx;
+                    else if (hl.includes('aylık satış')) map.aylikSatis = idx;
+                    else if (hl.includes('iade ürün sayısı') || hl.includes('iade')) map.iade = idx;
+                });
+
+                for (let i = startRow; i < rows.length; i++) {
+                    let r = rows[i];
+                    if (!r || r.length < 2) continue;
+
+                    let mKod = map.mKod !== undefined && r[map.mKod] !== undefined ? String(r[map.mKod]).trim() : "";
+                    if (!mKod || mKod.toUpperCase().includes('GENEL TOPLAM') || mKod.toUpperCase().includes('TOPLAM') || trLower(mKod).includes('malzeme kodu')) continue;
+
+                    let malzemeIsmi = map.urun !== undefined && r[map.urun] ? String(r[map.urun]).trim() : "";
+                    if (!malzemeIsmi || trLower(malzemeIsmi).includes('malzeme ismi')) continue;
+
+                    let markaVal = map.marka !== undefined && r[map.marka] ? String(r[map.marka]).trim() : "-";
+                    let lisansorVal = map.lisansor !== undefined && r[map.lisansor] ? String(r[map.lisansor]).trim() : "-";
+                    let ureticiVal = map.uretici !== undefined && r[map.uretici] ? String(r[map.uretici]).trim() : "-";
+                    let devirStokVal = map.devirStok !== undefined ? parseNumCell(r[map.devirStok]) : 0;
+                    let yillikSatisVal = map.yillikSatis !== undefined ? parseNumCell(r[map.yillikSatis]) : 0;
+                    let stokVal = map.stok !== undefined ? parseNumCell(r[map.stok]) : 0;
+                    let gunlukSatisVal = map.gunlukSatis !== undefined ? parseNumCell(r[map.gunlukSatis]) : 0;
+                    let aylikSatisVal = map.aylikSatis !== undefined ? parseNumCell(r[map.aylikSatis]) : 0;
+                    let iadeVal = map.iade !== undefined ? parseNumCell(r[map.iade]) : 0;
+
+                    let existingIdx = dbStok.findIndex(item =>
+                        item.tarih === defaultTarihStr &&
+                        trLower(item.mKod) === trLower(mKod) &&
+                        trLower(item.urun) === trLower(malzemeIsmi)
+                    );
+
+                    let stokObj = {
+                        id: existingIdx > -1 ? dbStok[existingIdx].id : ('stk_' + Math.random().toString(36).substr(2, 9)),
+                        tarih: defaultTarihStr, y: defaultY, a: defaultA, g: defaultG,
+                        mKod: mKod,
+                        urun: malzemeIsmi,
+                        marka: markaVal,
+                        lisansor: lisansorVal,
+                        uretici: ureticiVal,
+                        devirStok: devirStokVal,
+                        yillikSatis: yillikSatisVal,
+                        stok: stokVal,
+                        gunlukSatis: gunlukSatisVal,
+                        aylikSatis: aylikSatisVal,
+                        iade: iadeVal
+                    };
+
+                    if (existingIdx > -1) {
+                        dbStok[existingIdx] = stokObj;
+                    } else {
+                        dbStok.push(stokObj);
+                    }
+                    addedStokCount++;
+                }
+                dbStok.sort((A, B) => A.urun.localeCompare(B.urun, 'tr'));
+                localStorage.setItem('GENOS_V117_STOK_DB', JSON.stringify(dbStok));
+                finalizeStokUI();
+            }
+        }
+        e.target.value = "";
+        alert(`Raporlar yüklendi! (Stok: ${addedStokCount} kayıt, Satış: ${addedSatisCount} yeni kayıt)`);
+        updateStokTableHeader();
+        filterStokData();
+        filterSatisData();
+        filterMutabakatData();
+    });
+
+    function updateStokTableHeader() {
+        let html = `<th>TARİH</th>`;
+        currentStokHeaders.forEach(h => {
+            let align = (h.includes('Satış') || h.includes('Stok') || h.includes('Sayı') || h.includes('Devir')) ? 'text-align:center' : '';
+            html += `<th style="${align}">${h}</th>`;
+        });
+        html += `<th style="text-align:center; display:flex; align-items:center; justify-content:center; gap:8px; background:#f1f5f9; border:none; padding-top:15px;">
+            <input type="checkbox" id="selectAll" onclick="toggleSelectAllStok(this)">
+            <span style="font-size:11px; font-weight:bold; color:#475569;">SEPET</span>
+        </th>`;
+        document.getElementById('stokTableHeaderRow').innerHTML = html;
+    }
+
+    // ================= STOK LOGIC =================
+    function finalizeStokUI() {
+        updateStokTableHeader();
+        const y = [...new Set(dbStok.map(d => d.y))].sort().reverse();
+        document.getElementById('f-yil-stok').innerHTML = '<option value="">Yıl</option>' + y.map(i => `<option value="${i}">${i}</option>`).join('');
+        
+        const lisansorler = [...new Set(dbStok.map(d => d.lisansor))].sort();
+        document.getElementById('lisansorCheckboxes').innerHTML = lisansorler.map(i => `
+            <label class="dropdown-item">
+                <input type="checkbox" class="lisansor-chk" value="${i}" checked onchange="filterStokData()"> ${i}
+            </label>
+        `).join('');
+        document.getElementById('selectAllLisansor').checked = true;
+        updateMonthFilterStok();
+    }
+
+    function updateMonthFilterStok() {
+        const selY = document.getElementById('f-yil-stok').value;
+        const aylar = [...new Set(dbStok.filter(d => selY === "" || d.y === selY).map(d => d.a))].sort();
+        document.getElementById('f-ay-stok').innerHTML = '<option value="">Ay</option>' + aylar.map(a => `<option value="${a}">${ayIsimleri[parseInt(a)-1]}</option>`).join('');
+        updateDayFilterStok();
+    }
+
+    function updateDayFilterStok() {
+        const selY = document.getElementById('f-yil-stok').value, selA = document.getElementById('f-ay-stok').value;
+        const gunler = [...new Set(dbStok.filter(d => (selY==="" || d.y===selY) && (selA==="" || d.a===selA)).map(d => d.g))].sort();
+        document.getElementById('f-gun-stok').innerHTML = '<option value="">Gün</option>' + gunler.map(g => `<option value="${g}">${g}</option>`).join('');
+        filterStokData();
+    }
+
+    window.filterStokData = function() {
+        const y = document.getElementById('f-yil-stok').value, 
+              a = document.getElementById('f-ay-stok').value, 
+              g = document.getElementById('f-gun-stok').value,
+              s = trLower(document.getElementById('globalSearchStok').value);
+        
+        const selectedLisansorler = Array.from(document.querySelectorAll('.lisansor-chk:checked')).map(cb => cb.value);
+        const totalLisansorCount = document.querySelectorAll('.lisansor-chk').length;
+        
+        const btnText = document.getElementById('lisansorButtonText');
+        if (totalLisansorCount === 0) btnText.innerText = "Lisansör Yok";
+        else if (selectedLisansorler.length === 0) btnText.innerText = "Hiçbiri Seçili Değil";
+        else if (selectedLisansorler.length === totalLisansorCount) btnText.innerText = "Tüm Lisansörler Seçili";
+        else btnText.innerText = `${selectedLisansorler.length} Lisansör Seçildi`;
+
+        filteredStokData = dbStok.filter(i => {
+            let matchY = (y === '' || i.y === y);
+            let matchA = (a === '' || i.a === a);
+            let matchG = (g === '' || i.g === g);
+            let matchLisansor = (totalLisansorCount === 0 || selectedLisansorler.length === totalLisansorCount || selectedLisansorler.includes(i.lisansor));
+            let matchSearch = (trLower(i.mKod).includes(s) || trLower(i.urun).includes(s) || trLower(i.marka).includes(s) || trLower(i.lisansor).includes(s));
+            return matchY && matchA && matchG && matchLisansor && matchSearch;
+        });
+
+        const tbody = document.getElementById('tableBodyStok');
+        tbody.innerHTML = filteredStokData.map(item => {
+            const raporGunlukSatis = item.gunlukSatis ?? 0;
+            const raporAylikSatis = item.aylikSatis ?? 0;
+            const raporYillikSatis = item.yillikSatis ?? 0;
+
+            const isCart = cartStok.some(c => c.mKod === item.mKod && c.t === item.tarih);
+            
+            let rowHtml = `<td>${item.tarih}</td>`;
+            currentStokHeaders.forEach(h => {
+                let hl = trLower(h);
+                if (hl.includes('malzeme kodu')) rowHtml += `<td><b>${item.mKod}</b></td>`;
+                else if (hl.includes('malzeme ismi')) rowHtml += `<td><span class="link-urun" onclick="window.showStokDetail('${item.mKod}', '${item.tarih}')">${item.urun}</span><i class="fas fa-trash-alt" title="Bu Satırı Sil" onclick="deleteStokItem('${item.id}')" style="cursor:pointer; color:#ef4444; margin-left:8px; font-size:11px;"></i></td>`;
+                else if (hl.includes('marka')) rowHtml += `<td>${item.marka}</td>`;
+                else if (hl.includes('lisansör')) rowHtml += `<td>${item.lisansor}</td>`;
+                else if (hl.includes('üretici firma')) rowHtml += `<td>${item.uretici || '-'}</td>`;
+                else if (hl.includes('devir stok')) rowHtml += `<td style="text-align:center"><b>${item.devirStok !== undefined && item.devirStok !== null ? item.devirStok : 0}</b></td>`;
+                else if (hl.includes('yıllık satış')) rowHtml += `<td style="text-align:center"><span class="link-satis-detay" onclick="window.showStokGunlukSatisDetail('${item.urun.replace(/'/g, "\\'")}')"><b>${raporYillikSatis}</b></span></td>`;
+                else if (hl.includes('satışa hazır stok') || hl === 'stok') rowHtml += `<td style="text-align:center"><span class="link-stok-detay" onclick="window.showStokKutuDetail('${item.urun.replace(/'/g, "\\'")}', '${item.tarih}')"><b>${item.stok}</b></span></td>`;
+                else if (hl.includes('günlük satış')) rowHtml += `<td style="text-align:center"><span class="link-satis-detay" onclick="window.showStokGunlukSatisDetail('${item.urun.replace(/'/g, "\\'")}')">${raporGunlukSatis}</span></td>`;
+                else if (hl.includes('aylık satış')) rowHtml += `<td style="text-align:center"><span class="link-urun" onclick="window.showStokGunlukSatisDetail('${item.urun.replace(/'/g, "\\'")}')">${raporAylikSatis}</span></td>`;
+                else if (hl.includes('iade')) rowHtml += `<td style="text-align:center"><span class="link-iade-detay" onclick="window.showStokIadeDetail('${item.urun.replace(/'/g, "\\'")}')">${item.iade}</span></td>`;
+                else rowHtml += `<td>-</td>`;
+            });
+
+            rowHtml += `<td style="text-align:center; display:flex; align-items:center; justify-content:center; gap:12px;">
+                <input type="checkbox" class="row-checkbox" value="${item.mKod}" data-tarih="${item.tarih}" ${isCart ? 'checked' : ''}>
+                <i class="fas fa-shopping-basket cart-btn" onclick="toggleStokCartItem('${item.mKod}', '${item.tarih}')" style="cursor:pointer; color:${isCart?'#10b981':'#cbd5e1'}"></i>
+            </td>`;
+
+            return `<tr>${rowHtml}</tr>`;
+        }).join('');
+        document.getElementById('cart-count-stok').innerText = cartStok.length;
+        document.getElementById('selectAll').checked = false;
+    };
+
+    window.showStokKutuDetail = function(urunName, tarih) {
+        currentModalData = dbStok.filter(x => trLower(x.urun) === trLower(urunName));
+        document.getElementById('modalCalendar').innerHTML = `<i class="fas fa-boxes"></i> Satışa Hazır Stok Detayı`;
+        document.getElementById('modalTitle').innerText = urunName;
+        let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>TARİH</th><th>Malzeme Kodu</th><th>Marka</th><th>Lisansör</th><th>Satışa Hazır Stok (Kutu)</th></tr></thead><tbody>`;
+        let t = 0;
+        currentModalData.forEach(x => {
+            html += `<tr><td>${x.tarih}</td><td>${x.mKod}</td><td>${x.marka}</td><td>${x.lisansor}</td><td><b>${x.stok}</b></td></tr>`;
+            t += x.stok;
+        });
+        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="4">TOPLAM STOK</td><td>${t}</td></tr></tbody></table>`;
+        document.getElementById('modalBody').innerHTML = html;
+        document.getElementById('modalFooter').innerHTML = `
+            <button class="btn-excel-modal" onclick="exportModalDataToExcel('${urunName}')"><i class="fas fa-file-excel"></i> Excel'e Aktar</button>
+            <button class="btn-kapat" onclick="window.closeModal()">Kapat</button>`;
+        document.getElementById('mainModal').style.display = "block";
+    };
+
+    window.showStokGunlukSatisDetail = function(urunName) {
+        currentModalData = dbSatis.filter(x => trLower(x.urun) === trLower(urunName));
+        document.getElementById('modalCalendar').innerHTML = `<i class="fas fa-chart-line"></i> Ürün Satış Detayı`;
+        document.getElementById('modalTitle').innerText = urunName;
+        let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>TARİH</th><th>BÖLGE</th><th>MÜŞTERİ</th><th>BELGE NO</th><th>MİKTAR</th></tr></thead><tbody>`;
+        let t = 0;
+        currentModalData.forEach(x => {
+            html += `<tr><td>${x.tarih}</td><td>${x.bolge}</td><td>${x.musteri}</td><td>${x.bNo}</td><td><b>${x.miktar}</b></td></tr>`;
+            t += x.miktar;
+        });
+        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="4">TOPLAM SATIŞ</td><td>${t}</td></tr></tbody></table>`;
+        document.getElementById('modalBody').innerHTML = html;
+        document.getElementById('modalFooter').innerHTML = `
+            <button class="btn-excel-modal" onclick="exportModalDataToExcel('${urunName}')"><i class="fas fa-file-excel"></i> Excel'e Aktar</button>
+            <button class="btn-kapat" onclick="window.closeModal()">Kapat</button>`;
+        document.getElementById('mainModal').style.display = "block";
+    };
+
+    window.showStokIadeDetail = function(urunName) {
+        let items = dbStok.filter(x => trLower(x.urun) === trLower(urunName));
+        currentModalData = items;
+        document.getElementById('modalCalendar').innerHTML = `<i class="fas fa-undo"></i> İade Detayı`;
+        document.getElementById('modalTitle').innerText = urunName;
+        let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>TARİH</th><th>Malzeme Kodu</th><th>Marka</th><th>İade Ürün Sayısı (Kutu)</th></tr></thead><tbody>`;
+        let t = 0;
+        items.forEach(x => {
+            html += `<tr><td>${x.tarih}</td><td>${x.mKod}</td><td>${x.marka}</td><td style="color:#e11d48;"><b>${x.iade}</b></td></tr>`;
+            t += x.iade;
+        });
+        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="3">TOPLAM İADE</td><td>${t}</td></tr></tbody></table>`;
+        document.getElementById('modalBody').innerHTML = html;
+        document.getElementById('modalFooter').innerHTML = `
+            <button class="btn-excel-modal" onclick="exportModalDataToExcel('${urunName}')"><i class="fas fa-file-excel"></i> Excel'e Aktar</button>
+            <button class="btn-kapat" onclick="window.closeModal()">Kapat</button>`;
+        document.getElementById('mainModal').style.display = "block";
+    };
+
+    window.deleteStokItem = function(id) {
+        dbStok = dbStok.filter(x => x.id !== id);
+        localStorage.setItem('GENOS_V117_STOK_DB', JSON.stringify(dbStok));
+        filterStokData();
+    };
+
+    function toggleSelectAllStok(master) {
+        document.querySelectorAll('.row-checkbox').forEach(cb => { cb.checked = master.checked; });
+    }
+
+    function toggleSelectAllLisansor(master) {
+        document.querySelectorAll('.lisansor-chk').forEach(cb => cb.checked = master.checked);
+        filterStokData();
+    }
+
+    function filterLisansorDropdown() {
+        const searchInput = document.getElementById('lisansorSearchInput');
+        const search = trLower(searchInput.value);
+        
+        document.querySelectorAll('#lisansorCheckboxes .dropdown-item').forEach(item => {
+            item.style.display = trLower(item.innerText).includes(search) ? "flex" : "none";
+        });
+
+        if (search.length > 0) {
+            document.querySelectorAll('.lisansor-chk').forEach(cb => {
+                let lisansorName = trLower(cb.value);
+                if (lisansorName.includes(search)) cb.checked = true; else cb.checked = false;
+            });
+            document.getElementById('selectAllLisansor').checked = false;
+        } else {
+            document.querySelectorAll('.lisansor-chk').forEach(cb => { cb.checked = true; });
+            document.getElementById('selectAllLisansor').checked = true;
+        }
+        filterStokData();
+    }
+
+    function addSelectedToStokCart() {
+        const checkboxes = document.querySelectorAll('.row-checkbox:checked');
+        if (checkboxes.length === 0) { alert("Lütfen kayıt seçin!"); return; }
+        checkboxes.forEach(cb => {
+            const mKod = cb.value, t = cb.getAttribute('data-tarih');
+            if (!cartStok.some(c => c.mKod === mKod && c.t === t)) cartStok.push({mKod, t});
+        });
+        localStorage.setItem('GENOS_V117_STOK_CART', JSON.stringify(cartStok));
+        filterStokData();
+    }
+
+    function toggleStokCartItem(mKod, t) {
+        const idx = cartStok.findIndex(c => c.mKod === mKod && c.t === t);
+        if(idx > -1) cartStok.splice(idx, 1); else cartStok.push({mKod, t});
+        localStorage.setItem('GENOS_V117_STOK_CART', JSON.stringify(cartStok));
+        filterStokData();
+    }
+
+    window.showStokCart = function() {
+        document.getElementById('modalCalendar').innerHTML = `<i class="fas fa-shopping-basket"></i> Stok Sepeti`;
+        document.getElementById('modalTitle').innerText = "Seçili Stok Kayıtları";
+        currentModalData = cartStok.map(c => dbStok.find(x => x.mKod === c.mKod && x.t === c.t)).filter(Boolean);
+        let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>TARİH</th><th>Malzeme Kodu</th><th>Malzeme İsmi</th><th>Satışa Hazır Stok (Kutu)</th></tr></thead><tbody>`;
+        currentModalData.forEach(x => { html += `<tr><td>${x.tarih}</td><td>${x.mKod}</td><td><b>${x.urun}</b></td><td>${x.stok}</td></tr>`; });
+        html += `</tbody></table>`;
+        document.getElementById('modalBody').innerHTML = html;
+        document.getElementById('modalFooter').innerHTML = `
+            <button class="btn-excel-modal" onclick="exportModalDataToExcel('Stok_Sepeti')"><i class="fas fa-file-excel"></i> Excel'e Aktar</button>
+            <button class="btn-cube btn-d" style="width:110px; aspect-ratio:auto; padding:10px;" onclick="cartStok=[]; localStorage.removeItem('GENOS_V117_STOK_CART'); window.closeModal(); filterStokData();">Boşalt</button>
+            <button class="btn-kapat" onclick="window.closeModal()">Kapat</button>`;
+        document.getElementById('mainModal').style.display = "block";
+    };
+
+    window.exportStokExcel = function(type) {
+        let source = (type === 'all') ? dbStok : (type === 'filtered') ? filteredStokData : currentModalData;
+        if(source.length === 0) { alert("Veri yok!"); return; }
+        let arr = source.map(i => ({
+            'Malzeme Kodu': i.mKod,
+            'Malzeme İsmi': i.urun,
+            'Marka': i.marka,
+            'Lisansör': i.lisansor,
+            'Üretici Firma': i.uretici,
+            'Devir Stok (Kutu)': i.devirStok ?? 0,
+            'Yıllık Satış (Kutu)': i.yillikSatis,
+            'Satışa Hazır Stok (Kutu)': i.stok,
+            'Günlük Satış (Kutu)': i.gunlukSatis,
+            'Aylık Satış (Kutu)': i.aylikSatis,
+            'İade Ürün Sayısı (Kutu)': i.iade
+        }));
+        const ws = XLSX.utils.json_to_sheet(arr);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "STOK_RAPORU");
+        XLSX.writeFile(wb, `STOK_RAPORU_${Date.now()}.xlsx`);
+    };
+
+    function resetStokFilters() {
+        document.getElementById('lisansorSearchInput').value = "";
+        document.querySelectorAll('#pane-stok select').forEach(s => s.value = "");
+        document.querySelectorAll('.lisansor-chk').forEach(cb => cb.checked = true);
+        document.getElementById('selectAllLisansor').checked = true;
+        filterLisansorDropdown();
+        syncGlobalSearch("");
+    }
+    function clearStokDB() {
+        if(confirm("Stok veritabanı sıfırlansın mı?")) {
+            [
+                'GENOS_V117_STOK_DB', 'GENOS_V117_STOK_CART',
+                'GENOS_V116_STOK_DB', 'GENOS_V116_STOK_CART',
+                'GENOS_V115_STOK_DB', 'GENOS_V115_STOK_CART',
+                'GENOS_V114_STOK_DB', 'GENOS_V114_STOK_CART',
+                'GENOS_V112_STOK_DB', 'GENOS_V112_STOK_CART'
+            ].forEach(k => localStorage.removeItem(k));
+            dbStok = [];
+            cartStok = [];
+            filteredStokData = [];
+            finalizeStokUI();
+            filterMutabakatData();
+        }
+    }
+
+
+    // ================= SATIŞ & MUTABAKAT ÇİFT YÖNLÜ TARİH SENKRONU =================
+    function finalizeSatisUI() {
+        const y = [...new Set(dbSatis.map(d => d.y))].sort().reverse();
+        const yOpts = '<option value="">Yıl</option>' + y.map(i => `<option value="${i}">${i}</option>`).join('');
+        document.getElementById('f-yil-satis').innerHTML = yOpts;
+        document.getElementById('f-yil-mutabakat').innerHTML = yOpts;
+        
+        const bolgeler = [...new Set(dbSatis.map(d => d.bolge))].sort();
+        document.getElementById('f-bolge-satis').innerHTML = '<option value="">Tüm Bölgeler</option>' + bolgeler.map(b => `<option value="${b}">${b}</option>`).join('');
+
+        const de = [...new Set(dbSatis.map(d => d.musteri))].sort();
+        document.getElementById('customerCheckboxes').innerHTML = de.map(i => `
+            <label class="dropdown-item">
+                <input type="checkbox" class="customer-chk" value="${i}" checked onchange="filterSatisData()"> ${i}
+            </label>
+        `).join('');
+        document.getElementById('selectAllCustomers').checked = true;
+        refreshSatisDateDropdowns('', '', '');
+        filterSatisData();
+    }
+
+    function refreshSatisDateDropdowns(selY, selA, selG) {
+        const aylar = [...new Set(dbSatis.filter(d => selY === "" || d.y === selY).map(d => d.a))].sort();
+        const aOpts = '<option value="">Ay</option>' + aylar.map(a => `<option value="${a}">${ayIsimleri[parseInt(a)-1]}</option>`).join('');
+        document.getElementById('f-ay-satis').innerHTML = aOpts;
+        document.getElementById('f-ay-mutabakat').innerHTML = aOpts;
+
+        const validA = aylar.includes(selA) ? selA : "";
+        document.getElementById('f-ay-satis').value = validA;
+        document.getElementById('f-ay-mutabakat').value = validA;
+
+        const gunler = [...new Set(dbSatis.filter(d => (selY === "" || d.y === selY) && (validA === "" || d.a === validA)).map(d => d.g))].sort();
+        const gOpts = '<option value="">Gün</option>' + gunler.map(g => `<option value="${g}">${g}</option>`).join('');
+        document.getElementById('f-gun-satis').innerHTML = gOpts;
+        document.getElementById('f-gun-mutabakat').innerHTML = gOpts;
+
+        const validG = gunler.includes(selG) ? selG : "";
+        document.getElementById('f-gun-satis').value = validG;
+        document.getElementById('f-gun-mutabakat').value = validG;
+    }
+
+    function syncSatisDateFrom(source, level) {
+        const y = document.getElementById(`f-yil-${source}`).value;
+        const a = document.getElementById(`f-ay-${source}`).value;
+        const g = document.getElementById(`f-gun-${source}`).value;
+
+        document.getElementById('f-yil-satis').value = y;
+        document.getElementById('f-yil-mutabakat').value = y;
+
+        if (level === 'yil' || level === 'ay') {
+            refreshSatisDateDropdowns(y, a, g);
+        } else {
+            document.getElementById('f-gun-satis').value = g;
+            document.getElementById('f-gun-mutabakat').value = g;
+        }
+        filterSatisData();
+    }
+
+    window.filterSatisData = function() {
+        const y = document.getElementById('f-yil-satis').value, 
+              a = document.getElementById('f-ay-satis').value, 
+              g = document.getElementById('f-gun-satis').value,
+              bolge = document.getElementById('f-bolge-satis').value,
+              s = trLower(document.getElementById('globalSearchSatis').value);
+        
+        const allCustCheckboxes = Array.from(document.querySelectorAll('.customer-chk'));
+        const selectedCustomers = allCustCheckboxes.filter(cb => cb.checked).map(cb => cb.value);
+        const totalCustCount = allCustCheckboxes.length;
+        
+        const btnText = document.getElementById('customerButtonText');
+        if (totalCustCount === 0) btnText.innerText = "Müşteri Yok";
+        else if (selectedCustomers.length === 0) btnText.innerText = "Hiçbiri Seçili Değil";
+        else if (selectedCustomers.length === totalCustCount) btnText.innerText = "Tüm Müşteriler Seçili";
+        else btnText.innerText = `${selectedCustomers.length} Müşteri Seçildi`;
+
+        filteredSatisData = dbSatis.filter(i => {
+            let matchY = (y === '' || i.y === y);
+            let matchA = (a === '' || i.a === a);
+            let matchG = (g === '' || i.g === g);
+            let matchBolge = (bolge === '' || i.bolge === bolge);
+            let matchCust = (totalCustCount === 0 || selectedCustomers.length === totalCustCount || selectedCustomers.includes(i.musteri));
+            let matchSearch = (trLower(i.musteri).includes(s) || trLower(i.urun).includes(s) || trLower(i.bolge).includes(s) || trLower(i.bNo).includes(s) || trLower(i.mKod).includes(s));
+            return matchY && matchA && matchG && matchBolge && matchCust && matchSearch;
+        });
+
+        const tbody = document.getElementById('tableBodySatis');
+        tbody.innerHTML = filteredSatisData.map((item, idx) => {
+            const isCart = cartSatis.some(c => c.id === item.id);
+            return `<tr>
+                <td>${item.tarih}</td>
+                <td>${item.bolge || '-'}</td>
+                <td>${item.musteriKod || '-'}</td>
+                <td>
+                    <span class="link-depo" onclick="window.showSatisDetail('${item.id}')">${item.musteri}</span>
+                    <i class="fas fa-trash-alt" title="Bu Satırı Sil" onclick="deleteSatisItem('${item.id}')" style="cursor:pointer; color:#ef4444; margin-left:8px; font-size:11px;"></i>
+                </td>
+                <td>${item.bNo}</td>
+                <td><b>${item.mKod}</b></td>
+                <td><span class="link-urun" onclick="window.showSatisUrunDetail('${item.urun.replace(/'/g, "\\'")}', '${item.tarih}')">${item.urun}</span></td>
+                <td style="text-align:center"><b>${item.miktar}</b></td>
+                <td>${item.birim}</td>
+                <td style="text-align:center; display:flex; align-items:center; justify-content:center; gap:12px;">
+                    <input type="checkbox" class="row-chk-satis" value="${item.id}" ${isCart ? 'checked' : ''}>
+                    <i class="fas fa-shopping-basket cart-btn" onclick="toggleSatisCartItem('${item.id}')" style="cursor:pointer; color:${isCart?'#10b981':'#cbd5e1'}"></i>
+                </td>
+            </tr>`;
+        }).join('');
+        document.getElementById('cart-count-satis').innerText = cartSatis.length;
+        document.getElementById('selectAllSatis').checked = false;
+
+        // Tarih değiştiğinde Özet & Mutabakat sekmesini de eş zamanlı güncelle
+        filterMutabakatData();
+    };
+
+    window.deleteSatisItem = function(id) {
+        dbSatis = dbSatis.filter(x => x.id !== id);
+        localStorage.setItem('GENOS_V117_SATIS_DB', JSON.stringify(dbSatis));
+        filterSatisData();
+    };
+
+    function toggleSelectAllSatis(master) {
+        document.querySelectorAll('.row-chk-satis').forEach(cb => { cb.checked = master.checked; });
+    }
+
+    function toggleSelectAllCustomers(master) {
+        document.querySelectorAll('.customer-chk').forEach(cb => cb.checked = master.checked);
+        filterSatisData();
+    }
+
+    function filterCustomerDropdown() {
+        const search = trLower(document.getElementById('customerSearchInput').value);
+        document.querySelectorAll('#customerCheckboxes .dropdown-item').forEach(item => {
+            item.style.display = trLower(item.innerText).includes(search) ? "flex" : "none";
+        });
+    }
+
+    function addSelectedToSatisCart() {
+        const checkboxes = document.querySelectorAll('.row-chk-satis:checked');
+        if (checkboxes.length === 0) { alert("Kayıt seçin!"); return; }
+        checkboxes.forEach(cb => {
+            const id = cb.value;
+            if (!cartSatis.some(c => c.id === id)) cartSatis.push({id});
+        });
+        localStorage.setItem('GENOS_V117_SATIS_CART', JSON.stringify(cartSatis));
+        filterSatisData();
+    }
+
+    function toggleSatisCartItem(id) {
+        const idx = cartSatis.findIndex(c => c.id === id);
+        if(idx > -1) cartSatis.splice(idx, 1); else cartSatis.push({id});
+        localStorage.setItem('GENOS_V117_SATIS_CART', JSON.stringify(cartSatis));
+        filterSatisData();
+    }
+
+    window.showSatisDetail = function(id) {
+        let item = dbSatis.find(x => x.id === id);
+        if(!item) return;
+        currentModalData = [item];
+        document.getElementById('modalCalendar').innerHTML = `<i class="fas fa-warehouse"></i> ${item.tarih}`;
+        document.getElementById('modalTitle').innerText = item.musteri;
+        let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>BELGE NO</th><th>ÜRÜN</th><th>MİKTAR</th></tr></thead><tbody>`;
+        html += `<tr><td>${item.bNo}</td><td>${item.urun}</td><td><b>${item.miktar}</b></td></tr>`;
+        html += `</tbody></table>`;
+        document.getElementById('modalBody').innerHTML = html;
+        document.getElementById('modalFooter').innerHTML = `
+            <button class="btn-excel-modal" onclick="exportModalDataToExcel('${item.musteri}')"><i class="fas fa-file-excel"></i> Excel'e Aktar</button>
+            <button class="btn-kapat" onclick="window.closeModal()">Kapat</button>`;
+        document.getElementById('mainModal').style.display = "block";
+    };
+
+    window.showSatisUrunDetail = function(urun, tarih) {
+        currentModalData = dbSatis.filter(x => x.urun === urun && x.tarih === tarih);
+        document.getElementById('modalCalendar').innerHTML = `<i class="fas fa-box"></i> ${tarih}`;
+        document.getElementById('modalTitle').innerText = urun;
+        let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>BELGE NO</th><th>MÜŞTERİ ADI</th><th>MİKTAR</th></tr></thead><tbody>`;
+        let t = 0;
+        currentModalData.forEach(x => {
+            html += `<tr><td>${x.bNo}</td><td>${x.musteri}</td><td><b>${x.miktar}</b></td></tr>`;
+            t += x.miktar;
+        });
+        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="2">TOPLAM</td><td>${t}</td></tr></tbody></table>`;
+        document.getElementById('modalBody').innerHTML = html;
+        document.getElementById('modalFooter').innerHTML = `
+            <button class="btn-excel-modal" onclick="exportModalDataToExcel('${urun}')"><i class="fas fa-file-excel"></i> Excel'e Aktar</button>
+            <button class="btn-kapat" onclick="window.closeModal()">Kapat</button>`;
+        document.getElementById('mainModal').style.display = "block";
+    };
+
+    window.showSatisCart = function() {
+        document.getElementById('modalCalendar').innerHTML = `<i class="fas fa-shopping-basket"></i> Satış Sepeti`;
+        document.getElementById('modalTitle').innerText = "Seçili Satış Kayıtları";
+        currentModalData = cartSatis.map(c => dbSatis.find(x => x.id === c.id)).filter(Boolean);
+        let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>TARİH</th><th>MÜŞTERİ</th><th>ÜRÜN</th><th>MİKTAR</th></tr></thead><tbody>`;
+        let t = 0;
+        currentModalData.forEach(x => {
+            html += `<tr><td>${x.tarih}</td><td>${x.musteri}</td><td><b>${x.urun}</b></td><td>${x.miktar}</td></tr>`;
+            t += x.miktar;
+        });
+        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="3">TOPLAM</td><td>${t}</td></tr></tbody></table>`;
+        document.getElementById('modalBody').innerHTML = html;
+        document.getElementById('modalFooter').innerHTML = `
+            <button class="btn-excel-modal" onclick="exportModalDataToExcel('Satis_Sepeti')"><i class="fas fa-file-excel"></i> Excel'e Aktar</button>
+            <button class="btn-cube btn-d" style="width:110px; aspect-ratio:auto; padding:10px;" onclick="cartSatis=[]; localStorage.removeItem('GENOS_V117_SATIS_CART'); window.closeModal(); filterSatisData();">Boşalt</button>
+            <button class="btn-kapat" onclick="window.closeModal()">Kapat</button>`;
+        document.getElementById('mainModal').style.display = "block";
+    };
+
+    window.exportSatisExcel = function(type) {
+        let source = (type === 'all') ? dbSatis : (type === 'filtered') ? filteredSatisData : currentModalData;
+        if(source.length === 0) { alert("Veri yok!"); return; }
+        let arr = source.map(i => ({
+            'Tarih': i.tarih,
+            'Bölge': i.bolge,
+            'Müşteri Kodu': i.musteriKod,
+            'Müşteri': i.musteri,
+            'Belge No': i.bNo,
+            'Malzeme Kodu': i.mKod,
+            'Ürün': i.urun,
+            'Miktar': i.miktar,
+            'Birim': i.birim
+        }));
+        const ws = XLSX.utils.json_to_sheet(arr);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "SATIS_RAPORU");
+        XLSX.writeFile(wb, `SATIS_RAPORU_${Date.now()}.xlsx`);
+    };
+
+    function resetSatisFilters() {
+        document.getElementById('customerSearchInput').value = "";
+        document.getElementById('f-bolge-satis').value = "";
+        document.getElementById('f-yil-satis').value = "";
+        document.getElementById('f-yil-mutabakat').value = "";
+        refreshSatisDateDropdowns('', '', '');
+        document.querySelectorAll('.customer-chk').forEach(cb => cb.checked = true);
+        document.getElementById('selectAllCustomers').checked = true;
+        filterCustomerDropdown();
+        syncGlobalSearch("");
+    }
+
+    function resetMutabakatFilters() {
+        document.getElementById('f-yil-satis').value = "";
+        document.getElementById('f-yil-mutabakat').value = "";
+        refreshSatisDateDropdowns('', '', '');
+        syncGlobalSearch("");
+    }
+
+    function clearSatisDB() {
+        if(confirm("Satış veritabanı sıfırlansın mı?")) {
+            ['GENOS_V117_SATIS_DB', 'GENOS_V117_SATIS_CART'].forEach(k => localStorage.removeItem(k));
+            dbSatis = [];
+            cartSatis = [];
+            filteredSatisData = [];
+            finalizeSatisUI();
+            filterMutabakatData();
+        }
+    }
+
+
+    // ================= 3. MUTABAKAT LOGIC & DAĞILIM KARTLARI =================
+    function getSatisDateScope() {
+        const yEl = document.getElementById('f-yil-mutabakat') || document.getElementById('f-yil-satis');
+        const aEl = document.getElementById('f-ay-mutabakat') || document.getElementById('f-ay-satis');
+        const gEl = document.getElementById('f-gun-mutabakat') || document.getElementById('f-gun-satis');
+        const y = yEl ? yEl.value : "";
+        const a = aEl ? aEl.value : "";
+        const g = gEl ? gEl.value : "";
+
+        const hasDateFilter = (y !== "" || a !== "" || g !== "");
+        const matchingDateSales = dbSatis.filter(sale =>
+            (y === "" || sale.y === y) &&
+            (a === "" || sale.a === a) &&
+            (g === "" || sale.g === g)
+        );
+        const distinctDaysCount = new Set(matchingDateSales.map(s => s.tarih)).size;
+
+        let label = "Tüm Günler";
+        if (hasDateFilter) {
+            if (g && a && y) label = `${g}.${a}.${y}`;
+            else if (a && y) label = `${ayIsimleri[parseInt(a) - 1]} ${y}`;
+            else if (y) label = `${y} Yılı`;
+            else if (a) label = `${ayIsimleri[parseInt(a) - 1]}`;
+            else if (g) label = `${g}. Gün`;
+        } else if (distinctDaysCount > 0) {
+            label = `Tüm Günler (${distinctDaysCount} Gün)`;
+        }
+
+        return { y, a, g, hasDateFilter, label, distinctDaysCount };
+    }
+
+    window.filterMutabakatData = function() {
+        const s = trLower(document.getElementById('globalSearchMutabakat').value);
+        const dateScope = getSatisDateScope();
+
+        const badgeEl = document.getElementById('mutabakatDateBadge');
+        if (badgeEl) {
+            badgeEl.innerText = dateScope.hasDateFilter
+                ? `Seçili Tarih: ${dateScope.label}`
+                : `${dateScope.label} Toplamı`;
+        }
+        const subHeaderEl = document.getElementById('gunlukSatisSubHeader');
+        if (subHeaderEl) {
+            subHeaderEl.innerText = dateScope.label;
+        }
+
+        const uniqueProductsMap = new Map();
+        dbStok.forEach(item => {
+            let uName = item.urun;
+            let normKey = trLower(uName);
+            if(!uniqueProductsMap.has(normKey)) {
+                uniqueProductsMap.set(normKey, {
+                    urun: uName,
+                    marka: item.marka,
+                    lisansor: item.lisansor,
+                    stok: item.stok,
+                    aylikSatis: item.aylikSatis,
+                    yillikSatis: item.yillikSatis
+                });
+            } else {
+                let obj = uniqueProductsMap.get(normKey);
+                obj.stok += item.stok;
+            }
+        });
+
+        let mutabakatList = [];
+        uniqueProductsMap.forEach((val, key) => {
+            const matchingSales = dbSatis.filter(sale => trLower(sale.urun) === key);
+            let toplamSatisAdedi = matchingSales.reduce((sum, sale) => sum + sale.miktar, 0);
+
+            const matchingDynamicSales = matchingSales.filter(sale =>
+                (dateScope.y === "" || sale.y === dateScope.y) &&
+                (dateScope.a === "" || sale.a === dateScope.a) &&
+                (dateScope.g === "" || sale.g === dateScope.g)
+            );
+            let gunlukDinamikSatis = matchingDynamicSales.reduce((sum, sale) => sum + sale.miktar, 0);
+
+            mutabakatList.push({
+                urun: val.urun,
+                marka: val.marka,
+                lisansor: val.lisansor,
+                stok: val.stok,
+                satisAdedi: toplamSatisAdedi,
+                gunlukSatisAdedi: gunlukDinamikSatis,
+                aylikSatis: val.aylikSatis,
+                yillikSatis: val.yillikSatis
+            });
+        });
+
+        dbSatis.forEach(sale => {
+            let sName = sale.urun;
+            let normKey = trLower(sName);
+            if(!Array.from(uniqueProductsMap.keys()).includes(normKey)) {
+                let existing = mutabakatList.find(m => trLower(m.urun) === normKey);
+                if(!existing) {
+                    let matchingSales = dbSatis.filter(item => trLower(item.urun) === normKey);
+                    let toplamSatisAdedi = matchingSales.reduce((sum, item) => sum + item.miktar, 0);
+
+                    const matchingDynamicSales = matchingSales.filter(item =>
+                        (dateScope.y === "" || item.y === dateScope.y) &&
+                        (dateScope.a === "" || item.a === dateScope.a) &&
+                        (dateScope.g === "" || item.g === dateScope.g)
+                    );
+                    let gunlukDinamikSatis = matchingDynamicSales.reduce((sum, item) => sum + item.miktar, 0);
+
+                    mutabakatList.push({
+                        urun: sName,
+                        marka: "-",
+                        lisansor: "-",
+                        stok: 0,
+                        satisAdedi: toplamSatisAdedi,
+                        gunlukSatisAdedi: gunlukDinamikSatis,
+                        aylikSatis: 0,
+                        yillikSatis: 0
+                    });
+                    uniqueProductsMap.set(normKey, true);
+                }
+            }
+        });
+
+        mutabakatList.sort((A, B) => A.urun.localeCompare(B.urun, 'tr'));
+
+        filteredMutabakatData = mutabakatList.filter(item => {
+            return trLower(item.urun).includes(s) || trLower(item.marka).includes(s) || trLower(item.lisansor).includes(s);
+        });
+
+        renderSummaryCards(filteredMutabakatData);
+
+        const tbody = document.getElementById('tableBodyMutabakat');
+        tbody.innerHTML = filteredMutabakatData.map((item, idx) => {
+            const isCart = cartMutabakat.includes(item.urun);
+            return `<tr>
+                <td><b>${item.urun}</b></td>
+                <td>${item.marka}</td>
+                <td>${item.lisansor}</td>
+                <td style="text-align:center">
+                    <span class="link-stok-detay" onclick="window.showMutabakatStokDetail('${item.urun.replace(/'/g, "\\'")}')"><b>${item.stok}</b></span>
+                </td>
+                <td style="text-align:center">
+                    <span class="link-satis-detay" onclick="window.showMutabakatSalesDetail('${item.urun.replace(/'/g, "\\'")}', false)">${item.satisAdedi}</span>
+                </td>
+                <td style="text-align:center">
+                    <span class="link-gunluk-detay" onclick="window.showMutabakatSalesDetail('${item.urun.replace(/'/g, "\\'")}', true)"><b>${item.gunlukSatisAdedi}</b></span>
+                </td>
+                <td style="text-align:center">
+                    <span class="link-urun" onclick="window.showMutabakatSalesDetail('${item.urun.replace(/'/g, "\\'")}', false)">${item.aylikSatis}</span>
+                </td>
+                <td style="text-align:center;">
+                    <span class="link-satis-detay" onclick="window.showMutabakatSalesDetail('${item.urun.replace(/'/g, "\\'")}', false)"><b>${item.yillikSatis}</b></span>
+                </td>
+                <td style="text-align:center; display:flex; align-items:center; justify-content:center; gap:12px;">
+                    <input type="checkbox" class="row-chk-mutabakat" value="${item.urun.replace(/"/g, '"')}" ${isCart ? 'checked' : ''}>
+                    <i class="fas fa-shopping-basket cart-btn" onclick="toggleMutabakatCartItem('${item.urun.replace(/'/g, "\\'")}')" style="cursor:pointer; color:${isCart?'#10b981':'#cbd5e1'}"></i>
+                </td>
+            </tr>`;
+        }).join('');
+        document.getElementById('cart-count-mutabakat').innerText = cartMutabakat.length;
+        document.getElementById('selectAllMutabakat').checked = false;
+    };
+
+    function renderSummaryCards(list) {
+        const container = document.getElementById('summaryCardsContainer');
+        if(!list || list.length === 0) {
+            container.innerHTML = `<div style="font-size:11px; color:#64748b; padding:10px; text-align:center; width:100%;">Gösterilecek ürün dağılım verisi bulunamadı.</div>`;
+            return;
+        }
+
+        container.innerHTML = list.map(item => {
+            const salesRecords = dbSatis.filter(s => trLower(s.urun) === trLower(item.urun));
+            const depoMap = {};
+            salesRecords.forEach(s => {
+                let dName = s.musteri || 'Merkez';
+                depoMap[dName] = (depoMap[dName] || 0) + s.miktar;
+            });
+
+            let sortedDepolar = Object.entries(depoMap).sort((a,b) => b[1] - a[1]);
+            let topDepolarHTML = sortedDepolar.slice(0, 2).map(([depo, adet]) => `
+                <div class="spc-row">
+                    <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:170px;" title="${depo}">${depo}</span>
+                    <b>${adet} Adet</b>
+                </div>
+            `).join('');
+
+            if(sortedDepolar.length === 0) {
+                topDepolarHTML = `<div style="color:#94a3b8; font-style:italic;">Satış kaydı yok</div>`;
+            }
+
+            return `
+                <div class="summary-product-card" onclick="window.showMutabakatSalesDetail('${item.urun.replace(/'/g, "\\'")}', false)" title="Detayları görmek için tıklayın">
+                    <div class="spc-header">
+                        <span class="spc-title" title="${item.urun}">${item.urun}</span>
+                        <span class="spc-badge">Top: <b>${item.satisAdedi}</b></span>
+                    </div>
+                    <div class="spc-body">
+                        <div style="font-size:10px; font-weight:bold; color:#008080; margin-bottom:2px;">En Çok Satan Müşteriler:</div>
+                        ${topDepolarHTML}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    window.showMutabakatStokDetail = function(urunName) {
+        currentModalData = dbStok.filter(x => trLower(x.urun) === trLower(urunName));
+        document.getElementById('modalCalendar').innerHTML = `<i class="fas fa-boxes"></i> Mutabakat Stok Detayı`;
+        document.getElementById('modalTitle').innerText = urunName;
+        let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>TARİH</th><th>Malzeme Kodu</th><th>Marka</th><th>Lisansör</th><th>Satışa Hazır Stok (Kutu)</th></tr></thead><tbody>`;
+        let t = 0;
+        currentModalData.forEach(x => {
+            html += `<tr><td>${x.tarih}</td><td>${x.mKod}</td><td>${x.marka}</td><td>${x.lisansor}</td><td><b>${x.stok}</b></td></tr>`;
+            t += x.stok;
+        });
+        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="4">TOPLAM STOK</td><td>${t}</td></tr></tbody></table>`;
+        document.getElementById('modalBody').innerHTML = html;
+        document.getElementById('modalFooter').innerHTML = `
+            <button class="btn-excel-modal" onclick="exportModalDataToExcel('${urunName}')"><i class="fas fa-file-excel"></i> Excel'e Aktar</button>
+            <button class="btn-kapat" onclick="window.closeModal()">Kapat</button>`;
+        document.getElementById('mainModal').style.display = "block";
+    };
+
+    window.showMutabakatSalesDetail = function(urunName, applyDateScope = false) {
+        const dateScope = getSatisDateScope();
+        currentModalData = dbSatis.filter(x => {
+            if (trLower(x.urun) !== trLower(urunName)) return false;
+            if (!applyDateScope) return true;
+            return (dateScope.y === "" || x.y === dateScope.y) &&
+                   (dateScope.a === "" || x.a === dateScope.a) &&
+                   (dateScope.g === "" || x.g === dateScope.g);
+        });
+        const badgeTitle = applyDateScope ? `Günlük / Dönemsel Satış Detayı (${dateScope.label})` : `Ürün Dağılım & Satış Detayı (Tüm Günler)`;
+        document.getElementById('modalCalendar').innerHTML = `<i class="fas fa-chart-line"></i> ${badgeTitle}`;
+        document.getElementById('modalTitle').innerText = urunName;
+        let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>TARİH</th><th>BÖLGE</th><th>MÜŞTERİ</th><th>BELGE NO</th><th>MİKTAR</th></tr></thead><tbody>`;
+        let t = 0;
+        currentModalData.forEach(x => {
+            html += `<tr><td>${x.tarih}</td><td>${x.bolge}</td><td>${x.musteri}</td><td>${x.bNo}</td><td><b>${x.miktar}</b></td></tr>`;
+            t += x.miktar;
+        });
+        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="4">TOPLAM SATIŞ</td><td>${t}</td></tr></tbody></table>`;
+        document.getElementById('modalBody').innerHTML = html;
+        document.getElementById('modalFooter').innerHTML = `
+            <button class="btn-excel-modal" onclick="exportModalDataToExcel('${urunName}')"><i class="fas fa-file-excel"></i> Excel'e Aktar</button>
+            <button class="btn-kapat" onclick="window.closeModal()">Kapat</button>`;
+        document.getElementById('mainModal').style.display = "block";
+    };
+
+    function toggleSelectAllMutabakat(master) {
+        document.querySelectorAll('.row-chk-mutabakat').forEach(cb => { cb.checked = master.checked; });
+    }
+
+    function toggleMutabakatCartItem(urun) {
+        const idx = cartMutabakat.indexOf(urun);
+        if(idx > -1) cartMutabakat.splice(idx, 1); else cartMutabakat.push(urun);
+        localStorage.setItem('GENOS_V117_MUTABAKAT_CART', JSON.stringify(cartMutabakat));
+        filterMutabakatData();
+    }
+
+    window.exportMutabakatExcel = function(type) {
+        let source = filteredMutabakatData;
+        if(source.length === 0) { alert("Veri yok!"); return; }
+        const dateScope = getSatisDateScope();
+        const gunlukKolonBaslik = `Günlük Satış Adedi (${dateScope.label})`;
+        let arr = source.map(i => ({
+            'Malzeme İsmi': i.urun,
+            'Marka': i.marka,
+            'Lisansör': i.lisansor,
+            'Satışa Hazır Stok (Kutu)': i.stok,
+            'Satış Adedi (Toplam)': i.satisAdedi,
+            [gunlukKolonBaslik]: i.gunlukSatisAdedi,
+            'Aylık Satış (Kutu)': i.aylikSatis,
+            'Yıllık Satış (Kutu)': i.yillikSatis
+        }));
+        const ws = XLSX.utils.json_to_sheet(arr);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "STOK_SATIS_MUTABAKAT");
+        XLSX.writeFile(wb, `MUTABAKAT_RAPORU_${Date.now()}.xlsx`);
+    };
+
+    window.showMutabakatCart = function() {
+        document.getElementById('modalCalendar').innerHTML = `<i class="fas fa-shopping-basket"></i> Mutabakat Sepeti`;
+        document.getElementById('modalTitle').innerText = "Seçili Ürün Mutabakatları";
+        currentModalData = filteredMutabakatData.filter(x => cartMutabakat.includes(x.urun));
+        let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>Malzeme İsmi</th><th>Satışa Hazır Stok (Kutu)</th><th>SATIŞ ADEDİ</th><th>GÜNLÜK SATIŞ ADEDİ</th></tr></thead><tbody>`;
+        currentModalData.forEach(x => { html += `<tr><td><b>${x.urun}</b></td><td>${x.stok}</td><td>${x.satisAdedi}</td><td><b>${x.gunlukSatisAdedi}</b></td></tr>`; });
+        html += `</tbody></table>`;
+        document.getElementById('modalBody').innerHTML = html;
+        document.getElementById('modalFooter').innerHTML = `
+            <button class="btn-excel-modal" onclick="exportModalDataToExcel('Mutabakat_Sepeti')"><i class="fas fa-file-excel"></i> Excel'e Aktar</button>
+            <button class="btn-cube btn-d" style="width:110px; aspect-ratio:auto; padding:10px;" onclick="cartMutabakat=[]; localStorage.removeItem('GENOS_V117_MUTABAKAT_CART'); window.closeModal(); filterMutabakatData();">Boşalt</button>
+            <button class="btn-kapat" onclick="window.closeModal()">Kapat</button>`;
+        document.getElementById('mainModal').style.display = "block";
+    };
+
+    function updateClock() { 
+        document.getElementById('clock-time').innerText = new Date().toLocaleTimeString(); 
+    }
+    setInterval(updateClock, 1000); updateClock();
+
+    if(dbStok.length > 0) finalizeStokUI(); else filterStokData();
+    if(dbSatis.length > 0) finalizeSatisUI(); else filterSatisData();
+    filterMutabakatData();
+</script>
+</body>
+</html>
