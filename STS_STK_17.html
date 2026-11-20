@@ -2,9 +2,14 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>GEN OS v12.1 - Entegre Stok & Satış Mutabakat Platformu</title>
+    <title>GEN OS v12.3 - Entegre Stok & Satış Mutabakat Platformu</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <script>
+        if (typeof XLSX === "undefined") {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>');
+        }
+    </script>
     <style>
         :root { --p: #008080; --s: #0f172a; --a: #3b82f6; --bg: #f8fafc; --sepet: #f59e0b; }
         body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -171,12 +176,12 @@
     <div>
         <h3 style="margin:0; color:#0f172a;">
             <i class="fas fa-layer-group" style="color:var(--p);"></i> 
-            <span id="appMainTitle" class="editable-title" contenteditable="true" title="Düzenlemek için tıklayın">GEN OS v12.1 Entegre Stok & Satış Platformu</span>
+            <span id="appMainTitle" class="editable-title" contenteditable="true" title="Düzenlemek için tıklayın">GEN OS v12.3 Entegre Stok & Satış Platformu</span>
         </h3>
         <span id="appSubTitle" class="editable-subtitle" contenteditable="true" style="font-size:10.5px; color:#008080; font-weight:bold; display:inline-block; margin-top:3px;" title="Düzenlemek için tıklayın">TÜM SEKMELERDE SENKRON ÜRÜN ARAMA & ÇİFT YÖNLÜ TARİH FİLTRESİ AKTİF 🧿🧿</span>
     </div>
     <div class="live-clock">
-        <div id="clock-time">10:48:00</div>
+        <div id="clock-time">11:25:00</div>
         <div id="clock-date" class="editable-subtitle" contenteditable="true" style="font-size:11px; color:#475569;" title="Tarihi düzenlemek için tıklayın">19 Kasım 2026</div>
     </div>
 </header>
@@ -498,6 +503,220 @@
     
     const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
+    // Sistem renk temaları (Stok: Sky Blue, Satış: Violet, Mutabakat: Amber, Modal: Teal)
+    const EXCEL_THEMES = {
+        stok: {
+            headerBg: "0284C7",
+            headerFg: "FFFFFF",
+            bannerBg: "E0F2FE",
+            bannerFg: "0369A1",
+            zebraBg: "F8FAFC",
+            borderColor: "CBD5E1"
+        },
+        satis: {
+            headerBg: "7C3AED",
+            headerFg: "FFFFFF",
+            bannerBg: "EDE9FE",
+            bannerFg: "5B21B6",
+            zebraBg: "FAF5FF",
+            borderColor: "DDD6FE"
+        },
+        mutabakat: {
+            headerBg: "D97706",
+            headerFg: "FFFFFF",
+            bannerBg: "FEF3C7",
+            bannerFg: "B45309",
+            zebraBg: "FFFBEB",
+            borderColor: "FDE68A"
+        },
+        modal: {
+            headerBg: "008080",
+            headerFg: "FFFFFF",
+            bannerBg: "F0FDFA",
+            bannerFg: "0F766E",
+            zebraBg: "F8FAFC",
+            borderColor: "CBD5E1"
+        }
+    };
+
+    // Adet / Rakam sütunları için anlamsal renk kombinasyonları
+    const NUMBER_PALETTES = {
+        stok:      { fill: "E0F2FE", fg: "0369A1" }, // Mavi (Hazır Stok / Devir Stok)
+        satis:     { fill: "DCFCE7", fg: "047857" }, // Zümrüt Yeşili (Toplam / Yıllık Satış / Miktar)
+        gunluk:    { fill: "FEF3C7", fg: "B45309" }, // Kehribar / Turuncu (Günlük Satış)
+        aylik:     { fill: "DBEAFE", fg: "1D4ED8" }, // Kobalt Mavi (Aylık Satış)
+        iade:      { fill: "FFE4E6", fg: "BE123C" }, // Gül / Kırmızı (İade)
+        neutral:   { fill: "F1F5F9", fg: "0F172A" }  // Nötr Adet
+    };
+
+    function getNumberStyleForHeader(headerName, themeKey = "stok", isZebra = false) {
+        const hl = trLower(headerName);
+        if (hl.includes('iade')) return NUMBER_PALETTES.iade;
+        if (hl.includes('günlük')) return NUMBER_PALETTES.gunluk;
+        if (hl.includes('aylık')) return NUMBER_PALETTES.aylik;
+        if (hl.includes('stok') || hl.includes('devir')) return NUMBER_PALETTES.stok;
+        if (hl.includes('satış') || hl.includes('satis') || hl.includes('miktar')) return NUMBER_PALETTES.satis;
+
+        if (themeKey === "mutabakat") return NUMBER_PALETTES.satis;
+        if (themeKey === "satis") return NUMBER_PALETTES.satis;
+        if (themeKey === "stok") return NUMBER_PALETTES.stok;
+        return isZebra ? NUMBER_PALETTES.neutral : { fill: "FFFFFF", fg: "0F172A" };
+    }
+
+    function getAppHeaderTitle() {
+        const el = document.getElementById('appMainTitle');
+        return (el && el.innerText.trim()) ? el.innerText.trim() : "GEN OS v12.3 Entegre Stok & Satış Platformu";
+    }
+
+    function exportStyledExcel(rows, sheetName, filePrefix, themeKey = "stok", subtitleText = "") {
+        if (!rows || rows.length === 0) {
+            alert("Aktarılacak veri bulunamadı!");
+            return;
+        }
+        const theme = EXCEL_THEMES[themeKey] || EXCEL_THEMES.stok;
+        const headers = Object.keys(rows[0]);
+        const colCount = headers.length;
+        const appTitle = getAppHeaderTitle();
+        const dateInfo = document.getElementById('clock-date')?.innerText?.trim() || new Date().toLocaleDateString('tr-TR');
+        const infoLine = subtitleText || `Rapor: ${sheetName} | Tarih: ${dateInfo} | Kayıt: ${rows.length}`;
+
+        const ws = {};
+        const thinBorder = {
+            top: { style: "thin", color: { rgb: theme.borderColor } },
+            bottom: { style: "thin", color: { rgb: theme.borderColor } },
+            left: { style: "thin", color: { rgb: theme.borderColor } },
+            right: { style: "thin", color: { rgb: theme.borderColor } }
+        };
+
+        // Satır 0: Uygulama Başlığı Bandı
+        const titleCellRef = XLSX.utils.encode_cell({ r: 0, c: 0 });
+        ws[titleCellRef] = {
+            v: appTitle,
+            t: "s",
+            s: {
+                fill: { patternType: "solid", fgColor: { rgb: "0F172A" } },
+                font: { name: "Calibri", sz: 13, bold: true, color: { rgb: "FFFFFF" } },
+                alignment: { horizontal: "left", vertical: "center" }
+            }
+        };
+
+        // Satır 1: Sekme / Rapor Alt Bilgi Bandı
+        const subCellRef = XLSX.utils.encode_cell({ r: 1, c: 0 });
+        ws[subCellRef] = {
+            v: infoLine,
+            t: "s",
+            s: {
+                fill: { patternType: "solid", fgColor: { rgb: theme.bannerBg } },
+                font: { name: "Calibri", sz: 10, bold: true, color: { rgb: theme.bannerFg } },
+                alignment: { horizontal: "left", vertical: "center" }
+            }
+        };
+
+        // Satır 2: Renkli Tablo Başlıkları
+        headers.forEach((h, cIdx) => {
+            const ref = XLSX.utils.encode_cell({ r: 2, c: cIdx });
+            ws[ref] = {
+                v: h,
+                t: "s",
+                s: {
+                    fill: { patternType: "solid", fgColor: { rgb: theme.headerBg } },
+                    font: { name: "Calibri", sz: 11, bold: true, color: { rgb: theme.headerFg } },
+                    border: thinBorder,
+                    alignment: { horizontal: "center", vertical: "center", wrapText: true }
+                }
+            };
+        });
+
+        // Satır 3+: Veri Satırları (Rakam ve adetler kendi renk kombinasyonlarıyla)
+        rows.forEach((rowObj, rIdx) => {
+            const excelRow = rIdx + 3;
+            const isZebra = rIdx % 2 === 1;
+            const baseRowBg = isZebra ? theme.zebraBg : "FFFFFF";
+
+            headers.forEach((h, cIdx) => {
+                const ref = XLSX.utils.encode_cell({ r: excelRow, c: cIdx });
+                const rawVal = rowObj[h] !== undefined && rowObj[h] !== null ? rowObj[h] : "";
+                const isNum = typeof rawVal === "number" && !isNaN(rawVal);
+                const numPalette = isNum ? getNumberStyleForHeader(h, themeKey, isZebra) : null;
+                const isDecimal = isNum && Math.abs(rawVal % 1) > 0.0001;
+
+                ws[ref] = {
+                    v: rawVal,
+                    t: isNum ? "n" : "s",
+                    s: {
+                        fill: { patternType: "solid", fgColor: { rgb: isNum ? numPalette.fill : baseRowBg } },
+                        font: {
+                            name: "Calibri",
+                            sz: isNum ? 10.5 : 10,
+                            bold: isNum || cIdx === 0 || cIdx === 1,
+                            color: { rgb: isNum ? numPalette.fg : "0F172A" }
+                        },
+                        border: thinBorder,
+                        alignment: {
+                            horizontal: isNum ? "right" : "left",
+                            vertical: "center"
+                        },
+                        numFmt: isNum ? (isDecimal ? "#,##0.##" : "#,##0") : "@"
+                    }
+                };
+            });
+        });
+
+        // Başlık birleştirmeleri ve sütun genişlikleri
+        ws["!merges"] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: Math.max(0, colCount - 1) } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: Math.max(0, colCount - 1) } }
+        ];
+        ws["!rows"] = [{ hpt: 28 }, { hpt: 22 }, { hpt: 28 }];
+        ws["!cols"] = headers.map(h => {
+            const maxLen = Math.max(
+                h.length,
+                ...rows.map(r => String(r[h] ?? "").length)
+            );
+            return { wch: Math.min(50, Math.max(15, maxLen + 5)) };
+        });
+        ws["!ref"] = XLSX.utils.encode_range({
+            s: { r: 0, c: 0 },
+            e: { r: rows.length + 2, c: Math.max(0, colCount - 1) }
+        });
+
+        const wb = XLSX.utils.book_new();
+        const safeSheetName = (sheetName || "RAPOR").substring(0, 31).replace(/[\\/?*[\]:]/g, '_');
+        XLSX.utils.book_append_sheet(wb, ws, safeSheetName);
+
+        const safePrefix = (filePrefix || "RAPOR").replace(/[\/\\?%*:|"<>]/g, '_');
+        XLSX.writeFile(wb, `${safePrefix}_${Date.now()}.xlsx`, { cellStyles: true, bookSST: true });
+    }
+
+    // Sayı biçimlendirme (#.#0 tarzı Türkçe binlik ayraçlı görünüm)
+    function formatNum(val) {
+        const num = parseNumCell(val);
+        return num.toLocaleString('tr-TR', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+        });
+    }
+
+    // Yüklenen stok kayıtlarında günlük satış verisi olup olmadığını kontrol eder
+    function hasDailySalesInStok(rowsList) {
+        const source = (rowsList && rowsList.length > 0) ? rowsList : dbStok;
+        if (!source || source.length === 0) return true;
+        return source.some(item => parseNumCell(item.gunlukSatis) > 0);
+    }
+
+    // Günlük satış yoksa dinamik başlık ("Bu Ayki Satış (Kutu)" veya ay adıyla) üretir
+    function getDynamicGunlukHeader(rowsList) {
+        if (hasDailySalesInStok(rowsList)) {
+            return "Günlük Satış (Kutu)";
+        }
+        const source = (rowsList && rowsList.length > 0) ? rowsList : dbStok;
+        const firstMonth = source && source[0] && source[0].a ? parseInt(source[0].a, 10) : 0;
+        if (firstMonth >= 1 && firstMonth <= 12) {
+            return `${ayIsimleri[firstMonth - 1]} Ayı Satışı (Kutu)`;
+        }
+        return "Bu Ayki Satış (Kutu)";
+    }
+
     function syncGlobalSearch(val) {
         const inputs = ['globalSearchStok', 'globalSearchSatis', 'globalSearchMutabakat'];
         inputs.forEach(id => {
@@ -568,11 +787,8 @@
             return;
         }
         const cleanData = currentModalData.map(({id, ...rest}) => rest);
-        const ws = XLSX.utils.json_to_sheet(cleanData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "DETAY_RAPORU");
         const safeTitle = (titleName || "DETAY").replace(/[\/\\?%*:|"<>]/g, '_');
-        XLSX.writeFile(wb, `${safeTitle}_DETAY_${Date.now()}.xlsx`);
+        exportStyledExcel(cleanData, "DETAY_RAPORU", `${safeTitle}_DETAY`, "modal", `Detay Raporu: ${titleName || "Detay"}`);
     };
 
     // ================= SAĞLAM TOPLU DOSYA YÜKLEME =================
@@ -781,11 +997,14 @@
         filterMutabakatData();
     });
 
-    function updateStokTableHeader() {
+    function updateStokTableHeader(rowsList) {
+        const dynamicGunlukTitle = getDynamicGunlukHeader(rowsList);
         let html = `<th>TARİH</th>`;
         currentStokHeaders.forEach(h => {
+            let hl = trLower(h);
+            let displayTitle = hl.includes('günlük satış') ? dynamicGunlukTitle : h;
             let align = (h.includes('Satış') || h.includes('Stok') || h.includes('Sayı') || h.includes('Devir')) ? 'text-align:center' : '';
-            html += `<th style="${align}">${h}</th>`;
+            html += `<th style="${align}">${displayTitle}</th>`;
         });
         html += `<th style="text-align:center; display:flex; align-items:center; justify-content:center; gap:8px; background:#f1f5f9; border:none; padding-top:15px;">
             <input type="checkbox" id="selectAll" onclick="toggleSelectAllStok(this)">
@@ -796,7 +1015,7 @@
 
     // ================= STOK LOGIC =================
     function finalizeStokUI() {
-        updateStokTableHeader();
+        updateStokTableHeader(dbStok);
         const y = [...new Set(dbStok.map(d => d.y))].sort().reverse();
         document.getElementById('f-yil-stok').innerHTML = '<option value="">Yıl</option>' + y.map(i => `<option value="${i}">${i}</option>`).join('');
         
@@ -848,11 +1067,15 @@
             return matchY && matchA && matchG && matchLisansor && matchSearch;
         });
 
+        const showDaily = hasDailySalesInStok(filteredStokData);
+        updateStokTableHeader(filteredStokData);
+
         const tbody = document.getElementById('tableBodyStok');
         tbody.innerHTML = filteredStokData.map(item => {
             const raporGunlukSatis = item.gunlukSatis ?? 0;
             const raporAylikSatis = item.aylikSatis ?? 0;
             const raporYillikSatis = item.yillikSatis ?? 0;
+            const aktifSatisDegeri = showDaily ? raporGunlukSatis : raporAylikSatis;
 
             const isCart = cartStok.some(c => c.mKod === item.mKod && c.t === item.tarih);
             
@@ -864,12 +1087,12 @@
                 else if (hl.includes('marka')) rowHtml += `<td>${item.marka}</td>`;
                 else if (hl.includes('lisansör')) rowHtml += `<td>${item.lisansor}</td>`;
                 else if (hl.includes('üretici firma')) rowHtml += `<td>${item.uretici || '-'}</td>`;
-                else if (hl.includes('devir stok')) rowHtml += `<td style="text-align:center"><b>${item.devirStok !== undefined && item.devirStok !== null ? item.devirStok : 0}</b></td>`;
-                else if (hl.includes('yıllık satış')) rowHtml += `<td style="text-align:center"><span class="link-satis-detay" onclick="window.showStokGunlukSatisDetail('${item.urun.replace(/'/g, "\\'")}')"><b>${raporYillikSatis}</b></span></td>`;
-                else if (hl.includes('satışa hazır stok') || hl === 'stok') rowHtml += `<td style="text-align:center"><span class="link-stok-detay" onclick="window.showStokKutuDetail('${item.urun.replace(/'/g, "\\'")}', '${item.tarih}')"><b>${item.stok}</b></span></td>`;
-                else if (hl.includes('günlük satış')) rowHtml += `<td style="text-align:center"><span class="link-satis-detay" onclick="window.showStokGunlukSatisDetail('${item.urun.replace(/'/g, "\\'")}')">${raporGunlukSatis}</span></td>`;
-                else if (hl.includes('aylık satış')) rowHtml += `<td style="text-align:center"><span class="link-urun" onclick="window.showStokGunlukSatisDetail('${item.urun.replace(/'/g, "\\'")}')">${raporAylikSatis}</span></td>`;
-                else if (hl.includes('iade')) rowHtml += `<td style="text-align:center"><span class="link-iade-detay" onclick="window.showStokIadeDetail('${item.urun.replace(/'/g, "\\'")}')">${item.iade}</span></td>`;
+                else if (hl.includes('devir stok')) rowHtml += `<td style="text-align:center"><b>${formatNum(item.devirStok !== undefined && item.devirStok !== null ? item.devirStok : 0)}</b></td>`;
+                else if (hl.includes('yıllık satış')) rowHtml += `<td style="text-align:center"><span class="link-satis-detay" onclick="window.showStokGunlukSatisDetail('${item.urun.replace(/'/g, "\\'")}')"><b>${formatNum(raporYillikSatis)}</b></span></td>`;
+                else if (hl.includes('satışa hazır stok') || hl === 'stok') rowHtml += `<td style="text-align:center"><span class="link-stok-detay" onclick="window.showStokKutuDetail('${item.urun.replace(/'/g, "\\'")}', '${item.tarih}')"><b>${formatNum(item.stok)}</b></span></td>`;
+                else if (hl.includes('günlük satış')) rowHtml += `<td style="text-align:center"><span class="link-satis-detay" onclick="window.showStokGunlukSatisDetail('${item.urun.replace(/'/g, "\\'")}')">${formatNum(aktifSatisDegeri)}</span></td>`;
+                else if (hl.includes('aylık satış')) rowHtml += `<td style="text-align:center"><span class="link-urun" onclick="window.showStokGunlukSatisDetail('${item.urun.replace(/'/g, "\\'")}')">${formatNum(raporAylikSatis)}</span></td>`;
+                else if (hl.includes('iade')) rowHtml += `<td style="text-align:center"><span class="link-iade-detay" onclick="window.showStokIadeDetail('${item.urun.replace(/'/g, "\\'")}')">${formatNum(item.iade)}</span></td>`;
                 else rowHtml += `<td>-</td>`;
             });
 
@@ -880,7 +1103,7 @@
 
             return `<tr>${rowHtml}</tr>`;
         }).join('');
-        document.getElementById('cart-count-stok').innerText = cartStok.length;
+        document.getElementById('cart-count-stok').innerText = formatNum(cartStok.length);
         document.getElementById('selectAll').checked = false;
     };
 
@@ -891,10 +1114,10 @@
         let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>TARİH</th><th>Malzeme Kodu</th><th>Marka</th><th>Lisansör</th><th>Satışa Hazır Stok (Kutu)</th></tr></thead><tbody>`;
         let t = 0;
         currentModalData.forEach(x => {
-            html += `<tr><td>${x.tarih}</td><td>${x.mKod}</td><td>${x.marka}</td><td>${x.lisansor}</td><td><b>${x.stok}</b></td></tr>`;
+            html += `<tr><td>${x.tarih}</td><td>${x.mKod}</td><td>${x.marka}</td><td>${x.lisansor}</td><td><b>${formatNum(x.stok)}</b></td></tr>`;
             t += x.stok;
         });
-        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="4">TOPLAM STOK</td><td>${t}</td></tr></tbody></table>`;
+        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="4">TOPLAM STOK</td><td>${formatNum(t)}</td></tr></tbody></table>`;
         document.getElementById('modalBody').innerHTML = html;
         document.getElementById('modalFooter').innerHTML = `
             <button class="btn-excel-modal" onclick="exportModalDataToExcel('${urunName}')"><i class="fas fa-file-excel"></i> Excel'e Aktar</button>
@@ -909,10 +1132,10 @@
         let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>TARİH</th><th>BÖLGE</th><th>MÜŞTERİ</th><th>BELGE NO</th><th>MİKTAR</th></tr></thead><tbody>`;
         let t = 0;
         currentModalData.forEach(x => {
-            html += `<tr><td>${x.tarih}</td><td>${x.bolge}</td><td>${x.musteri}</td><td>${x.bNo}</td><td><b>${x.miktar}</b></td></tr>`;
+            html += `<tr><td>${x.tarih}</td><td>${x.bolge}</td><td>${x.musteri}</td><td>${x.bNo}</td><td><b>${formatNum(x.miktar)}</b></td></tr>`;
             t += x.miktar;
         });
-        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="4">TOPLAM SATIŞ</td><td>${t}</td></tr></tbody></table>`;
+        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="4">TOPLAM SATIŞ</td><td>${formatNum(t)}</td></tr></tbody></table>`;
         document.getElementById('modalBody').innerHTML = html;
         document.getElementById('modalFooter').innerHTML = `
             <button class="btn-excel-modal" onclick="exportModalDataToExcel('${urunName}')"><i class="fas fa-file-excel"></i> Excel'e Aktar</button>
@@ -928,10 +1151,10 @@
         let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>TARİH</th><th>Malzeme Kodu</th><th>Marka</th><th>İade Ürün Sayısı (Kutu)</th></tr></thead><tbody>`;
         let t = 0;
         items.forEach(x => {
-            html += `<tr><td>${x.tarih}</td><td>${x.mKod}</td><td>${x.marka}</td><td style="color:#e11d48;"><b>${x.iade}</b></td></tr>`;
+            html += `<tr><td>${x.tarih}</td><td>${x.mKod}</td><td>${x.marka}</td><td style="color:#e11d48;"><b>${formatNum(x.iade)}</b></td></tr>`;
             t += x.iade;
         });
-        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="3">TOPLAM İADE</td><td>${t}</td></tr></tbody></table>`;
+        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="3">TOPLAM İADE</td><td>${formatNum(t)}</td></tr></tbody></table>`;
         document.getElementById('modalBody').innerHTML = html;
         document.getElementById('modalFooter').innerHTML = `
             <button class="btn-excel-modal" onclick="exportModalDataToExcel('${urunName}')"><i class="fas fa-file-excel"></i> Excel'e Aktar</button>
@@ -998,7 +1221,7 @@
         document.getElementById('modalTitle').innerText = "Seçili Stok Kayıtları";
         currentModalData = cartStok.map(c => dbStok.find(x => x.mKod === c.mKod && x.t === c.t)).filter(Boolean);
         let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>TARİH</th><th>Malzeme Kodu</th><th>Malzeme İsmi</th><th>Satışa Hazır Stok (Kutu)</th></tr></thead><tbody>`;
-        currentModalData.forEach(x => { html += `<tr><td>${x.tarih}</td><td>${x.mKod}</td><td><b>${x.urun}</b></td><td>${x.stok}</td></tr>`; });
+        currentModalData.forEach(x => { html += `<tr><td>${x.tarih}</td><td>${x.mKod}</td><td><b>${x.urun}</b></td><td>${formatNum(x.stok)}</td></tr>`; });
         html += `</tbody></table>`;
         document.getElementById('modalBody').innerHTML = html;
         document.getElementById('modalFooter').innerHTML = `
@@ -1011,7 +1234,10 @@
     window.exportStokExcel = function(type) {
         let source = (type === 'all') ? dbStok : (type === 'filtered') ? filteredStokData : currentModalData;
         if(source.length === 0) { alert("Veri yok!"); return; }
+        const showDaily = hasDailySalesInStok(source);
+        const dynamicGunlukTitle = getDynamicGunlukHeader(source);
         let arr = source.map(i => ({
+            'Tarih': i.tarih,
             'Malzeme Kodu': i.mKod,
             'Malzeme İsmi': i.urun,
             'Marka': i.marka,
@@ -1020,14 +1246,12 @@
             'Devir Stok (Kutu)': i.devirStok ?? 0,
             'Yıllık Satış (Kutu)': i.yillikSatis,
             'Satışa Hazır Stok (Kutu)': i.stok,
-            'Günlük Satış (Kutu)': i.gunlukSatis,
+            [dynamicGunlukTitle]: showDaily ? i.gunlukSatis : i.aylikSatis,
             'Aylık Satış (Kutu)': i.aylikSatis,
             'İade Ürün Sayısı (Kutu)': i.iade
         }));
-        const ws = XLSX.utils.json_to_sheet(arr);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "STOK_RAPORU");
-        XLSX.writeFile(wb, `STOK_RAPORU_${Date.now()}.xlsx`);
+        const scopeLabel = type === 'all' ? 'Tüm Stok Arşivi' : 'Filtrelenmiş Stok Listesi';
+        exportStyledExcel(arr, "STOK_RAPORU", `STOK_RAPORU_${type.toUpperCase()}`, "stok", `Stok Sekmesi (${scopeLabel}) | Kayıt: ${arr.length}`);
     };
 
     function resetStokFilters() {
@@ -1155,7 +1379,7 @@
                 <td>${item.bNo}</td>
                 <td><b>${item.mKod}</b></td>
                 <td><span class="link-urun" onclick="window.showSatisUrunDetail('${item.urun.replace(/'/g, "\\'")}', '${item.tarih}')">${item.urun}</span></td>
-                <td style="text-align:center"><b>${item.miktar}</b></td>
+                <td style="text-align:center"><b>${formatNum(item.miktar)}</b></td>
                 <td>${item.birim}</td>
                 <td style="text-align:center; display:flex; align-items:center; justify-content:center; gap:12px;">
                     <input type="checkbox" class="row-chk-satis" value="${item.id}" ${isCart ? 'checked' : ''}>
@@ -1163,7 +1387,7 @@
                 </td>
             </tr>`;
         }).join('');
-        document.getElementById('cart-count-satis').innerText = cartSatis.length;
+        document.getElementById('cart-count-satis').innerText = formatNum(cartSatis.length);
         document.getElementById('selectAllSatis').checked = false;
 
         // Tarih değiştiğinde Özet & Mutabakat sekmesini de eş zamanlı güncelle
@@ -1217,7 +1441,7 @@
         document.getElementById('modalCalendar').innerHTML = `<i class="fas fa-warehouse"></i> ${item.tarih}`;
         document.getElementById('modalTitle').innerText = item.musteri;
         let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>BELGE NO</th><th>ÜRÜN</th><th>MİKTAR</th></tr></thead><tbody>`;
-        html += `<tr><td>${item.bNo}</td><td>${item.urun}</td><td><b>${item.miktar}</b></td></tr>`;
+        html += `<tr><td>${item.bNo}</td><td>${item.urun}</td><td><b>${formatNum(item.miktar)}</b></td></tr>`;
         html += `</tbody></table>`;
         document.getElementById('modalBody').innerHTML = html;
         document.getElementById('modalFooter').innerHTML = `
@@ -1233,10 +1457,10 @@
         let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>BELGE NO</th><th>MÜŞTERİ ADI</th><th>MİKTAR</th></tr></thead><tbody>`;
         let t = 0;
         currentModalData.forEach(x => {
-            html += `<tr><td>${x.bNo}</td><td>${x.musteri}</td><td><b>${x.miktar}</b></td></tr>`;
+            html += `<tr><td>${x.bNo}</td><td>${x.musteri}</td><td><b>${formatNum(x.miktar)}</b></td></tr>`;
             t += x.miktar;
         });
-        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="2">TOPLAM</td><td>${t}</td></tr></tbody></table>`;
+        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="2">TOPLAM</td><td>${formatNum(t)}</td></tr></tbody></table>`;
         document.getElementById('modalBody').innerHTML = html;
         document.getElementById('modalFooter').innerHTML = `
             <button class="btn-excel-modal" onclick="exportModalDataToExcel('${urun}')"><i class="fas fa-file-excel"></i> Excel'e Aktar</button>
@@ -1251,10 +1475,10 @@
         let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>TARİH</th><th>MÜŞTERİ</th><th>ÜRÜN</th><th>MİKTAR</th></tr></thead><tbody>`;
         let t = 0;
         currentModalData.forEach(x => {
-            html += `<tr><td>${x.tarih}</td><td>${x.musteri}</td><td><b>${x.urun}</b></td><td>${x.miktar}</td></tr>`;
+            html += `<tr><td>${x.tarih}</td><td>${x.musteri}</td><td><b>${x.urun}</b></td><td>${formatNum(x.miktar)}</td></tr>`;
             t += x.miktar;
         });
-        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="3">TOPLAM</td><td>${t}</td></tr></tbody></table>`;
+        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="3">TOPLAM</td><td>${formatNum(t)}</td></tr></tbody></table>`;
         document.getElementById('modalBody').innerHTML = html;
         document.getElementById('modalFooter').innerHTML = `
             <button class="btn-excel-modal" onclick="exportModalDataToExcel('Satis_Sepeti')"><i class="fas fa-file-excel"></i> Excel'e Aktar</button>
@@ -1277,10 +1501,8 @@
             'Miktar': i.miktar,
             'Birim': i.birim
         }));
-        const ws = XLSX.utils.json_to_sheet(arr);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "SATIS_RAPORU");
-        XLSX.writeFile(wb, `SATIS_RAPORU_${Date.now()}.xlsx`);
+        const scopeLabel = type === 'all' ? 'Tüm Satış Arşivi' : 'Filtrelenmiş Satış Listesi';
+        exportStyledExcel(arr, "SATIS_RAPORU", `SATIS_RAPORU_${type.toUpperCase()}`, "satis", `Satış Sekmesi (${scopeLabel}) | Kayıt: ${arr.length}`);
     };
 
     function resetSatisFilters() {
@@ -1339,7 +1561,7 @@
             else if (a) label = `${ayIsimleri[parseInt(a) - 1]}`;
             else if (g) label = `${g}. Gün`;
         } else if (distinctDaysCount > 0) {
-            label = `Tüm Günler (${distinctDaysCount} Gün)`;
+            label = `Tüm Günler (${formatNum(distinctDaysCount)} Gün)`;
         }
 
         return { y, a, g, hasDateFilter, label, distinctDaysCount };
@@ -1450,19 +1672,19 @@
                 <td>${item.marka}</td>
                 <td>${item.lisansor}</td>
                 <td style="text-align:center">
-                    <span class="link-stok-detay" onclick="window.showMutabakatStokDetail('${item.urun.replace(/'/g, "\\'")}')"><b>${item.stok}</b></span>
+                    <span class="link-stok-detay" onclick="window.showMutabakatStokDetail('${item.urun.replace(/'/g, "\\'")}')"><b>${formatNum(item.stok)}</b></span>
                 </td>
                 <td style="text-align:center">
-                    <span class="link-satis-detay" onclick="window.showMutabakatSalesDetail('${item.urun.replace(/'/g, "\\'")}', false)">${item.satisAdedi}</span>
+                    <span class="link-satis-detay" onclick="window.showMutabakatSalesDetail('${item.urun.replace(/'/g, "\\'")}', false)">${formatNum(item.satisAdedi)}</span>
                 </td>
                 <td style="text-align:center">
-                    <span class="link-gunluk-detay" onclick="window.showMutabakatSalesDetail('${item.urun.replace(/'/g, "\\'")}', true)"><b>${item.gunlukSatisAdedi}</b></span>
+                    <span class="link-gunluk-detay" onclick="window.showMutabakatSalesDetail('${item.urun.replace(/'/g, "\\'")}', true)"><b>${formatNum(item.gunlukSatisAdedi)}</b></span>
                 </td>
                 <td style="text-align:center">
-                    <span class="link-urun" onclick="window.showMutabakatSalesDetail('${item.urun.replace(/'/g, "\\'")}', false)">${item.aylikSatis}</span>
+                    <span class="link-urun" onclick="window.showMutabakatSalesDetail('${item.urun.replace(/'/g, "\\'")}', false)">${formatNum(item.aylikSatis)}</span>
                 </td>
                 <td style="text-align:center;">
-                    <span class="link-satis-detay" onclick="window.showMutabakatSalesDetail('${item.urun.replace(/'/g, "\\'")}', false)"><b>${item.yillikSatis}</b></span>
+                    <span class="link-satis-detay" onclick="window.showMutabakatSalesDetail('${item.urun.replace(/'/g, "\\'")}', false)"><b>${formatNum(item.yillikSatis)}</b></span>
                 </td>
                 <td style="text-align:center; display:flex; align-items:center; justify-content:center; gap:12px;">
                     <input type="checkbox" class="row-chk-mutabakat" value="${item.urun.replace(/"/g, '"')}" ${isCart ? 'checked' : ''}>
@@ -1470,7 +1692,7 @@
                 </td>
             </tr>`;
         }).join('');
-        document.getElementById('cart-count-mutabakat').innerText = cartMutabakat.length;
+        document.getElementById('cart-count-mutabakat').innerText = formatNum(cartMutabakat.length);
         document.getElementById('selectAllMutabakat').checked = false;
     };
 
@@ -1493,7 +1715,7 @@
             let topDepolarHTML = sortedDepolar.slice(0, 2).map(([depo, adet]) => `
                 <div class="spc-row">
                     <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:170px;" title="${depo}">${depo}</span>
-                    <b>${adet} Adet</b>
+                    <b>${formatNum(adet)} Adet</b>
                 </div>
             `).join('');
 
@@ -1505,7 +1727,7 @@
                 <div class="summary-product-card" onclick="window.showMutabakatSalesDetail('${item.urun.replace(/'/g, "\\'")}', false)" title="Detayları görmek için tıklayın">
                     <div class="spc-header">
                         <span class="spc-title" title="${item.urun}">${item.urun}</span>
-                        <span class="spc-badge">Top: <b>${item.satisAdedi}</b></span>
+                        <span class="spc-badge">Top: <b>${formatNum(item.satisAdedi)}</b></span>
                     </div>
                     <div class="spc-body">
                         <div style="font-size:10px; font-weight:bold; color:#008080; margin-bottom:2px;">En Çok Satan Müşteriler:</div>
@@ -1523,10 +1745,10 @@
         let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>TARİH</th><th>Malzeme Kodu</th><th>Marka</th><th>Lisansör</th><th>Satışa Hazır Stok (Kutu)</th></tr></thead><tbody>`;
         let t = 0;
         currentModalData.forEach(x => {
-            html += `<tr><td>${x.tarih}</td><td>${x.mKod}</td><td>${x.marka}</td><td>${x.lisansor}</td><td><b>${x.stok}</b></td></tr>`;
+            html += `<tr><td>${x.tarih}</td><td>${x.mKod}</td><td>${x.marka}</td><td>${x.lisansor}</td><td><b>${formatNum(x.stok)}</b></td></tr>`;
             t += x.stok;
         });
-        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="4">TOPLAM STOK</td><td>${t}</td></tr></tbody></table>`;
+        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="4">TOPLAM STOK</td><td>${formatNum(t)}</td></tr></tbody></table>`;
         document.getElementById('modalBody').innerHTML = html;
         document.getElementById('modalFooter').innerHTML = `
             <button class="btn-excel-modal" onclick="exportModalDataToExcel('${urunName}')"><i class="fas fa-file-excel"></i> Excel'e Aktar</button>
@@ -1549,10 +1771,10 @@
         let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>TARİH</th><th>BÖLGE</th><th>MÜŞTERİ</th><th>BELGE NO</th><th>MİKTAR</th></tr></thead><tbody>`;
         let t = 0;
         currentModalData.forEach(x => {
-            html += `<tr><td>${x.tarih}</td><td>${x.bolge}</td><td>${x.musteri}</td><td>${x.bNo}</td><td><b>${x.miktar}</b></td></tr>`;
+            html += `<tr><td>${x.tarih}</td><td>${x.bolge}</td><td>${x.musteri}</td><td>${x.bNo}</td><td><b>${formatNum(x.miktar)}</b></td></tr>`;
             t += x.miktar;
         });
-        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="4">TOPLAM SATIŞ</td><td>${t}</td></tr></tbody></table>`;
+        html += `<tr style="background:#f0fdfa; font-weight:bold;"><td colspan="4">TOPLAM SATIŞ</td><td>${formatNum(t)}</td></tr></tbody></table>`;
         document.getElementById('modalBody').innerHTML = html;
         document.getElementById('modalFooter').innerHTML = `
             <button class="btn-excel-modal" onclick="exportModalDataToExcel('${urunName}')"><i class="fas fa-file-excel"></i> Excel'e Aktar</button>
@@ -1586,10 +1808,7 @@
             'Aylık Satış (Kutu)': i.aylikSatis,
             'Yıllık Satış (Kutu)': i.yillikSatis
         }));
-        const ws = XLSX.utils.json_to_sheet(arr);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "STOK_SATIS_MUTABAKAT");
-        XLSX.writeFile(wb, `MUTABAKAT_RAPORU_${Date.now()}.xlsx`);
+        exportStyledExcel(arr, "STOK_SATIS_MUTABAKAT", "MUTABAKAT_RAPORU", "mutabakat", `Özet & Mutabakat (${dateScope.label}) | Kayıt: ${arr.length}`);
     };
 
     window.showMutabakatCart = function() {
@@ -1597,7 +1816,7 @@
         document.getElementById('modalTitle').innerText = "Seçili Ürün Mutabakatları";
         currentModalData = filteredMutabakatData.filter(x => cartMutabakat.includes(x.urun));
         let html = `<table class="summary-table"><thead><tr style="background:#f1f5f9"><th>Malzeme İsmi</th><th>Satışa Hazır Stok (Kutu)</th><th>SATIŞ ADEDİ</th><th>GÜNLÜK SATIŞ ADEDİ</th></tr></thead><tbody>`;
-        currentModalData.forEach(x => { html += `<tr><td><b>${x.urun}</b></td><td>${x.stok}</td><td>${x.satisAdedi}</td><td><b>${x.gunlukSatisAdedi}</b></td></tr>`; });
+        currentModalData.forEach(x => { html += `<tr><td><b>${x.urun}</b></td><td>${formatNum(x.stok)}</td><td>${formatNum(x.satisAdedi)}</td><td><b>${formatNum(x.gunlukSatisAdedi)}</b></td></tr>`; });
         html += `</tbody></table>`;
         document.getElementById('modalBody').innerHTML = html;
         document.getElementById('modalFooter').innerHTML = `
